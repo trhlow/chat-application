@@ -1,6 +1,6 @@
 package com.chatrealtime.dto.auth;
 
-import lombok.data;
+import lombok.Data;
 
 @Data
 public class RegisterRequest {

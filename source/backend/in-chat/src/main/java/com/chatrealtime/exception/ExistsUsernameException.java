@@ -1,7 +1,9 @@
 package com.chatrealtime.exception;
 
-public class ExistsUsernameException extends ApplicationException{
-    public ExistsUsernameException(String message){
-        super(message, HttpStatus.ExistsUsername);
+import org.springframework.http.HttpStatus;
+
+public class ExistsUsernameException extends ApplicationException {
+    public ExistsUsernameException(String message) {
+        super(message, HttpStatus.CONFLICT);
     }
 }

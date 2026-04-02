@@ -1,5 +1,10 @@
 package com.chatrealtime.exception;
 
-public class ExistsEmail  extends ApplicationException{
-    public ExistisEmail(String message){super(message HttpStatus.ExistsEmail);}
+import org.springframework.http.HttpStatus;
+
+public class ExistsEmailException extends ApplicationException {
+    public ExistsEmailException(String message) {
+        super(message, HttpStatus.CONFLICT);
+    }
 }
+

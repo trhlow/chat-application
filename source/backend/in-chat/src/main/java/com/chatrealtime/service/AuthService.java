@@ -1,25 +1,29 @@
 package com.chatrealtime.service;
 
 import com.chatrealtime.dto.auth.RegisterRequest;
+import com.chatrealtime.exception.ExistsEmailException;
+import com.chatrealtime.exception.ExistsUsernameException;
 import com.chatrealtime.model.User;
 import com.chatrealtime.repository.UserRepository;
-import lokbok.RequirArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequirArgsConstructor
-
+@RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
 
-    public User register(RegisterRequest request){
-        if(userRepository.existsByUsername(request.getUsername())){
-            throw new ExistsUsername("Tên đăng nhập đã tồn tại!")
+    public User register(RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new ExistsUsernameException("Username already exists");
+        }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ExistsEmailException("Email already exists");
         }
 
         User newUser = User.builder()
                 .username(request.getUsername())
-                .passwork(request.getPasswork())
+                .password(request.getPassword())
                 .email(request.getEmail())
                 .avatar(request.getAvatar())
                 .isOnline(false)
@@ -28,3 +32,4 @@ public class AuthService {
         return userRepository.save(newUser);
     }
 }
+

@@ -1,6 +1,6 @@
 package com.chatrealtime.model;
 
-import org.springframework.date.annotation.Id;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.*;
 
@@ -14,6 +14,7 @@ public class User {
 
     private String username;
     private String password;
+    private String email;
     private String avatar;
     private boolean isOnline;
 }

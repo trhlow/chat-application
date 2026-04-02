@@ -3,7 +3,7 @@ package com.chatrealtime.dto.notification;
 import java.time.Instant;
 import java.util.UUID;
 
-public class NotificationResponse(
+public record NotificationsResponse(
         UUID id,
         String type,
         String title,

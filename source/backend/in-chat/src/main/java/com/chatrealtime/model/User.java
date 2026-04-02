@@ -1,13 +1,17 @@
 package com.chatrealtime.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import lombok.*;
 
-@Data // auto sinh set get
-@Builder // tạo object
-@Document(collection = "users") // tạo tủ chứa users
-
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Document(collection = "users")
 public class User {
     @Id
     private String id;
@@ -18,3 +22,4 @@ public class User {
     private String avatar;
     private boolean isOnline;
 }
+

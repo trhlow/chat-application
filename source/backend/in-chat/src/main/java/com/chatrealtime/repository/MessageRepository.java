@@ -4,5 +4,10 @@ import com.chatrealtime.model.Message;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
-public interface MessageRepository extends MongoRepository<Message, String>{
+import java.util.List;
+
+@Repository
+public interface MessageRepository extends MongoRepository<Message, String> {
+    List<Message> findByRoomIdOrderByTimestampAsc(String roomId);
 }
+

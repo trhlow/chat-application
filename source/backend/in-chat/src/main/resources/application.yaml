@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: in-chat
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}
+
+server:
+  port: ${SERVER_PORT:8080}

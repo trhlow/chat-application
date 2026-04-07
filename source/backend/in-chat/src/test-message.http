@@ -1,0 +1,22 @@
+GET http://localhost:8080/api/messages?roomId=REPLACE_ROOM_ID&limit=20
+
+###
+GET http://localhost:8080/api/messages?roomId=REPLACE_ROOM_ID&limit=20&before=2026-04-07T10:00:00
+
+###
+POST http://localhost:8080/api/messages
+Content-Type: application/json
+
+{
+  "roomId": "REPLACE_ROOM_ID",
+  "senderId": "REPLACE_SENDER_ID",
+  "content": "Xin chao, day la tin nhan moi"
+}
+
+###
+PATCH http://localhost:8080/api/messages/REPLACE_MESSAGE_ID/status
+Content-Type: application/json
+
+{
+  "status": "read"
+}

@@ -7,3 +7,4 @@ public class ExistsUsernameException extends ApplicationException {
         super(message, HttpStatus.CONFLICT);
     }
 }
+

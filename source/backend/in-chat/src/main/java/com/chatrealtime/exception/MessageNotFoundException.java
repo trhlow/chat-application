@@ -7,3 +7,4 @@ public class MessageNotFoundException extends ApplicationException {
         super(message, HttpStatus.NOT_FOUND);
     }
 }
+

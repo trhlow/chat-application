@@ -7,3 +7,4 @@ public class UserNotFoundException extends ApplicationException {
         super(message, HttpStatus.NOT_FOUND);
     }
 }
+

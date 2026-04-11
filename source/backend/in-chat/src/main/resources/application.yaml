@@ -7,3 +7,8 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:change-this-dev-secret-change-this-dev-secret}
+    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}

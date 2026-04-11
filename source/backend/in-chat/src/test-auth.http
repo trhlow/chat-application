@@ -2,7 +2,7 @@ POST http://localhost:8080/api/auth/register
 Content-Type: application/json
 
 {
-  "username": "hlow_admin",
+  "username": "hlowAdmin",
   "password": "long190705",
   "email": "hlow_admin@example.com",
   "avatar": ""
@@ -18,4 +18,5 @@ Content-Type: application/json
 }
 
 ###
-POST http://localhost:8080/api/auth/logout/REPLACE_WITH_USER_ID
+POST http://localhost:8080/api/auth/logout
+Authorization: Bearer REPLACE_ACCESS_TOKEN

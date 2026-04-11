@@ -7,3 +7,4 @@ public class InvalidCredentialsException extends ApplicationException {
         super(message, HttpStatus.UNAUTHORIZED);
     }
 }
+

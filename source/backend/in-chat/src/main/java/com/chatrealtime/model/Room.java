@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -21,5 +22,8 @@ public class Room {
     private String name;
     private String type;
     private List<String> memberIds;
+    private String createdBy;
+    private Instant createdAt;
+    private Instant updatedAt;
 }
 

@@ -8,6 +8,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Data
 @Builder
@@ -23,5 +24,7 @@ public class Message {
     private String content;
     private LocalDateTime timestamp;
     private String status;
+    private Set<String> deliveredToUserIds;
+    private Set<String> readByUserIds;
 }
 

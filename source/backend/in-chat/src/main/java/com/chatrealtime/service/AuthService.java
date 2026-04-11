@@ -2,66 +2,96 @@ package com.chatrealtime.service;
 
 import com.chatrealtime.dto.auth.LoginRequest;
 import com.chatrealtime.dto.auth.RegisterRequest;
+import com.chatrealtime.dto.auth.response.AuthResponse;
 import com.chatrealtime.exception.ExistsEmailException;
 import com.chatrealtime.exception.ExistsUsernameException;
 import com.chatrealtime.exception.InvalidCredentialsException;
 import com.chatrealtime.exception.UserNotFoundException;
+import com.chatrealtime.mapper.UserMapper;
 import com.chatrealtime.model.User;
 import com.chatrealtime.repository.UserRepository;
+import com.chatrealtime.security.AuthContextService;
+import com.chatrealtime.security.AuthUserPrincipal;
+import com.chatrealtime.security.JwtProperties;
+import com.chatrealtime.security.JwtTokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenService jwtTokenService;
+    private final JwtProperties jwtProperties;
+    private final UserMapper userMapper;
+    private final AuthContextService authContextService;
+    private final PresenceService presenceService;
 
-    public User register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
+    public AuthResponse register(RegisterRequest request) {
+        String normalizedUsername = request.getUsername().trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByUsername(normalizedUsername)) {
             throw new ExistsUsernameException("Username already exists");
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new ExistsEmailException("Email already exists");
         }
 
+        Instant now = Instant.now();
         User newUser = User.builder()
-                .username(request.getUsername())
-                .password(request.getPassword())
-                .email(request.getEmail())
+                .username(normalizedUsername)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .email(normalizedEmail)
                 .avatar(request.getAvatar())
                 .isOnline(false)
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
 
-        return userRepository.save(newUser);
+        User savedUser = userRepository.save(newUser);
+        AuthUserPrincipal principal = AuthUserPrincipal.from(savedUser);
+        String token = jwtTokenService.generateToken(principal);
+        return new AuthResponse(token, "Bearer", jwtProperties.expirationMs(), userMapper.toUserProfileResponse(savedUser));
     }
 
-    public User login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
         User user = findByEmailOrUsername(request.getEmail(), request.getUsername());
 
-        if (!user.getPassword().equals(request.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new InvalidCredentialsException("Invalid credentials");
         }
 
+        user.setUpdatedAt(Instant.now());
         user.setOnline(true);
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        presenceService.markOnline(savedUser.getId());
+        AuthUserPrincipal principal = AuthUserPrincipal.from(savedUser);
+        String token = jwtTokenService.generateToken(principal);
+        return new AuthResponse(token, "Bearer", jwtProperties.expirationMs(), userMapper.toUserProfileResponse(savedUser));
     }
 
-    public User logout(String userId) {
-        User user = userRepository.findById(userId)
+    public void logout() {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        User user = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
-
         user.setOnline(false);
-        return userRepository.save(user);
+        userRepository.save(user);
+        presenceService.markOffline(user.getId());
     }
 
     private User findByEmailOrUsername(String email, String username) {
         if (email != null && !email.isBlank()) {
-            return userRepository.findByEmail(email)
+            return userRepository.findByEmail(email.trim().toLowerCase(Locale.ROOT))
                     .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
         }
 
         if (username != null && !username.isBlank()) {
-            return userRepository.findByUsername(username)
+            return userRepository.findByUsername(username.trim().toLowerCase(Locale.ROOT))
                     .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
         }
 

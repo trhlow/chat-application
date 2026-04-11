@@ -1,11 +1,11 @@
 package com.chatrealtime.dto.user;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record UpdateUserProfileRequest(
-        @NotBlank(message = "Ten nguoi dung khong duoc de trong!")
-        @Size(min = 8, max = 100, message = "Ten nguoi dung dai toi da tu 8 den 100 ky tu!")
-        String username
+        @Size(min = 3, max = 50, message = "username must be between 3 and 50 characters")
+        String username,
+        @Size(max = 512, message = "avatar URL must be at most 512 characters")
+        String avatar
 ) {}
 

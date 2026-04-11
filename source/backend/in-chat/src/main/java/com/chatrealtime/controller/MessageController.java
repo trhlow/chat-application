@@ -2,8 +2,9 @@ package com.chatrealtime.controller;
 
 import com.chatrealtime.dto.message.CreateMessageRequest;
 import com.chatrealtime.dto.message.UpdateMessageStatusRequest;
+import com.chatrealtime.dto.message.response.MessagePageResponse;
+import com.chatrealtime.dto.message.response.MessageResponse;
 import jakarta.validation.Valid;
-import com.chatrealtime.model.Message;
 import com.chatrealtime.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/messages")
@@ -25,7 +25,7 @@ public class MessageController {
     private final MessageService messageService;
 
     @GetMapping
-    public List<Message> getMessages(
+    public MessagePageResponse getMessages(
             @RequestParam String roomId,
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false) LocalDateTime before
@@ -34,12 +34,12 @@ public class MessageController {
     }
 
     @PostMapping
-    public Message createMessage(@Valid @RequestBody CreateMessageRequest request) {
+    public MessageResponse createMessage(@Valid @RequestBody CreateMessageRequest request) {
         return messageService.createMessage(request);
     }
 
     @PatchMapping("/{messageId}/status")
-    public Message updateMessageStatus(
+    public MessageResponse updateMessageStatus(
             @PathVariable String messageId,
             @Valid @RequestBody UpdateMessageStatusRequest request
     ) {

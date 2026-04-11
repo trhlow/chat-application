@@ -2,10 +2,11 @@ package com.chatrealtime.controller;
 
 import com.chatrealtime.dto.auth.LoginRequest;
 import com.chatrealtime.dto.auth.RegisterRequest;
-import com.chatrealtime.model.User;
+import com.chatrealtime.dto.auth.response.AuthResponse;
+import jakarta.validation.Valid;
 import com.chatrealtime.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,17 +19,18 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public User registerUser(@RequestBody RegisterRequest request) {
-        return authService.register(request);
+    public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
     }
 
     @PostMapping("/login")
-    public User login(@RequestBody LoginRequest request) {
-        return authService.login(request);
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 
-    @PostMapping("/logout/{userId}")
-    public User logout(@PathVariable String userId) {
-        return authService.logout(userId);
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        authService.logout();
+        return ResponseEntity.noContent().build();
     }
 }

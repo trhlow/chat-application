@@ -25,6 +25,8 @@ services:
     environment:
       SERVER_PORT: 8080
       SPRING_DATA_MONGODB_URI: mongodb://root:root@mongodb:27017/hlow_chat?authSource=admin
+      APP_JWT_SECRET: change-this-dev-secret-change-this-dev-secret
+      APP_JWT_EXPIRATION_MS: 86400000
 
 volumes:
   mongo_data:

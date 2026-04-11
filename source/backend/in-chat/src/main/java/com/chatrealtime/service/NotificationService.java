@@ -1,8 +1,11 @@
 package com.chatrealtime.service;
 
 import com.chatrealtime.dto.notification.NotificationsResponse;
+import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.model.Notification;
 import com.chatrealtime.repository.NotificationRepository;
+import com.chatrealtime.security.AuthContextService;
+import com.chatrealtime.security.AuthUserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,15 +16,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationService {
     private final NotificationRepository notificationRepository;
+    private final AuthContextService authContextService;
 
-    public List<NotificationsResponse> getNotificationsByUserId(String userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
+    public List<NotificationsResponse> getNotificationsByCurrentUser() {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(principal.getId())
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public Notification createNotification(Notification notification) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        notification.setUserId(principal.getId());
         if (notification.getCreatedAt() == null) {
             notification.setCreatedAt(Instant.now());
         }
@@ -29,8 +36,12 @@ public class NotificationService {
     }
 
     public Notification markAsRead(String notificationId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found"));
+        if (!principal.getId().equals(notification.getUserId())) {
+            throw new BadRequestException("Current user cannot update this notification");
+        }
         notification.setRead(true);
         return notificationRepository.save(notification);
     }

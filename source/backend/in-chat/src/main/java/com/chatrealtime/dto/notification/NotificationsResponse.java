@@ -1,14 +1,15 @@
 package com.chatrealtime.dto.notification;
 
 import java.time.Instant;
-import java.util.UUID;
 
 public record NotificationsResponse(
-        UUID id,
+        String id,
+        String userId,
         String type,
         String title,
         String message,
-        UUID relateId,
+        String relatedId,
         boolean read,
         Instant createdAt
-){}
+) {}
+

@@ -7,3 +7,4 @@ public class RoomNotFoundException extends ApplicationException {
         super(message, HttpStatus.NOT_FOUND);
     }
 }
+

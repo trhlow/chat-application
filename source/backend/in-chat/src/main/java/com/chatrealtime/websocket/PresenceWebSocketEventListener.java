@@ -1,7 +1,7 @@
 package com.chatrealtime.websocket;
 
 import com.chatrealtime.security.AuthUserPrincipal;
-import com.chatrealtime.service.PresenceService;
+import com.chatrealtime.modules.presence.service.PresenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -41,3 +41,4 @@ public class PresenceWebSocketEventListener {
         return null;
     }
 }
+

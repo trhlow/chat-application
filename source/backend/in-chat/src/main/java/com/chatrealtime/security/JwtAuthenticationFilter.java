@@ -1,7 +1,7 @@
 package com.chatrealtime.security;
 
-import com.chatrealtime.model.User;
-import com.chatrealtime.repository.UserRepository;
+import com.chatrealtime.modules.user.model.User;
+import com.chatrealtime.modules.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,3 +58,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
+

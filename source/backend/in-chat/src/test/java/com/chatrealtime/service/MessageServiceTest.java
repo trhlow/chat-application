@@ -1,13 +1,13 @@
-package com.chatrealtime.service;
+package com.chatrealtime.modules.message.service;
 
-import com.chatrealtime.dto.message.CreateMessageRequest;
-import com.chatrealtime.dto.message.response.MessageResponse;
+import com.chatrealtime.modules.message.dto.CreateMessageRequest;
+import com.chatrealtime.modules.message.dto.response.MessageResponse;
 import com.chatrealtime.exception.BadRequestException;
-import com.chatrealtime.mapper.MessageMapper;
-import com.chatrealtime.model.Message;
-import com.chatrealtime.model.Room;
-import com.chatrealtime.repository.MessageRepository;
-import com.chatrealtime.repository.RoomRepository;
+import com.chatrealtime.modules.message.mapper.MessageMapper;
+import com.chatrealtime.modules.message.model.Message;
+import com.chatrealtime.modules.room.model.Room;
+import com.chatrealtime.modules.message.repository.MessageRepository;
+import com.chatrealtime.modules.room.repository.RoomRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import org.junit.jupiter.api.Test;
@@ -103,3 +103,4 @@ class MessageServiceTest {
         assertThat(response.status()).isEqualTo("read");
     }
 }
+

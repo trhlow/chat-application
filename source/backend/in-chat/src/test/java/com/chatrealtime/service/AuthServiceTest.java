@@ -1,12 +1,13 @@
-package com.chatrealtime.service;
+package com.chatrealtime.modules.auth.service;
 
-import com.chatrealtime.dto.auth.LoginRequest;
-import com.chatrealtime.dto.auth.RegisterRequest;
-import com.chatrealtime.dto.user.response.UserProfileResponse;
+import com.chatrealtime.modules.auth.dto.LoginRequest;
+import com.chatrealtime.modules.auth.dto.RegisterRequest;
+import com.chatrealtime.modules.user.dto.response.UserProfileResponse;
 import com.chatrealtime.exception.InvalidCredentialsException;
-import com.chatrealtime.mapper.UserMapper;
-import com.chatrealtime.model.User;
-import com.chatrealtime.repository.UserRepository;
+import com.chatrealtime.modules.user.mapper.UserMapper;
+import com.chatrealtime.modules.user.model.User;
+import com.chatrealtime.modules.user.repository.UserRepository;
+import com.chatrealtime.modules.presence.service.PresenceService;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.security.JwtProperties;
@@ -103,3 +104,4 @@ class AuthServiceTest {
         verify(userRepository, never()).save(any(User.class));
     }
 }
+

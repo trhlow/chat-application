@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 @SpringBootApplication(scanBasePackages = "com.chatrealtime")
 @ConfigurationPropertiesScan(basePackages = "com.chatrealtime.security")
-@EnableMongoRepositories(basePackages = "com.chatrealtime.repository")
+@EnableMongoRepositories(basePackages = "com.chatrealtime")
 public class InChatApplication {
 
 	public static void main(String[] args) {
@@ -15,3 +15,4 @@ public class InChatApplication {
 	}
 
 }
+

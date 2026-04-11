@@ -92,3 +92,4 @@ public class GlobalExceptionHandler {
         return new ApiErrorResponse(Instant.now(), status, error, message, path, fieldErrors);
     }
 }
+

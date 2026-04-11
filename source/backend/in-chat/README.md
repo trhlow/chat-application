@@ -2,6 +2,18 @@
 
 Production-minded Spring Boot backend for real-time chat with MongoDB persistence, JWT auth, and STOMP/WebSocket events.
 
+## Project governance
+
+- Skill docs: [.codex/skills/](./.codex/skills) (start with [backend-skill-profile.skill.md](./.codex/skills/backend-skill-profile.skill.md))
+- Rule docs: [.codex/rules/](./.codex/rules) (start with [engineering-project.rules.md](./.codex/rules/engineering-project.rules.md))
+- Contribution workflow: [repository.workflow.md](./.codex/workflows/repository.workflow.md)
+- Team scaffolding:
+  - GitHub templates/workflows: [.github/](./.github)
+  - Codex standards: [.codex/](./.codex)
+  - Extended docs: [docs/](./docs)
+  - Infra skeleton: [infra/](./infra)
+  - Script skeleton: [scripts/](./scripts)
+
 ## Stack
 
 - Java 17
@@ -18,7 +30,7 @@ Production-minded Spring Boot backend for real-time chat with MongoDB persistenc
 ### 1) Start Mongo + backend with Docker
 
 ```bash
-docker compose up --build
+docker compose -f infra/docker/docker-compose.yml up --build
 ```
 
 ### 2) Run only backend from IDE/CLI

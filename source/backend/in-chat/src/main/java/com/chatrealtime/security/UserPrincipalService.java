@@ -1,7 +1,7 @@
 package com.chatrealtime.security;
 
 import com.chatrealtime.exception.UserNotFoundException;
-import com.chatrealtime.repository.UserRepository;
+import com.chatrealtime.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -27,3 +27,4 @@ public class UserPrincipalService implements UserDetailsService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 }
+

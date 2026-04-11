@@ -12,3 +12,4 @@ public record JwtProperties(
         @Positive long expirationMs
 ) {
 }
+

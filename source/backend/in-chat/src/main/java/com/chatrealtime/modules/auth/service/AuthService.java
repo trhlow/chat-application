@@ -1,12 +1,15 @@
 package com.chatrealtime.modules.auth.service;
 
 import com.chatrealtime.modules.auth.dto.LoginRequest;
+import com.chatrealtime.modules.auth.dto.LogoutRequest;
+import com.chatrealtime.modules.auth.dto.RefreshTokenRequest;
 import com.chatrealtime.modules.auth.dto.RegisterRequest;
 import com.chatrealtime.modules.auth.dto.response.AuthResponse;
 import com.chatrealtime.exception.ExistsEmailException;
 import com.chatrealtime.exception.ExistsUsernameException;
 import com.chatrealtime.exception.InvalidCredentialsException;
 import com.chatrealtime.exception.UserNotFoundException;
+import com.chatrealtime.modules.auth.model.RefreshToken;
 import com.chatrealtime.modules.presence.service.PresenceService;
 import com.chatrealtime.modules.user.mapper.UserMapper;
 import com.chatrealtime.modules.user.model.User;
@@ -32,6 +35,7 @@ public class AuthService {
     private final UserMapper userMapper;
     private final AuthContextService authContextService;
     private final PresenceService presenceService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthResponse register(RegisterRequest request) {
         String normalizedUsername = request.getUsername().trim().toLowerCase(Locale.ROOT);
@@ -55,9 +59,7 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(newUser);
-        AuthUserPrincipal principal = AuthUserPrincipal.from(savedUser);
-        String token = jwtTokenService.generateToken(principal);
-        return new AuthResponse(token, "Bearer", jwtProperties.expirationMs(), userMapper.toUserProfileResponse(savedUser));
+        return buildAuthResponse(savedUser);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -71,18 +73,65 @@ public class AuthService {
         user.setOnline(true);
         User savedUser = userRepository.save(user);
         presenceService.markOnline(savedUser.getId());
-        AuthUserPrincipal principal = AuthUserPrincipal.from(savedUser);
-        String token = jwtTokenService.generateToken(principal);
-        return new AuthResponse(token, "Bearer", jwtProperties.expirationMs(), userMapper.toUserProfileResponse(savedUser));
+        return buildAuthResponse(savedUser);
     }
 
-    public void logout() {
+    public AuthResponse refresh(RefreshTokenRequest request) {
+        RefreshToken refreshToken = refreshTokenService.requireActiveToken(request.getRefreshToken());
+        User user = userRepository.findById(refreshToken.getUserId())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        String rotatedRefreshToken = refreshTokenService.rotateToken(refreshToken);
+        String accessToken = jwtTokenService.generateToken(AuthUserPrincipal.from(user));
+        return new AuthResponse(
+                accessToken,
+                rotatedRefreshToken,
+                "Bearer",
+                jwtProperties.accessExpirationMs(),
+                jwtProperties.refreshExpirationMs(),
+                userMapper.toUserProfileResponse(user)
+        );
+    }
+
+    public void logout(LogoutRequest request) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         User user = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (request != null) {
+            refreshTokenService.revokeUserToken(user.getId(), request.getRefreshToken());
+        }
+
         user.setOnline(false);
         userRepository.save(user);
         presenceService.markOffline(user.getId());
+    }
+
+    public void logoutAll() {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        User user = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        refreshTokenService.revokeAllUserTokens(user.getId());
+        user.setTokenVersion(user.getTokenVersion() + 1);
+        user.setOnline(false);
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
+        presenceService.markOffline(user.getId());
+    }
+
+    private AuthResponse buildAuthResponse(User user) {
+        AuthUserPrincipal principal = AuthUserPrincipal.from(user);
+        String accessToken = jwtTokenService.generateToken(principal);
+        String refreshToken = refreshTokenService.createToken(user.getId());
+        return new AuthResponse(
+                accessToken,
+                refreshToken,
+                "Bearer",
+                jwtProperties.accessExpirationMs(),
+                jwtProperties.refreshExpirationMs(),
+                userMapper.toUserProfileResponse(user)
+        );
     }
 
     private User findByEmailOrUsername(String email, String username) {

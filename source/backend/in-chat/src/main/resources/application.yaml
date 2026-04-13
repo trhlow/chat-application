@@ -11,4 +11,5 @@ server:
 app:
   jwt:
     secret: ${APP_JWT_SECRET:change-this-dev-secret-change-this-dev-secret}
-    expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
+    access-expiration-ms: ${APP_JWT_ACCESS_EXPIRATION_MS:900000}
+    refresh-expiration-ms: ${APP_JWT_REFRESH_EXPIRATION_MS:604800000}

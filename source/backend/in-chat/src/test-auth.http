@@ -18,5 +18,22 @@ Content-Type: application/json
 }
 
 ###
+POST http://localhost:8080/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "REPLACE_REFRESH_TOKEN"
+}
+
+###
 POST http://localhost:8080/api/auth/logout
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+Content-Type: application/json
+
+{
+  "refreshToken": "REPLACE_REFRESH_TOKEN"
+}
+
+###
+POST http://localhost:8080/api/auth/logout-all
 Authorization: Bearer REPLACE_ACCESS_TOKEN

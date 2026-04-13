@@ -1,6 +1,8 @@
 package com.chatrealtime.modules.auth.controller;
 
 import com.chatrealtime.modules.auth.dto.LoginRequest;
+import com.chatrealtime.modules.auth.dto.LogoutRequest;
+import com.chatrealtime.modules.auth.dto.RefreshTokenRequest;
 import com.chatrealtime.modules.auth.dto.RegisterRequest;
 import com.chatrealtime.modules.auth.dto.response.AuthResponse;
 import jakarta.validation.Valid;
@@ -28,9 +30,20 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
+    }
+
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout() {
-        authService.logout();
+    public ResponseEntity<Void> logout(@RequestBody(required = false) LogoutRequest request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/logout-all")
+    public ResponseEntity<Void> logoutAll() {
+        authService.logoutAll();
         return ResponseEntity.noContent().build();
     }
 }

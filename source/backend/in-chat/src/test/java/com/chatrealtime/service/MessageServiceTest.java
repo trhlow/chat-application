@@ -48,7 +48,7 @@ class MessageServiceTest {
 
     @Test
     void createMessage_ShouldRejectWhenCurrentUserIsNotMember() {
-        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw"));
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
         when(roomRepository.findById("r1"))
                 .thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u2")).build()));
 
@@ -63,7 +63,7 @@ class MessageServiceTest {
 
     @Test
     void updateMessageStatus_ShouldMarkAsReadWhenAllRecipientsRead() {
-        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw"));
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
 
         Message message = Message.builder()
                 .id("m1")

@@ -22,11 +22,12 @@ public class JwtTokenService {
 
     public String generateToken(AuthUserPrincipal principal) {
         Instant now = Instant.now();
-        Instant expiration = now.plusMillis(jwtProperties.expirationMs());
+        Instant expiration = now.plusMillis(jwtProperties.accessExpirationMs());
 
         return Jwts.builder()
                 .subject(principal.getId())
                 .claim("username", principal.getUsername())
+                .claim("tokenVersion", principal.getTokenVersion())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
                 .signWith(signingKey)
@@ -35,6 +36,14 @@ public class JwtTokenService {
 
     public String extractUserId(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    public int extractTokenVersion(String token) {
+        Object tokenVersion = parseClaims(token).get("tokenVersion");
+        if (tokenVersion instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
     }
 
     public boolean isTokenValid(String token) {

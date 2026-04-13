@@ -41,8 +41,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String userId = jwtTokenService.extractUserId(token);
+        int tokenVersion = jwtTokenService.extractTokenVersion(token);
         User user = userRepository.findById(userId).orElse(null);
-        if (user == null || SecurityContextHolder.getContext().getAuthentication() != null) {
+        if (user == null
+                || user.getTokenVersion() != tokenVersion
+                || SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }

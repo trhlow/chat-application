@@ -16,7 +16,7 @@ Production-minded Spring Boot backend for real-time chat with MongoDB persistenc
 
 ## Stack
 
-- Java 17
+- Java 25
 - Spring Boot 4.x
 - Spring Web MVC
 - Spring Security + JWT

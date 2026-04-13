@@ -4,8 +4,10 @@ import com.chatrealtime.modules.user.dto.response.UserProfileResponse;
 
 public record AuthResponse(
         String accessToken,
+        String refreshToken,
         String tokenType,
-        long expiresInMs,
+        long accessExpiresInMs,
+        long refreshExpiresInMs,
         UserProfileResponse user
 ) {
 }

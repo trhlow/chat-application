@@ -16,9 +16,10 @@ public class AuthUserPrincipal implements UserDetails {
     private final String id;
     private final String username;
     private final String password;
+    private final int tokenVersion;
 
     public static AuthUserPrincipal from(User user) {
-        return new AuthUserPrincipal(user.getId(), user.getUsername(), user.getPassword());
+        return new AuthUserPrincipal(user.getId(), user.getUsername(), user.getPassword(), user.getTokenVersion());
     }
 
     @Override

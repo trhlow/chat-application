@@ -1,4 +1,4 @@
-package com.chatrealtime.modules.user.model;
+package com.chatrealtime.modules.auth.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,23 +14,19 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "users")
-public class User {
+@Document(collection = "refresh_tokens")
+public class RefreshToken {
     @Id
     private String id;
 
+    @Indexed
+    private String userId;
+
     @Indexed(unique = true)
-    private String username;
-    private String password;
-    @Indexed(unique = true)
-    private String email;
-    private String avatar;
-    private boolean isOnline;
-    private int tokenVersion;
+    private String tokenHash;
+
     private Instant createdAt;
-    private Instant updatedAt;
-    private Instant lastSeenAt;
+    private Instant expiresAt;
+    private Instant revokedAt;
+    private String replacedByTokenHash;
 }
-
-
-

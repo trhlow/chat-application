@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 @SpringBootApplication(scanBasePackages = "com.chatrealtime")
-@ConfigurationPropertiesScan(basePackages = "com.chatrealtime.security")
+@ConfigurationPropertiesScan(basePackages = "com.chatrealtime")
 @EnableMongoRepositories(basePackages = "com.chatrealtime")
 public class InChatApplication {
 

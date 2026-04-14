@@ -11,7 +11,12 @@ public class UserMapper {
                 user.getId(),
                 user.getUsername(),
                 user.getEmail(),
+                user.getDisplayName(),
+                user.getBio(),
+                user.getPhone(),
+                user.getThemePreference(),
                 user.getAvatar(),
+                user.getAvatarProvider(),
                 user.isOnline(),
                 user.getLastSeenAt()
         );

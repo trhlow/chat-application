@@ -80,7 +80,7 @@ class AuthServiceTest {
         when(jwtProperties.accessExpirationMs()).thenReturn(1000L);
         when(jwtProperties.refreshExpirationMs()).thenReturn(2000L);
         when(userMapper.toUserProfileResponse(savedUser))
-                .thenReturn(new UserProfileResponse("u1", "alice", "alice@example.com", null, false, null));
+                .thenReturn(new UserProfileResponse("u1", "alice", "alice@example.com", "Alice", null, null, "system", null, null, false, null));
 
         var response = authService.register(request);
 
@@ -136,7 +136,7 @@ class AuthServiceTest {
         when(jwtProperties.accessExpirationMs()).thenReturn(1000L);
         when(jwtProperties.refreshExpirationMs()).thenReturn(2000L);
         when(userMapper.toUserProfileResponse(user))
-                .thenReturn(new UserProfileResponse("u1", "alice", "alice@example.com", null, false, null));
+                .thenReturn(new UserProfileResponse("u1", "alice", "alice@example.com", "Alice", null, null, "system", null, null, false, null));
 
         var response = authService.refresh(request);
 

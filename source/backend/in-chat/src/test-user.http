@@ -1,0 +1,27 @@
+GET http://localhost:8080/api/users/me
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+
+###
+PUT http://localhost:8080/api/users/me
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+Content-Type: application/json
+
+{
+  "username": "alice2",
+  "displayName": "Alice Liddell",
+  "bio": "Chatting from Wonderland",
+  "phone": "+84901234567",
+  "themePreference": "dark"
+}
+
+###
+POST http://localhost:8080/api/users/me/avatar
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+Content-Type: multipart/form-data; boundary=avatarBoundary
+
+--avatarBoundary
+Content-Disposition: form-data; name="file"; filename="avatar.png"
+Content-Type: image/png
+
+< ./avatar.png
+--avatarBoundary--

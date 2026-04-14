@@ -4,6 +4,10 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 server:
   port: ${SERVER_PORT:8080}
@@ -13,3 +17,18 @@ app:
     secret: ${APP_JWT_SECRET:change-this-dev-secret-change-this-dev-secret}
     access-expiration-ms: ${APP_JWT_ACCESS_EXPIRATION_MS:900000}
     refresh-expiration-ms: ${APP_JWT_REFRESH_EXPIRATION_MS:604800000}
+  storage:
+    provider: ${APP_STORAGE_PROVIDER:local}
+    max-file-size-bytes: ${APP_STORAGE_MAX_FILE_SIZE_BYTES:5242880}
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+    local:
+      upload-dir: ${APP_STORAGE_LOCAL_UPLOAD_DIR:uploads/avatars}
+      public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+    cloudinary:
+      cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+      api-key: ${CLOUDINARY_API_KEY:}
+      api-secret: ${CLOUDINARY_API_SECRET:}
+      folder: ${CLOUDINARY_FOLDER:in-chat/avatars}

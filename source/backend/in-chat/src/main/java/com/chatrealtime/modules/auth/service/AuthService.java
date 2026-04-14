@@ -52,6 +52,8 @@ public class AuthService {
                 .username(normalizedUsername)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .email(normalizedEmail)
+                .displayName(normalizedUsername)
+                .themePreference("system")
                 .avatar(request.getAvatar())
                 .isOnline(false)
                 .createdAt(now)

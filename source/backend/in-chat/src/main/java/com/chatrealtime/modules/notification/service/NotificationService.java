@@ -35,6 +35,24 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
+    public Notification createSystemNotification(
+            String userId,
+            String type,
+            String title,
+            String message,
+            String relatedId
+    ) {
+        return notificationRepository.save(Notification.builder()
+                .userId(userId)
+                .type(type)
+                .title(title)
+                .message(message)
+                .relatedId(relatedId)
+                .read(false)
+                .createdAt(Instant.now())
+                .build());
+    }
+
     public Notification markAsRead(String notificationId) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Notification notification = notificationRepository.findById(notificationId)

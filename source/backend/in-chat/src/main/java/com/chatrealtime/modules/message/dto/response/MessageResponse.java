@@ -1,6 +1,7 @@
 package com.chatrealtime.modules.message.dto.response;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 public record MessageResponse(
@@ -11,7 +12,8 @@ public record MessageResponse(
         LocalDateTime timestamp,
         String status,
         Set<String> deliveredToUserIds,
-        Set<String> readByUserIds
+        Set<String> readByUserIds,
+        List<MessageAttachmentResponse> attachments
 ) {
 }
 

@@ -111,3 +111,20 @@ CREATE TABLE friendship_users (
 );
 
 CREATE INDEX idx_friendship_users_user_id ON friendship_users(user_id);
+
+CREATE TABLE message_attachments (
+    id VARCHAR(36) PRIMARY KEY,
+    message_id VARCHAR(36) NOT NULL,
+    file_url VARCHAR(1000) NOT NULL,
+    file_type VARCHAR(20) NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    file_size BIGINT NOT NULL,
+    original_name VARCHAR(255),
+    thumbnail_url VARCHAR(1000),
+    storage_provider VARCHAR(255),
+    storage_public_id VARCHAR(255),
+    created_at TIMESTAMP,
+    CONSTRAINT fk_message_attachments_message FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_message_attachments_message_id ON message_attachments(message_id);

@@ -1,6 +1,6 @@
 package com.chatrealtime.exception;
 
-import com.chatrealtime.dto.common.ApiErrorResponse;
+import com.chatrealtime.dto.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;

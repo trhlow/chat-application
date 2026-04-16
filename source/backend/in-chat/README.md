@@ -1,6 +1,6 @@
 # In-Chat Backend
 
-Production-minded Spring Boot backend for real-time chat with MongoDB persistence, JWT auth, and STOMP/WebSocket events.
+Production-minded Spring Boot backend for real-time chat with JPA persistence, Flyway migrations, JWT auth, and STOMP/WebSocket events.
 
 ## Project governance
 
@@ -16,28 +16,31 @@ Production-minded Spring Boot backend for real-time chat with MongoDB persistenc
 
 ## Stack
 
-- Java 25
-- Spring Boot 4.x
+- Java 21
+- Spring Boot 3.x
 - Spring Web MVC
 - Spring Security + JWT
-- Spring Data MongoDB
+- Spring Data JPA
+- Flyway
+- PostgreSQL
+- MapStruct
 - Spring WebSocket (STOMP)
 - Bean Validation
 - Lombok
 
 ## Run locally
 
-### 1) Start Mongo + backend with Docker
+### 1) Start PostgreSQL + backend with Docker
 
 ```bash
-docker compose -f infra/docker/docker-compose.yml up --build
+docker compose -f docker/docker-compose.yml up --build
 ```
 
 ### 2) Run only backend from IDE/CLI
 
 Requirements:
 
-- MongoDB running locally or via Docker
+- PostgreSQL running locally or via Docker
 - `APP_JWT_SECRET` set to a strong value (at least 32 chars recommended)
 
 ```bash
@@ -47,9 +50,12 @@ Requirements:
 ## Environment variables
 
 - `SERVER_PORT` (default `8080`)
-- `SPRING_DATA_MONGODB_URI` (default `mongodb://localhost:27017/hlow_chat`)
-- `APP_JWT_SECRET` (default dev secret in `application.yaml`)
-- `APP_JWT_EXPIRATION_MS` (default `86400000`)
+- `SPRING_DATASOURCE_URL` (default `jdbc:postgresql://localhost:5432/in_chat`)
+- `SPRING_DATASOURCE_USERNAME` (default `inchat`)
+- `SPRING_DATASOURCE_PASSWORD` (default `inchat`)
+- `APP_JWT_SECRET` (default dev secret in `application.yml`)
+- `APP_JWT_ACCESS_EXPIRATION_MS` (default `900000`)
+- `APP_JWT_REFRESH_EXPIRATION_MS` (default `604800000`)
 
 ## Auth flow
 

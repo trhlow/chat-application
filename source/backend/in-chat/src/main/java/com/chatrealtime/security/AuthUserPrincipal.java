@@ -1,6 +1,6 @@
 package com.chatrealtime.security;
 
-import com.chatrealtime.modules.user.model.User;
+import com.chatrealtime.domain.User;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;

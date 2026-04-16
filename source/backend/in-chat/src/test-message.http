@@ -16,6 +16,26 @@ Authorization: Bearer REPLACE_ACCESS_TOKEN
 }
 
 ###
+POST http://localhost:8080/api/messages/attachments
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+Content-Type: multipart/form-data; boundary=messageAttachmentBoundary
+
+--messageAttachmentBoundary
+Content-Disposition: form-data; name="roomId"
+
+REPLACE_ROOM_ID
+--messageAttachmentBoundary
+Content-Disposition: form-data; name="content"
+
+Tin nhan kem file
+--messageAttachmentBoundary
+Content-Disposition: form-data; name="file"; filename="sample.png"
+Content-Type: image/png
+
+< ./sample.png
+--messageAttachmentBoundary--
+
+###
 PATCH http://localhost:8080/api/messages/REPLACE_MESSAGE_ID/status
 Content-Type: application/json
 Authorization: Bearer REPLACE_ACCESS_TOKEN

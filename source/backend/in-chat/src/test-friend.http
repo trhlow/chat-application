@@ -1,0 +1,35 @@
+POST http://localhost:8080/api/friends/requests
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+Content-Type: application/json
+
+{
+  "receiverId": "REPLACE_RECEIVER_USER_ID"
+}
+
+###
+GET http://localhost:8080/api/friends/requests/incoming
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+
+###
+GET http://localhost:8080/api/friends/requests/outgoing
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+
+###
+POST http://localhost:8080/api/friends/requests/REPLACE_REQUEST_ID/accept
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+
+###
+POST http://localhost:8080/api/friends/requests/REPLACE_REQUEST_ID/reject
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+
+###
+DELETE http://localhost:8080/api/friends/requests/REPLACE_REQUEST_ID
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+
+###
+GET http://localhost:8080/api/friends
+Authorization: Bearer REPLACE_ACCESS_TOKEN
+
+###
+DELETE http://localhost:8080/api/friends/REPLACE_FRIEND_USER_ID
+Authorization: Bearer REPLACE_ACCESS_TOKEN

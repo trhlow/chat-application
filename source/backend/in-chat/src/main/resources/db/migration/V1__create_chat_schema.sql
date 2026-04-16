@@ -82,3 +82,32 @@ CREATE TABLE refresh_tokens (
 );
 
 CREATE INDEX idx_refresh_tokens_user_active ON refresh_tokens(user_id, revoked_at);
+
+CREATE TABLE friend_requests (
+    id VARCHAR(36) PRIMARY KEY,
+    requester_id VARCHAR(36) NOT NULL,
+    receiver_id VARCHAR(36) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP,
+    responded_at TIMESTAMP
+);
+
+CREATE INDEX idx_friend_requests_receiver_status_created ON friend_requests(receiver_id, status, created_at DESC);
+CREATE INDEX idx_friend_requests_requester_status_created ON friend_requests(requester_id, status, created_at DESC);
+
+CREATE TABLE friendships (
+    id VARCHAR(36) PRIMARY KEY,
+    user_ida VARCHAR(36) NOT NULL,
+    user_idb VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP,
+    CONSTRAINT uq_friendships_pair UNIQUE (user_ida, user_idb)
+);
+
+CREATE TABLE friendship_users (
+    friendship_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    PRIMARY KEY (friendship_id, user_id),
+    CONSTRAINT fk_friendship_users_friendship FOREIGN KEY (friendship_id) REFERENCES friendships(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_friendship_users_user_id ON friendship_users(user_id);

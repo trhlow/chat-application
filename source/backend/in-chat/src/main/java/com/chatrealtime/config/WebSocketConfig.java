@@ -1,6 +1,6 @@
 package com.chatrealtime.config;
 
-import com.chatrealtime.websocket.WebSocketAuthChannelInterceptor;
+import com.chatrealtime.security.WebSocketAuthChannelInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;

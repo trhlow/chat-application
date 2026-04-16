@@ -1,8 +1,0 @@
-spring:
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI}
-
-server:
-  port: ${SERVER_PORT:8080}
-

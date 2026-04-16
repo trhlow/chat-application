@@ -47,6 +47,25 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public NotificationsResponse createSystemNotification(
+            String userId,
+            String type,
+            String title,
+            String message,
+            String relatedId
+    ) {
+        return toResponse(notificationRepository.save(Notification.builder()
+                .userId(userId)
+                .type(type)
+                .title(title)
+                .message(message)
+                .relatedId(relatedId)
+                .read(false)
+                .createdAt(Instant.now())
+                .build()));
+    }
+
+    @Override
     public NotificationsResponse markAsRead(String notificationId) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Notification notification = notificationRepository.findById(notificationId)

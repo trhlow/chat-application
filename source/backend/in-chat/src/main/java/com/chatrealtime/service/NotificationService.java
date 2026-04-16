@@ -10,5 +10,13 @@ public interface NotificationService {
 
     NotificationsResponse createNotification(CreateNotificationRequest request);
 
+    NotificationsResponse createSystemNotification(
+            String userId,
+            String type,
+            String title,
+            String message,
+            String relatedId
+    );
+
     NotificationsResponse markAsRead(String notificationId);
 }

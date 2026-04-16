@@ -2,5 +2,6 @@ server:
   port: ${SERVER_PORT:8080}
 
 spring:
-  jpa:
-    show-sql: false
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI}

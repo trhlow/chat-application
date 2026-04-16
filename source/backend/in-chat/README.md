@@ -4,12 +4,11 @@
 
 A **real-time chat backend** with JWT authentication, refresh tokens, user profiles, rooms, message history, message attachments, friend requests, notifications, presence events, and STOMP/WebSocket delivery.
 
-**Stack:** Java 21 - Spring Boot 4.0.5 - PostgreSQL - Spring Data JPA - Flyway - Docker
+**Stack:** Java 21 - Spring Boot 4.0.5 - MongoDB - Spring Data MongoDB - Docker
 
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.5-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Flyway](https://img.shields.io/badge/Flyway-Migrations-CC0200?logo=flyway&logoColor=white)](https://flywaydb.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
 [![License](https://img.shields.io/badge/License-Educational%2Fpersonal-9B59B6)](#license)
 
@@ -46,7 +45,7 @@ InChat Backend is the Spring Boot service for a realtime chat system:
 
 - **REST API:** Authentication, users, rooms, messages, friends, notifications, and profile media.
 - **Realtime delivery:** STOMP over WebSocket for room messages, message status updates, and presence events.
-- **Persistence:** PostgreSQL with Spring Data JPA and Flyway-managed schema migrations.
+- **Persistence:** MongoDB with Spring Data MongoDB.
 - **Security:** Spring Security with JWT access tokens and persisted refresh tokens.
 - **Storage:** Local or Cloudinary-backed avatar and message attachment uploads.
 
@@ -83,7 +82,7 @@ in-chat/
     config/                 # Security, WebSocket, MVC, cache, OpenAPI, async config
     constant/               # Shared constants
     controller/             # REST and realtime controllers
-    domain/                 # JPA entities
+    domain/                 # MongoDB documents
     dto/
       request/              # Request contracts
       response/             # Response contracts
@@ -91,7 +90,7 @@ in-chat/
     exception/              # Domain exceptions and global handler
     mapper/                 # DTO mappers
     observability/          # Tracing and metrics configuration
-    repository/             # Spring Data JPA repositories
+    repository/             # Spring Data MongoDB repositories
     scheduler/              # Scheduled maintenance jobs
     security/               # JWT, principal, and WebSocket auth
     service/                # Service interfaces
@@ -99,7 +98,6 @@ in-chat/
     storage/                # Avatar and attachment storage
     util/                   # Utility helpers
   src/main/resources/
-    db/migration/           # Flyway migrations
     i18n/                   # Messages
     application.yml
     application-*.yml
@@ -118,12 +116,12 @@ in-chat/
 | Runtime | Java 21, Spring Boot 4.0.5 |
 | API | Spring Web MVC, Jakarta Bean Validation, OpenAPI/Swagger |
 | Security | Spring Security, JJWT 0.12.6, refresh token persistence |
-| Persistence | Spring Data JPA, PostgreSQL, Flyway |
+| Persistence | Spring Data MongoDB, MongoDB |
 | Realtime | Spring WebSocket, STOMP simple broker |
 | Mapping | MapStruct and local mapper components |
 | Storage | Local filesystem, Cloudinary integration hooks |
 | Observability | Spring Actuator, Micrometer/OpenTelemetry configuration |
-| Build/Test | Maven, JUnit, Mockito, H2 test profile |
+| Build/Test | Maven, JUnit, Mockito |
 | Infra | Docker, Docker Compose |
 
 ---
@@ -131,7 +129,7 @@ in-chat/
 <a id="quick-start"></a>
 ## Quick Start
 
-### Backend + PostgreSQL With Docker
+### Backend + MongoDB With Docker
 
 Run from this backend directory:
 
@@ -144,7 +142,7 @@ This starts:
 | Service | URL |
 |---------|-----|
 | Backend API | http://localhost:8080 |
-| PostgreSQL | jdbc:postgresql://localhost:5432/in_chat |
+| MongoDB | mongodb://localhost:27017/hlow_chat |
 
 Stop the stack:
 
@@ -161,14 +159,14 @@ docker compose -f docker/docker-compose.yml down
 
 - JDK 21+
 - Maven 3.9+ or the included Maven Wrapper
-- Docker Desktop, if running PostgreSQL through Compose
+- Docker Desktop, if running MongoDB through Compose
 
 ### Run From CLI / IDE
 
-Start PostgreSQL first:
+Start MongoDB first:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d postgres
+docker compose -f docker/docker-compose.yml up -d mongodb
 ```
 
 Run Spring Boot:
@@ -193,9 +191,7 @@ Backend configuration is loaded from `src/main/resources/application.yml`, profi
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SERVER_PORT` | `8080` | Backend HTTP port |
-| `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/in_chat` | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | `inchat` | Database username |
-| `SPRING_DATASOURCE_PASSWORD` | `inchat` | Database password |
+| `SPRING_DATA_MONGODB_URI` | `mongodb://localhost:27017/hlow_chat` | MongoDB connection URI |
 | `APP_JWT_SECRET` | dev fallback secret | JWT signing secret |
 | `APP_JWT_ACCESS_EXPIRATION_MS` | `900000` | Access token TTL |
 | `APP_JWT_REFRESH_EXPIRATION_MS` | `604800000` | Refresh token TTL |
@@ -207,9 +203,7 @@ Example:
 
 ```env
 SERVER_PORT=8080
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/in_chat
-SPRING_DATASOURCE_USERNAME=inchat
-SPRING_DATASOURCE_PASSWORD=inchat
+SPRING_DATA_MONGODB_URI=mongodb://localhost:27017/hlow_chat
 APP_JWT_SECRET=change-this-to-a-strong-secret-with-at-least-32-chars
 APP_JWT_ACCESS_EXPIRATION_MS=900000
 APP_JWT_REFRESH_EXPIRATION_MS=604800000
@@ -228,7 +222,7 @@ Do not commit production secrets. Use environment variables or deployment secret
 | WebSocket endpoint | ws://localhost:8080/ws |
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | Actuator health | http://localhost:8080/actuator/health |
-| PostgreSQL | jdbc:postgresql://localhost:5432/in_chat |
+| MongoDB | mongodb://localhost:27017/hlow_chat |
 
 ---
 
@@ -317,11 +311,10 @@ Current backend coverage includes:
 Before production deployment:
 
 - Replace the development JWT secret.
-- Use a managed or secured PostgreSQL instance.
+- Use a managed or secured MongoDB instance.
 - Restrict CORS and WebSocket origins.
 - Put the API behind TLS.
 - Configure object storage credentials when using Cloudinary.
-- Keep Flyway migrations immutable after release.
 
 ---
 

@@ -35,20 +35,9 @@ spring:
           default: 1.0
           insert:
             header: X-API-Version
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/in_chat}
-    username: ${SPRING_DATASOURCE_USERNAME:inchat}
-    password: ${SPRING_DATASOURCE_PASSWORD:inchat}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
-      hibernate:
-        format_sql: false
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}
   servlet:
     multipart:
       max-file-size: 50MB

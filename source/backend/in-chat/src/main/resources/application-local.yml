@@ -1,7 +1,4 @@
 spring:
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/in_chat}
-    username: ${SPRING_DATASOURCE_USERNAME:inchat}
-    password: ${SPRING_DATASOURCE_PASSWORD:inchat}
-  jpa:
-    show-sql: true
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}

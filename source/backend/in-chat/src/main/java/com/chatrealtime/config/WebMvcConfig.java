@@ -1,10 +1,11 @@
 package com.chatrealtime.config;
 
+import com.chatrealtime.storage.MessageAttachmentProperties;
+import com.chatrealtime.storage.StorageProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import com.chatrealtime.storage.StorageProperties;
 
 import java.nio.file.Path;
 
@@ -12,12 +13,17 @@ import java.nio.file.Path;
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
     private final StorageProperties storageProperties;
+    private final MessageAttachmentProperties messageAttachmentProperties;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        Path uploadDir = Path.of(storageProperties.local().uploadDir()).toAbsolutePath().normalize();
+        Path avatarUploadDir = Path.of(storageProperties.local().uploadDir()).toAbsolutePath().normalize();
         registry.addResourceHandler("/uploads/avatars/**")
-                .addResourceLocations(withTrailingSlash(uploadDir.toUri().toString()));
+                .addResourceLocations(withTrailingSlash(avatarUploadDir.toUri().toString()));
+
+        Path attachmentUploadDir = Path.of(messageAttachmentProperties.local().uploadDir()).toAbsolutePath().normalize();
+        registry.addResourceHandler("/uploads/message-attachments/**")
+                .addResourceLocations(withTrailingSlash(attachmentUploadDir.toUri().toString()));
     }
 
     private String withTrailingSlash(String value) {

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7063b3fc-6654-4f1d-b3b0-99830d937b6b" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/docker/docker-compose.yml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/docker/docker-compose.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/pom.xml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/pom.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/FriendRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/FriendRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Friendship.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Friendship.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Message.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Message.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/MessageAttachment.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/MessageAttachment.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Notification.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Notification.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/RefreshToken.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/RefreshToken.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Room.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/Room.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/domain/User.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/FriendRequestRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/FriendRequestRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/FriendshipRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/FriendshipRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/MessageAttachmentRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/MessageAttachmentRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/MessageRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/MessageRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/NotificationRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/NotificationRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/RefreshTokenRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/RefreshTokenRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/RoomRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/RoomRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/java/com/chatrealtime/repository/UserRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/resources/application-dev.yml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/resources/application-dev.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/resources/application-local.yml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/resources/application-local.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/resources/application-prod.yml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/resources/application-prod.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/resources/application-test.yml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/resources/application-test.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/resources/application.yml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/main/resources/application.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/main/resources/db/migration/V1__create_chat_schema.sql" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/in-chat/src/test/resources/application-test.yml" beforeDir="false" afterPath="$PROJECT_DIR$/in-chat/src/test/resources/application-test.yml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="cachedIndexableFilesCount" value="129" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+  </component>
+  <component name="HttpClientOnboardingState">{
+  &quot;isOnboardingCommentShown&quot;: true
+}</component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="3BbhmjVcfzUoPZG9RrZB9yLTZKf" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "Spring Boot.InChatApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "dev",
+    "ignore.virus.scanning.warn.message": "true",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "D:/InChat/source/backend",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.0",
+    "project.structure.side.proportion": "0.0",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\InChat\source\backend\in-chat\src\main\java\com\chatrealtime\repository" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="InChatApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+      <module name="backend" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="com.chatrealtime.inchat.InChatApplication" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.32098.37" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7063b3fc-6654-4f1d-b3b0-99830d937b6b" name="Changes" comment="" />
+      <created>1774763837449</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1774763837449</updated>
+      <workItem from="1774763838534" duration="1647000" />
+      <workItem from="1774856069900" duration="2601000" />
+      <workItem from="1774930452106" duration="24000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

@@ -1,2 +1,4 @@
 .codex-run/
 .vscode/
+source/backend/in-chat/.m2/
+source/backend/in-chat/.maven-home/

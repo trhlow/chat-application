@@ -1,0 +1,19 @@
+{
+  "name": "inchat",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "dev:web": "pnpm --filter @inchat/web dev",
+    "dev:api": "cd services/api && ./mvnw spring-boot:run",
+    "build:api": "cd services/api && ./mvnw -q -DskipTests package",
+    "test:api": "cd services/api && ./mvnw -q test"
+  },
+  "devDependencies": {
+    "pnpm": "9.15.4",
+    "turbo": "^2.5.0"
+  }
+}

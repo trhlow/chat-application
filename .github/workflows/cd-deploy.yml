@@ -1,0 +1,24 @@
+name: CD Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: Target environment
+        required: true
+        default: dev
+        options:
+          - dev
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render Kubernetes overlay
+        run: kubectl kustomize infra/k8s/overlays/${{ inputs.environment }}
+      - name: Deploy placeholder
+        run: echo "Connect this step to ArgoCD, Helm, or your GitOps deployment pipeline."

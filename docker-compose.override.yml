@@ -1,0 +1,10 @@
+services:
+  api:
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+    volumes:
+      - ./services/api/uploads:/app/uploads
+
+  mongodb:
+    ports:
+      - "27017:27017"

@@ -62,7 +62,13 @@ class AuthServiceTest {
 
     @Test
     void register_ShouldHashPasswordAndReturnToken() {
-        RegisterRequest request = new RegisterRequest("Alice", "secret123", "Alice@example.com", "https://avatar");
+        RegisterRequest request = new RegisterRequest(
+                "Alice",
+                "secret123",
+                "Alice@example.com",
+                "Alice Nguyen",
+                "https://avatar"
+        );
 
         when(userRepository.existsByUsername("alice")).thenReturn(false);
         when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
@@ -89,6 +95,7 @@ class AuthServiceTest {
         verify(userRepository).save(captor.capture());
         assertThat(captor.getValue().getPassword()).isEqualTo("hashed");
         assertThat(captor.getValue().getUsername()).isEqualTo("alice");
+        assertThat(captor.getValue().getDisplayName()).isEqualTo("Alice Nguyen");
         assertThat(response.accessToken()).isEqualTo("token");
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
     }

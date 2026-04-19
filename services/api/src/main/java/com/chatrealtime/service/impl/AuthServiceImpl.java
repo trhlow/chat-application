@@ -49,6 +49,9 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse register(RegisterRequest request) {
         String normalizedUsername = request.username().trim().toLowerCase(Locale.ROOT);
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        String displayName = request.displayName() != null && !request.displayName().isBlank()
+                ? request.displayName().trim()
+                : normalizedUsername;
         if (userRepository.existsByUsername(normalizedUsername)) {
             throw new ExistsUsernameException("Username already exists");
         }
@@ -61,7 +64,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(normalizedUsername)
                 .password(passwordEncoder.encode(request.password()))
                 .email(normalizedEmail)
-                .displayName(normalizedUsername)
+                .displayName(displayName)
                 .themePreference("system")
                 .avatar(request.avatar())
                 .isOnline(false)

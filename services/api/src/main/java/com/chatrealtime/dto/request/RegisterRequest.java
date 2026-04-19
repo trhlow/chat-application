@@ -17,6 +17,9 @@ public record RegisterRequest(
         @Email(message = "email must be valid")
         String email,
 
+        @Size(max = 120, message = "displayName must be at most 120 characters")
+        String displayName,
+
         @Size(max = 512, message = "avatar URL must be at most 512 characters")
         String avatar
 ) {

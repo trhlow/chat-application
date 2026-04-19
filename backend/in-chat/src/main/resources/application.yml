@@ -1,0 +1,113 @@
+spring:
+  application:
+    name: in-chat
+  main:
+    keep-alive: true
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    apiversion:
+      supported: 1.0
+      default: 1.0
+      use:
+        header: X-API-Version
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 5s
+    serviceclient:
+      payment:
+        base-url: ${PAYMENT_SERVICE_BASE_URL:http://localhost:8090}
+        apiversion:
+          default: 1.0
+          insert:
+            header: X-API-Version
+      notification:
+        base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8091}
+        apiversion:
+          default: 1.0
+          insert:
+            header: X-API-Version
+      external:
+        base-url: ${EXTERNAL_API_BASE_URL:http://localhost:8092}
+        apiversion:
+          default: 1.0
+          insert:
+            header: X-API-Version
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+server:
+  port: ${SERVER_PORT:8080}
+
+springdoc:
+  api-docs:
+    version: openapi_3_1
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:change-this-dev-secret-change-this-dev-secret}
+    access-expiration-ms: ${APP_JWT_ACCESS_EXPIRATION_MS:900000}
+    refresh-expiration-ms: ${APP_JWT_REFRESH_EXPIRATION_MS:604800000}
+  storage:
+    provider: ${APP_STORAGE_PROVIDER:local}
+    max-file-size-bytes: ${APP_STORAGE_MAX_FILE_SIZE_BYTES:5242880}
+    allowed-content-types:
+      - image/jpeg
+      - image/png
+      - image/webp
+    local:
+      upload-dir: ${APP_STORAGE_LOCAL_UPLOAD_DIR:uploads/avatars}
+      public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+    cloudinary:
+      cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+      api-key: ${CLOUDINARY_API_KEY:}
+      api-secret: ${CLOUDINARY_API_SECRET:}
+      folder: ${CLOUDINARY_FOLDER:in-chat/avatars}
+  message:
+    attachments:
+      image-max-file-size-bytes: ${APP_MESSAGE_IMAGE_MAX_FILE_SIZE_BYTES:10485760}
+      video-max-file-size-bytes: ${APP_MESSAGE_VIDEO_MAX_FILE_SIZE_BYTES:52428800}
+      file-max-file-size-bytes: ${APP_MESSAGE_FILE_MAX_FILE_SIZE_BYTES:26214400}
+      image-mime-types:
+        - image/jpeg
+        - image/png
+        - image/webp
+        - image/gif
+      video-mime-types:
+        - video/mp4
+        - video/webm
+        - video/quicktime
+      file-mime-types:
+        - application/pdf
+        - application/zip
+        - application/msword
+        - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        - application/vnd.ms-excel
+        - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+        - text/plain
+      local:
+        upload-dir: ${APP_MESSAGE_ATTACHMENT_LOCAL_UPLOAD_DIR:uploads/message-attachments}
+        public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
+      cloudinary:
+        folder: ${CLOUDINARY_MESSAGE_FOLDER:in-chat/message-attachments}

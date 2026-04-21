@@ -12,4 +12,6 @@ public interface MessageAttachmentRepository extends MongoRepository<MessageAtta
     List<MessageAttachment> findByMessageId(String messageId);
 
     List<MessageAttachment> findByMessageIdIn(Collection<String> messageIds);
+
+    void deleteByMessageIdIn(Collection<String> messageIds);
 }

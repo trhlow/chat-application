@@ -24,7 +24,7 @@ public class MessageMapper {
                 message.getSenderId(),
                 message.getContent(),
                 message.getTimestamp(),
-                message.getStatus(),
+                normalizeStatus(message.getStatus()),
                 delivered,
                 readBy,
                 attachments.stream().map(this::toAttachmentResponse).toList()
@@ -42,5 +42,12 @@ public class MessageMapper {
                 attachment.getOriginalName(),
                 attachment.getThumbnailUrl()
         );
+    }
+
+    private String normalizeStatus(String status) {
+        if ("read".equalsIgnoreCase(status)) {
+            return "seen";
+        }
+        return status;
     }
 }

@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public interface MessageRepository extends MongoRepository<Message, String> {
     Page<Message> findByRoomIdOrderByTimestampDesc(String roomId, Pageable pageable);
     Page<Message> findByRoomIdAndTimestampBeforeOrderByTimestampDesc(String roomId, LocalDateTime before, Pageable pageable);
+    java.util.List<Message> findByRoomId(String roomId);
 }
 
 

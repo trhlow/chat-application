@@ -6,6 +6,7 @@ import com.chatrealtime.domain.Room;
 import com.chatrealtime.dto.request.CreateMessageRequest;
 import com.chatrealtime.dto.response.MessagePageResponse;
 import com.chatrealtime.dto.response.MessageResponse;
+import com.chatrealtime.dto.response.RoomUnreadCountResponse;
 import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.exception.MessageNotFoundException;
 import com.chatrealtime.exception.RoomNotFoundException;
@@ -19,8 +20,13 @@ import com.chatrealtime.service.MessageService;
 import com.chatrealtime.storage.MessageAttachmentStorageService;
 import com.chatrealtime.storage.StoredMessageAttachment;
 import lombok.RequiredArgsConstructor;
+import org.bson.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +42,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,7 +52,8 @@ public class MessageServiceImpl implements MessageService {
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 100;
     private static final int MAX_CONTENT_LENGTH = 4000;
-    private static final Set<String> ALLOWED_STATUS = Set.of("sent", "delivered", "read");
+    private static final int MAX_PREVIEW_LENGTH = 120;
+    private static final Set<String> ALLOWED_STATUS = Set.of("sent", "delivered", "seen");
 
     private final MessageRepository messageRepository;
     private final MessageAttachmentRepository messageAttachmentRepository;
@@ -54,6 +62,7 @@ public class MessageServiceImpl implements MessageService {
     private final MessageAttachmentStorageService messageAttachmentStorageService;
     private final AuthContextService authContextService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final MongoTemplate mongoTemplate;
 
     @Override
     public MessagePageResponse getMessagesByRoomId(String roomId, Integer limit, LocalDateTime before) {
@@ -71,6 +80,7 @@ public class MessageServiceImpl implements MessageService {
         );
 
         List<Message> messages = new ArrayList<>(messagePage.getContent());
+        markMessagesAsDelivered(messages, principal.getId(), room);
         Collections.reverse(messages);
         Map<String, List<MessageAttachment>> attachmentsByMessageId = getAttachmentsByMessageId(messages);
         List<MessageResponse> items = messages.stream()
@@ -100,6 +110,7 @@ public class MessageServiceImpl implements MessageService {
                 .build();
 
         Message savedMessage = messageRepository.save(message);
+        updateRoomLastMessage(room, message.getContent(), null);
         MessageResponse response = messageMapper.toResponse(savedMessage, List.of());
         messagingTemplate.convertAndSend("/topic/rooms/" + request.roomId() + "/messages", response);
         return response;
@@ -138,6 +149,7 @@ public class MessageServiceImpl implements MessageService {
                 .createdAt(Instant.now())
                 .build());
 
+        updateRoomLastMessage(room, normalizedContent, attachment.getFileType());
         MessageResponse response = messageMapper.toResponse(savedMessage, List.of(attachment));
         messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/messages", response);
         return response;
@@ -168,6 +180,60 @@ public class MessageServiceImpl implements MessageService {
         MessageResponse response = messageMapper.toResponse(saved, messageAttachmentRepository.findByMessageId(saved.getId()));
         messagingTemplate.convertAndSend("/topic/rooms/" + message.getRoomId() + "/status", response);
         return response;
+    }
+
+    @Override
+    public void markRoomAsRead(String roomId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = ensureRoomExists(roomId);
+        ensureMembership(room, principal.getId());
+
+        List<Message> unreadMessages = findUnreadMessages(roomId, principal.getId());
+        if (unreadMessages.isEmpty()) {
+            return;
+        }
+
+        unreadMessages.forEach(message -> {
+            updateReceiptState(message, principal.getId(), "seen");
+            applyStatusFromReceipts(message, room);
+        });
+        List<Message> savedMessages = messageRepository.saveAll(unreadMessages);
+        publishStatusUpdates(savedMessages);
+    }
+
+    @Override
+    public List<RoomUnreadCountResponse> getUnreadCounts() {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        List<Room> rooms = roomRepository.findByMemberIdsContaining(principal.getId());
+        Map<String, Long> unreadCountMap = getUnreadCountMap(
+                rooms.stream().map(Room::getId).toList()
+        );
+        return rooms.stream()
+                .map(room -> new RoomUnreadCountResponse(room.getId(), unreadCountMap.getOrDefault(room.getId(), 0L)))
+                .toList();
+    }
+
+    @Override
+    public Map<String, Long> getUnreadCountMap(Collection<String> roomIds) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        if (roomIds == null || roomIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Aggregation aggregation = Aggregation.newAggregation(
+                Aggregation.match(Criteria.where("roomId").in(roomIds)
+                        .and("senderId").ne(principal.getId())
+                        .and("readByUserIds").ne(principal.getId())),
+                Aggregation.group("roomId").count().as("unreadCount")
+        );
+
+        return mongoTemplate.aggregate(aggregation, "messages", Document.class)
+                .getMappedResults()
+                .stream()
+                .collect(Collectors.toMap(
+                        document -> document.getString("_id"),
+                        document -> document.get("unreadCount", Number.class).longValue()
+                ));
     }
 
     private Map<String, List<MessageAttachment>> getAttachmentsByMessageId(List<Message> messages) {
@@ -218,8 +284,11 @@ public class MessageServiceImpl implements MessageService {
         }
 
         String normalized = status.toLowerCase(Locale.ROOT).trim();
+        if ("read".equals(normalized)) {
+            normalized = "seen";
+        }
         if (!ALLOWED_STATUS.contains(normalized)) {
-            throw new BadRequestException("status must be one of sent, delivered, read");
+            throw new BadRequestException("status must be one of sent, delivered, seen");
         }
         return normalized;
     }
@@ -235,7 +304,7 @@ public class MessageServiceImpl implements MessageService {
         if ("delivered".equals(status)) {
             delivered.add(actorUserId);
         }
-        if ("read".equals(status)) {
+        if ("seen".equals(status)) {
             delivered.add(actorUserId);
             readBy.add(actorUserId);
         }
@@ -250,14 +319,14 @@ public class MessageServiceImpl implements MessageService {
                 .toList();
 
         if (recipients.isEmpty()) {
-            message.setStatus("read");
+            message.setStatus("seen");
             return;
         }
 
         Set<String> delivered = message.getDeliveredToUserIds() == null ? Set.of() : message.getDeliveredToUserIds();
         Set<String> readBy = message.getReadByUserIds() == null ? Set.of() : message.getReadByUserIds();
         if (readBy.containsAll(recipients)) {
-            message.setStatus("read");
+            message.setStatus("seen");
             return;
         }
         if (delivered.containsAll(recipients)) {
@@ -266,4 +335,61 @@ public class MessageServiceImpl implements MessageService {
         }
         message.setStatus("sent");
     }
+
+    private void updateRoomLastMessage(Room room, String content, String attachmentType) {
+        room.setLastMessageAt(Instant.now());
+        room.setLastMessagePreview(buildMessagePreview(content, attachmentType));
+        room.setUpdatedAt(Instant.now());
+        roomRepository.save(room);
+    }
+
+    private String buildMessagePreview(String content, String attachmentType) {
+        if (content != null && !content.isBlank()) {
+            return content.length() <= MAX_PREVIEW_LENGTH
+                    ? content
+                    : content.substring(0, MAX_PREVIEW_LENGTH - 3) + "...";
+        }
+        if (attachmentType == null || attachmentType.isBlank()) {
+            return "";
+        }
+        return switch (attachmentType.toLowerCase(Locale.ROOT)) {
+            case "image" -> "[Image]";
+            case "video" -> "[Video]";
+            default -> "[File]";
+        };
+    }
+
+    private void markMessagesAsDelivered(List<Message> messages, String actorUserId, Room room) {
+        List<Message> deliverableMessages = messages.stream()
+                .filter(message -> !actorUserId.equals(message.getSenderId()))
+                .filter(message -> message.getDeliveredToUserIds() == null || !message.getDeliveredToUserIds().contains(actorUserId))
+                .toList();
+        if (deliverableMessages.isEmpty()) {
+            return;
+        }
+
+        deliverableMessages.forEach(message -> {
+            updateReceiptState(message, actorUserId, "delivered");
+            applyStatusFromReceipts(message, room);
+        });
+        List<Message> savedMessages = messageRepository.saveAll(deliverableMessages);
+        publishStatusUpdates(savedMessages);
+    }
+
+    private void publishStatusUpdates(List<Message> messages) {
+        Map<String, List<MessageAttachment>> attachmentsByMessageId = getAttachmentsByMessageId(messages);
+        messages.forEach(message -> messagingTemplate.convertAndSend(
+                "/topic/rooms/" + message.getRoomId() + "/status",
+                messageMapper.toResponse(message, attachmentsByMessageId.getOrDefault(message.getId(), List.of()))
+        ));
+    }
+
+    private List<Message> findUnreadMessages(String roomId, String actorUserId) {
+        Criteria criteria = Criteria.where("roomId").is(roomId)
+                .and("senderId").ne(actorUserId)
+                .and("readByUserIds").ne(actorUserId);
+
+        return mongoTemplate.find(Query.query(criteria), Message.class);
+    }
+
 }

@@ -4,10 +4,12 @@ import com.chatrealtime.dto.request.CreateMessageRequest;
 import com.chatrealtime.dto.request.UpdateMessageStatusRequest;
 import com.chatrealtime.dto.response.MessagePageResponse;
 import com.chatrealtime.dto.response.MessageResponse;
+import com.chatrealtime.dto.response.RoomUnreadCountResponse;
 import jakarta.validation.Valid;
 import com.chatrealtime.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/messages")
@@ -55,6 +58,17 @@ public class MessageController {
             @Valid @RequestBody UpdateMessageStatusRequest request
     ) {
         return messageService.updateMessageStatus(messageId, request.status());
+    }
+
+    @PostMapping("/rooms/{roomId}/read")
+    public ResponseEntity<Void> markRoomAsRead(@PathVariable String roomId) {
+        messageService.markRoomAsRead(roomId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/unread-counts")
+    public List<RoomUnreadCountResponse> getUnreadCounts() {
+        return messageService.getUnreadCounts();
     }
 }
 

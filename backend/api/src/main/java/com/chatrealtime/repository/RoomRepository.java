@@ -9,6 +9,8 @@ import java.util.List;
 @Repository
 public interface RoomRepository extends MongoRepository<Room, String> {
     List<Room> findByMemberIdsContaining(String userId);
+
+    List<Room> findByTypeAndMemberIdsContaining(String type, String userId);
 }
 
 

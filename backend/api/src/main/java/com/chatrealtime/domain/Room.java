@@ -22,10 +22,17 @@ public class Room {
 
     private String name;
     private String type;
+    private String avatar;
+    private String avatarPublicId;
+    private String avatarProvider;
     @Indexed
     private List<String> memberIds;
+    private List<String> admins;
 
     private String createdBy;
+    private String ownerId;
+    private Instant lastMessageAt;
+    private String lastMessagePreview;
     private Instant createdAt;
     private Instant updatedAt;
 }

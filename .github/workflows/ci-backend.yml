@@ -1,4 +1,4 @@
-name: CI
+name: CI Backend
 
 on:
   push:
@@ -6,21 +6,7 @@ on:
   pull_request:
 
 jobs:
-  web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-
-  api:
+  test-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,4 +16,6 @@ jobs:
           java-version: 21
           cache: maven
       - run: ./mvnw -q test
+        working-directory: backend/api
+      - run: ./mvnw -q -DskipTests package
         working-directory: backend/api

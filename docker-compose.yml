@@ -14,7 +14,7 @@ services:
 
   api:
     build:
-      context: ./services/api
+      context: ./backend/api
       dockerfile: docker/Dockerfile
       target: jvm
     container_name: inchat-api

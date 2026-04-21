@@ -14,5 +14,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "inchat"
 
-include("libs:common-domain")
-include("services:worker")
+include("backend:worker")

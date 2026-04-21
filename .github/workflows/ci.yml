@@ -30,4 +30,4 @@ jobs:
           java-version: 21
           cache: maven
       - run: ./mvnw -q test
-        working-directory: services/api
+        working-directory: backend/api

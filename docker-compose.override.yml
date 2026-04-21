@@ -3,7 +3,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: local
     volumes:
-      - ./services/api/uploads:/app/uploads
+      - ./backend/api/uploads:/app/uploads
 
   mongodb:
     ports:

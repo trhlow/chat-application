@@ -33,4 +33,8 @@ build/
 .vscode/
 
 ### Codex ###
-.codex/
+.codex/*
+!.codex/skills/
+!.codex/skills/**
+!.codex/rules/
+!.codex/rules/**

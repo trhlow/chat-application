@@ -38,7 +38,11 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         }
 
         String userId = jwtTokenService.extractUserId(token);
+        int tokenVersion = jwtTokenService.extractTokenVersion(token);
         AuthUserPrincipal principal = userPrincipalService.loadByUserId(userId);
+        if (principal.getTokenVersion() != tokenVersion) {
+            return message;
+        }
         accessor.setUser(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()));
         return message;
     }

@@ -1,14 +1,13 @@
 package com.chatrealtime.service;
 
-import com.chatrealtime.dto.request.CreateNotificationRequest;
+import com.chatrealtime.dto.response.NotificationPageResponse;
+import com.chatrealtime.dto.response.NotificationUnreadCountResponse;
 import com.chatrealtime.dto.response.NotificationsResponse;
 
-import java.util.List;
-
 public interface NotificationService {
-    List<NotificationsResponse> getNotificationsByCurrentUser();
+    NotificationPageResponse getNotificationsByCurrentUser(int page, int size);
 
-    NotificationsResponse createNotification(CreateNotificationRequest request);
+    NotificationUnreadCountResponse getUnreadCount();
 
     NotificationsResponse createSystemNotification(
             String userId,
@@ -19,4 +18,6 @@ public interface NotificationService {
     );
 
     NotificationsResponse markAsRead(String notificationId);
+
+    void markAllAsRead();
 }

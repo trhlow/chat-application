@@ -3,6 +3,7 @@ package com.chatrealtime.service.impl;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
+import com.chatrealtime.domain.User;
 import com.chatrealtime.dto.request.CreateMessageRequest;
 import com.chatrealtime.dto.response.MessagePageResponse;
 import com.chatrealtime.dto.response.MessageResponse;
@@ -14,9 +15,11 @@ import com.chatrealtime.mapper.MessageMapper;
 import com.chatrealtime.repository.MessageAttachmentRepository;
 import com.chatrealtime.repository.MessageRepository;
 import com.chatrealtime.repository.RoomRepository;
+import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.service.MessageService;
+import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.storage.MessageAttachmentStorageService;
 import com.chatrealtime.storage.StoredMessageAttachment;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,7 @@ import java.util.stream.Collectors;
 @Transactional
 @RequiredArgsConstructor
 public class MessageServiceImpl implements MessageService {
+    private static final String NOTIFICATION_NEW_MESSAGE = "new_message";
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 100;
     private static final int MAX_CONTENT_LENGTH = 4000;
@@ -63,6 +67,8 @@ public class MessageServiceImpl implements MessageService {
     private final AuthContextService authContextService;
     private final SimpMessagingTemplate messagingTemplate;
     private final MongoTemplate mongoTemplate;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     public MessagePageResponse getMessagesByRoomId(String roomId, Integer limit, LocalDateTime before) {
@@ -111,6 +117,7 @@ public class MessageServiceImpl implements MessageService {
 
         Message savedMessage = messageRepository.save(message);
         updateRoomLastMessage(room, message.getContent(), null);
+        notifyOfflineRecipients(room, principal.getId(), savedMessage.getContent(), savedMessage.getId());
         MessageResponse response = messageMapper.toResponse(savedMessage, List.of());
         messagingTemplate.convertAndSend("/topic/rooms/" + request.roomId() + "/messages", response);
         return response;
@@ -150,6 +157,12 @@ public class MessageServiceImpl implements MessageService {
                 .build());
 
         updateRoomLastMessage(room, normalizedContent, attachment.getFileType());
+        notifyOfflineRecipients(
+                room,
+                principal.getId(),
+                buildMessagePreview(normalizedContent, attachment.getFileType()),
+                savedMessage.getId()
+        );
         MessageResponse response = messageMapper.toResponse(savedMessage, List.of(attachment));
         messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/messages", response);
         return response;
@@ -390,6 +403,46 @@ public class MessageServiceImpl implements MessageService {
                 .and("readByUserIds").ne(actorUserId);
 
         return mongoTemplate.find(Query.query(criteria), Message.class);
+    }
+
+    private void notifyOfflineRecipients(Room room, String senderId, String preview, String messageId) {
+        List<User> recipients = userRepository.findAllById(room.getMemberIds()).stream()
+                .filter(user -> !user.getId().equals(senderId))
+                .filter(user -> !user.isOnline())
+                .toList();
+        if (recipients.isEmpty()) {
+            return;
+        }
+
+        User sender = userRepository.findById(senderId).orElse(null);
+        String senderDisplayName = sender == null
+                ? "Someone"
+                : (sender.getDisplayName() != null && !sender.getDisplayName().isBlank()
+                ? sender.getDisplayName()
+                : sender.getUsername());
+        String roomName = resolveRoomDisplayName(room, senderDisplayName);
+        String messagePreview = preview == null || preview.isBlank() ? "Sent you a message" : preview;
+
+        recipients.forEach(recipient -> notificationService.createSystemNotification(
+                recipient.getId(),
+                NOTIFICATION_NEW_MESSAGE,
+                "New message",
+                senderDisplayName + " sent a message in " + roomName + ": " + messagePreview,
+                room.getId()
+        ));
+    }
+
+    private String resolveRoomDisplayName(Room room, String fallback) {
+        if (room.getName() != null && !room.getName().isBlank()) {
+            return room.getName();
+        }
+        if ("direct".equalsIgnoreCase(room.getType())) {
+            return "your chat";
+        }
+        if ("group".equalsIgnoreCase(room.getType())) {
+            return "your group";
+        }
+        return fallback;
     }
 
 }

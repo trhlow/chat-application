@@ -3,6 +3,7 @@ package com.chatrealtime.unit;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
+import com.chatrealtime.domain.User;
 import com.chatrealtime.dto.request.CreateMessageRequest;
 import com.chatrealtime.dto.response.MessageResponse;
 import com.chatrealtime.dto.response.RoomUnreadCountResponse;
@@ -11,8 +12,10 @@ import com.chatrealtime.mapper.MessageMapper;
 import com.chatrealtime.repository.MessageAttachmentRepository;
 import com.chatrealtime.repository.MessageRepository;
 import com.chatrealtime.repository.RoomRepository;
+import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
+import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.service.impl.MessageServiceImpl;
 import com.chatrealtime.storage.MessageAttachmentStorageService;
 import com.chatrealtime.storage.StoredMessageAttachment;
@@ -61,6 +64,10 @@ class MessageServiceTest {
     private SimpMessagingTemplate messagingTemplate;
     @Mock
     private MongoTemplate mongoTemplate;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private MessageServiceImpl messageService;
@@ -127,6 +134,7 @@ class MessageServiceTest {
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
         when(roomRepository.findById("r1"))
                 .thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+        when(userRepository.findAllById(List.of("u1", "u2"))).thenReturn(List.of());
 
         Message savedMessage = Message.builder()
                 .id("m1")
@@ -181,6 +189,55 @@ class MessageServiceTest {
         verify(roomRepository).save(argThat(room -> "hello".equals(room.getLastMessagePreview()) && room.getLastMessageAt() != null));
         assertThat(attachmentCaptor.getValue().getMessageId()).isEqualTo("m1");
         assertThat(attachmentCaptor.getValue().getFileType()).isEqualTo("image");
+        assertThat(response.id()).isEqualTo("m1");
+    }
+
+    @Test
+    void createMessage_ShouldNotifyOfflineRecipients() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Room room = Room.builder().id("r1").name("Project A").memberIds(List.of("u1", "u2")).build();
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+
+        Message savedMessage = Message.builder()
+                .id("m1")
+                .roomId("r1")
+                .senderId("u1")
+                .content("hello")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .deliveredToUserIds(Set.of("u1"))
+                .readByUserIds(Set.of("u1"))
+                .build();
+        when(messageRepository.save(any(Message.class))).thenReturn(savedMessage);
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.findAllById(List.of("u1", "u2"))).thenReturn(List.of(
+                User.builder().id("u1").username("alice").displayName("Alice").isOnline(true).build(),
+                User.builder().id("u2").username("bob").displayName("Bob").isOnline(false).build()
+        ));
+        when(userRepository.findById("u1")).thenReturn(Optional.of(
+                User.builder().id("u1").username("alice").displayName("Alice").isOnline(true).build()
+        ));
+        when(messageMapper.toResponse(savedMessage, List.of())).thenReturn(new MessageResponse(
+                savedMessage.getId(),
+                savedMessage.getRoomId(),
+                savedMessage.getSenderId(),
+                savedMessage.getContent(),
+                savedMessage.getTimestamp(),
+                savedMessage.getStatus(),
+                savedMessage.getDeliveredToUserIds(),
+                savedMessage.getReadByUserIds(),
+                List.of()
+        ));
+
+        MessageResponse response = messageService.createMessage(new CreateMessageRequest("r1", "hello"));
+
+        verify(notificationService).createSystemNotification(
+                eq("u2"),
+                eq("new_message"),
+                eq("New message"),
+                eq("Alice sent a message in Project A: hello"),
+                eq("r1")
+        );
         assertThat(response.id()).isEqualTo("m1");
     }
 

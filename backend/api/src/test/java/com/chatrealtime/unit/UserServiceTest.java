@@ -9,6 +9,7 @@ import com.chatrealtime.storage.AvatarStorageService;
 import com.chatrealtime.storage.AvatarUploadResult;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
+import com.chatrealtime.security.UserPrincipalService;
 import com.chatrealtime.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,8 @@ class UserServiceTest {
     private AuthContextService authContextService;
     @Mock
     private AvatarStorageService avatarStorageService;
+    @Mock
+    private UserPrincipalService userPrincipalService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -70,6 +73,8 @@ class UserServiceTest {
         assertThat(captor.getValue().getBio()).isEqualTo("Chatting from Wonderland");
         assertThat(captor.getValue().getPhone()).isEqualTo("+84901234567");
         assertThat(captor.getValue().getThemePreference()).isEqualTo("dark");
+        verify(userPrincipalService).evictUserCaches("u1", "alice");
+        verify(userPrincipalService).evictUserCaches("u1", "alice2");
         assertThat(response.displayName()).isEqualTo("Alice Liddell");
     }
 
@@ -102,6 +107,7 @@ class UserServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         verify(avatarStorageService).deleteAvatar("local", "old.png");
+        verify(userPrincipalService).evictUserCaches("u1", "alice");
         assertThat(captor.getValue().getAvatar()).isEqualTo("https://cdn.example/avatar.png");
         assertThat(captor.getValue().getAvatarPublicId()).isEqualTo("new-public-id");
         assertThat(captor.getValue().getAvatarProvider()).isEqualTo("cloudinary");

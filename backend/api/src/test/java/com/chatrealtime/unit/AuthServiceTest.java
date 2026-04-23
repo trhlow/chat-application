@@ -16,6 +16,7 @@ import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.security.JwtProperties;
 import com.chatrealtime.security.JwtTokenService;
+import com.chatrealtime.security.UserPrincipalService;
 import com.chatrealtime.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +57,8 @@ class AuthServiceTest {
     private RefreshTokenService refreshTokenService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private UserPrincipalService userPrincipalService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -162,11 +165,13 @@ class AuthServiceTest {
         when(authContextService.requireCurrentUser())
                 .thenReturn(new AuthUserPrincipal("u1", "alice", "hashed", 0));
         when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
 
         authService.logout(request);
 
         assertThat(user.isOnline()).isFalse();
         verify(refreshTokenService).revokeUserToken("u1", "refresh-token");
+        verify(userPrincipalService).evictUserCaches("u1", "alice");
         verify(presenceService).markOffline("u1");
         verify(userRepository).save(user);
     }

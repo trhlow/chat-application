@@ -1,7 +1,5 @@
 package com.chatrealtime.security;
 
-import com.chatrealtime.domain.User;
-import com.chatrealtime.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +18,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
-    private final UserRepository userRepository;
+    private final UserPrincipalService userPrincipalService;
 
     @Override
     protected void doFilterInternal(
@@ -42,15 +40,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String userId = jwtTokenService.extractUserId(token);
         int tokenVersion = jwtTokenService.extractTokenVersion(token);
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null
-                || user.getTokenVersion() != tokenVersion
+        AuthUserPrincipal principal = loadPrincipal(userId);
+        if (principal == null
+                || principal.getTokenVersion() != tokenVersion
                 || SecurityContextHolder.getContext().getAuthentication() != null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        AuthUserPrincipal principal = AuthUserPrincipal.from(user);
         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                 principal,
                 null,
@@ -59,6 +56,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authToken);
         filterChain.doFilter(request, response);
+    }
+
+    private AuthUserPrincipal loadPrincipal(String userId) {
+        try {
+            return userPrincipalService.loadByUserId(userId);
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 }
 

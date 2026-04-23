@@ -13,6 +13,7 @@ import com.chatrealtime.storage.AvatarStorageService;
 import com.chatrealtime.storage.AvatarUploadResult;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
+import com.chatrealtime.security.UserPrincipalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final AuthContextService authContextService;
     private final AvatarStorageService avatarStorageService;
+    private final UserPrincipalService userPrincipalService;
 
     @Override
     public List<UserProfileResponse> getUsers(String query) {
@@ -67,6 +69,7 @@ public class UserServiceImpl implements UserService {
     public UserProfileResponse updateCurrentUserProfile(UpdateUserProfileRequest request) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         User user = getUserEntityById(principal.getId());
+        String previousUsername = user.getUsername();
 
         if (request.username() != null && !request.username().isBlank()) {
             String normalizedUsername = request.username().trim().toLowerCase(Locale.ROOT);
@@ -90,7 +93,10 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setUpdatedAt(Instant.now());
-        return userMapper.toUserProfileResponse(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+        userPrincipalService.evictUserCaches(savedUser.getId(), previousUsername);
+        userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
+        return userMapper.toUserProfileResponse(savedUser);
     }
 
     @Override
@@ -108,6 +114,7 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(Instant.now());
 
         User savedUser = userRepository.save(user);
+        userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
         avatarStorageService.deleteAvatar(oldAvatarProvider, oldAvatarPublicId);
         return userMapper.toUserProfileResponse(savedUser);
     }

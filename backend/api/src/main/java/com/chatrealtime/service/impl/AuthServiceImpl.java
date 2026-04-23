@@ -22,6 +22,7 @@ import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.security.JwtProperties;
 import com.chatrealtime.security.JwtTokenService;
+import com.chatrealtime.security.UserPrincipalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +45,7 @@ public class AuthServiceImpl implements AuthService {
     private final PresenceService presenceService;
     private final RefreshTokenService refreshTokenService;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserPrincipalService userPrincipalService;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -88,6 +90,7 @@ public class AuthServiceImpl implements AuthService {
         user.setUpdatedAt(Instant.now());
         user.setOnline(true);
         User savedUser = userRepository.save(user);
+        userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
         presenceService.markOnline(savedUser.getId());
         return buildAuthResponse(savedUser);
     }
@@ -121,7 +124,8 @@ public class AuthServiceImpl implements AuthService {
         }
 
         user.setOnline(false);
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
         presenceService.markOffline(user.getId());
     }
 
@@ -135,7 +139,8 @@ public class AuthServiceImpl implements AuthService {
         user.setTokenVersion(user.getTokenVersion() + 1);
         user.setOnline(false);
         user.setUpdatedAt(Instant.now());
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
         presenceService.markOffline(user.getId());
     }
 

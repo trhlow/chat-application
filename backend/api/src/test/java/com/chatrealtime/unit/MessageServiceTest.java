@@ -16,6 +16,7 @@ import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.service.NotificationService;
+import com.chatrealtime.service.PresenceService;
 import com.chatrealtime.service.impl.MessageServiceImpl;
 import com.chatrealtime.storage.MessageAttachmentStorageService;
 import com.chatrealtime.storage.StoredMessageAttachment;
@@ -68,6 +69,8 @@ class MessageServiceTest {
     private UserRepository userRepository;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private PresenceService presenceService;
 
     @InjectMocks
     private MessageServiceImpl messageService;
@@ -217,6 +220,7 @@ class MessageServiceTest {
         when(userRepository.findById("u1")).thenReturn(Optional.of(
                 User.builder().id("u1").username("alice").displayName("Alice").isOnline(true).build()
         ));
+        when(presenceService.isUserOnline("u2")).thenReturn(false);
         when(messageMapper.toResponse(savedMessage, List.of())).thenReturn(new MessageResponse(
                 savedMessage.getId(),
                 savedMessage.getRoomId(),

@@ -20,6 +20,7 @@ import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.service.MessageService;
 import com.chatrealtime.service.NotificationService;
+import com.chatrealtime.service.PresenceService;
 import com.chatrealtime.storage.MessageAttachmentStorageService;
 import com.chatrealtime.storage.StoredMessageAttachment;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +70,7 @@ public class MessageServiceImpl implements MessageService {
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final PresenceService presenceService;
 
     @Override
     public MessagePageResponse getMessagesByRoomId(String roomId, Integer limit, LocalDateTime before) {
@@ -408,7 +410,7 @@ public class MessageServiceImpl implements MessageService {
     private void notifyOfflineRecipients(Room room, String senderId, String preview, String messageId) {
         List<User> recipients = userRepository.findAllById(room.getMemberIds()).stream()
                 .filter(user -> !user.getId().equals(senderId))
-                .filter(user -> !user.isOnline())
+                .filter(user -> !presenceService.isUserOnline(user.getId()))
                 .toList();
         if (recipients.isEmpty()) {
             return;

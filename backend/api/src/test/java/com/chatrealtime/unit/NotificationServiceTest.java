@@ -6,6 +6,7 @@ import com.chatrealtime.dto.response.NotificationUnreadCountResponse;
 import com.chatrealtime.dto.response.NotificationsResponse;
 import com.chatrealtime.repository.NotificationRepository;
 import com.chatrealtime.repository.UserRepository;
+import com.chatrealtime.realtime.NotificationRealtimeEventBus;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.service.impl.NotificationServiceImpl;
@@ -17,7 +18,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.SliceImpl;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -36,9 +36,9 @@ class NotificationServiceTest {
     @Mock
     private AuthContextService authContextService;
     @Mock
-    private SimpMessagingTemplate messagingTemplate;
-    @Mock
     private UserRepository userRepository;
+    @Mock
+    private NotificationRealtimeEventBus notificationRealtimeEventBus;
 
     @InjectMocks
     private NotificationServiceImpl notificationService;
@@ -74,7 +74,7 @@ class NotificationServiceTest {
                 "fr1"
         );
 
-        verify(messagingTemplate).convertAndSendToUser(eq("bob"), eq("/queue/notifications"), any());
+        verify(notificationRealtimeEventBus).publish(eq("bob"), any());
         assertThat(response.id()).isEqualTo("n1");
         assertThat(response.read()).isFalse();
     }
@@ -91,7 +91,7 @@ class NotificationServiceTest {
         ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
         verify(notificationRepository).saveAll(captor.capture());
         assertThat(captor.getValue()).allMatch(Notification::isRead);
-        verify(messagingTemplate).convertAndSendToUser(eq("alice"), eq("/queue/notifications"), any());
+        verify(notificationRealtimeEventBus).publish(eq("alice"), any());
     }
 
     @Test
@@ -118,7 +118,7 @@ class NotificationServiceTest {
         NotificationsResponse response = notificationService.markAsRead("n1");
 
         assertThat(response.read()).isTrue();
-        verify(messagingTemplate).convertAndSendToUser(eq("alice"), eq("/queue/notifications"), any());
+        verify(notificationRealtimeEventBus).publish(eq("alice"), any());
     }
 
     private Notification notification(String id, String userId, boolean read) {

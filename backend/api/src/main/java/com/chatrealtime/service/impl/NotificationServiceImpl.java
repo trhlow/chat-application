@@ -11,12 +11,12 @@ import com.chatrealtime.exception.ResourceNotFoundException;
 import com.chatrealtime.domain.Notification;
 import com.chatrealtime.repository.NotificationRepository;
 import com.chatrealtime.repository.UserRepository;
+import com.chatrealtime.realtime.NotificationRealtimeEventBus;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,8 +29,8 @@ import java.util.List;
 public class NotificationServiceImpl implements NotificationService {
     private final NotificationRepository notificationRepository;
     private final AuthContextService authContextService;
-    private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
+    private final NotificationRealtimeEventBus notificationRealtimeEventBus;
 
     @Override
     public NotificationPageResponse getNotificationsByCurrentUser(int page, int size) {
@@ -102,9 +102,8 @@ public class NotificationServiceImpl implements NotificationService {
         }
         unreadNotifications.forEach(notification -> notification.setRead(true));
         notificationRepository.saveAll(unreadNotifications);
-        messagingTemplate.convertAndSendToUser(
+        notificationRealtimeEventBus.publish(
                 principal.getUsername(),
-                "/queue/notifications",
                 new NotificationRealtimeEventResponse("all_read", null, 0L)
         );
     }
@@ -123,9 +122,8 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private void publishUserNotificationEvent(String userId, String eventType, NotificationsResponse notification) {
-        messagingTemplate.convertAndSendToUser(
+        notificationRealtimeEventBus.publish(
                 resolveDestinationUsername(userId),
-                "/queue/notifications",
                 new NotificationRealtimeEventResponse(
                         eventType,
                         notification,

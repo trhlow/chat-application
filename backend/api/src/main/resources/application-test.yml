@@ -2,6 +2,11 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat_test}
+    redis:
+      repositories:
+        enabled: false
+  redis:
+    enabled: false
 
 management:
   otlp:
@@ -11,3 +16,7 @@ management:
     tracing:
       export:
         enabled: false
+
+app:
+  redis:
+    enabled: false

@@ -38,6 +38,12 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
+      repositories:
+        enabled: false
   servlet:
     multipart:
       max-file-size: 50MB
@@ -111,3 +117,12 @@ app:
         public-base-url: ${APP_PUBLIC_BASE_URL:http://localhost:8080}
       cloudinary:
         folder: ${CLOUDINARY_MESSAGE_FOLDER:in-chat/message-attachments}
+  redis:
+    enabled: ${APP_REDIS_ENABLED:true}
+    presence-ttl: ${APP_REDIS_PRESENCE_TTL:5m}
+    channels:
+      presence: ${APP_REDIS_CHANNEL_PRESENCE:in-chat:presence}
+      notification: ${APP_REDIS_CHANNEL_NOTIFICATION:in-chat:notifications}
+    cache:
+      user-principal-by-id-ttl: ${APP_REDIS_CACHE_USER_PRINCIPAL_BY_ID_TTL:15m}
+      user-principal-by-username-ttl: ${APP_REDIS_CACHE_USER_PRINCIPAL_BY_USERNAME_TTL:15m}

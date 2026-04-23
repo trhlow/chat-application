@@ -12,6 +12,16 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  redis:
+    image: redis:7-alpine
+    container_name: inchat-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
   in-chat:
     build:
       context: ..
@@ -21,14 +31,19 @@ services:
     restart: unless-stopped
     depends_on:
       - mongodb
+      - redis
     ports:
       - "8080:8080"
     environment:
       SERVER_PORT: 8080
       SPRING_DATA_MONGODB_URI: mongodb://root:root@mongodb:27017/hlow_chat?authSource=admin
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      APP_REDIS_ENABLED: true
       APP_JWT_SECRET: change-this-dev-secret-change-this-dev-secret
       APP_JWT_ACCESS_EXPIRATION_MS: 900000
       APP_JWT_REFRESH_EXPIRATION_MS: 604800000
 
 volumes:
   mongo_data:
+  redis_data:

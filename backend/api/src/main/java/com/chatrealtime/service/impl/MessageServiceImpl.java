@@ -103,26 +103,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public MessageResponse createMessage(CreateMessageRequest request) {
-        AuthUserPrincipal principal = authContextService.requireCurrentUser();
-        Room room = ensureRoomExists(request.roomId());
-        ensureMembership(room, principal.getId());
-
-        Message message = Message.builder()
-                .roomId(request.roomId())
-                .senderId(principal.getId())
-                .content(request.content().trim())
-                .timestamp(LocalDateTime.now())
-                .status("sent")
-                .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
-                .readByUserIds(new HashSet<>(Set.of(principal.getId())))
-                .build();
-
-        Message savedMessage = messageRepository.save(message);
-        updateRoomLastMessage(room, message.getContent(), null);
-        notifyOfflineRecipients(room, principal.getId(), savedMessage.getContent(), savedMessage.getId());
-        MessageResponse response = messageMapper.toResponse(savedMessage, List.of());
-        messagingTemplate.convertAndSend("/topic/rooms/" + request.roomId() + "/messages", response);
-        return response;
+        return createMessage(authContextService.requireCurrentUser(), request);
     }
 
     @Override
@@ -171,30 +152,18 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public MessageResponse createRealtimeMessage(String roomId, String content) {
-        return createMessage(new CreateMessageRequest(roomId, content));
+    public MessageResponse createRealtimeMessage(AuthUserPrincipal principal, String roomId, String content) {
+        return createMessage(principal, new CreateMessageRequest(roomId, content));
     }
 
     @Override
     public MessageResponse updateMessageStatus(String messageId, String status) {
-        AuthUserPrincipal principal = authContextService.requireCurrentUser();
-        String normalizedStatus = normalizeStatus(status);
-        Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new MessageNotFoundException("Message not found"));
+        return updateMessageStatus(authContextService.requireCurrentUser(), messageId, status);
+    }
 
-        Room room = ensureRoomExists(message.getRoomId());
-        ensureMembership(room, principal.getId());
-        if ("sent".equals(normalizedStatus)) {
-            throw new BadRequestException("status cannot be reverted to sent");
-        }
-
-        updateReceiptState(message, principal.getId(), normalizedStatus);
-        applyStatusFromReceipts(message, room);
-
-        Message saved = messageRepository.save(message);
-        MessageResponse response = messageMapper.toResponse(saved, messageAttachmentRepository.findByMessageId(saved.getId()));
-        messagingTemplate.convertAndSend("/topic/rooms/" + message.getRoomId() + "/status", response);
-        return response;
+    @Override
+    public MessageResponse updateRealtimeMessageStatus(AuthUserPrincipal principal, String messageId, String status) {
+        return updateMessageStatus(principal, messageId, status);
     }
 
     @Override
@@ -445,6 +414,48 @@ public class MessageServiceImpl implements MessageService {
             return "your group";
         }
         return fallback;
+    }
+
+    private MessageResponse createMessage(AuthUserPrincipal principal, CreateMessageRequest request) {
+        Room room = ensureRoomExists(request.roomId());
+        ensureMembership(room, principal.getId());
+
+        Message message = Message.builder()
+                .roomId(request.roomId())
+                .senderId(principal.getId())
+                .content(request.content().trim())
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
+                .readByUserIds(new HashSet<>(Set.of(principal.getId())))
+                .build();
+
+        Message savedMessage = messageRepository.save(message);
+        updateRoomLastMessage(room, message.getContent(), null);
+        notifyOfflineRecipients(room, principal.getId(), savedMessage.getContent(), savedMessage.getId());
+        MessageResponse response = messageMapper.toResponse(savedMessage, List.of());
+        messagingTemplate.convertAndSend("/topic/rooms/" + request.roomId() + "/messages", response);
+        return response;
+    }
+
+    private MessageResponse updateMessageStatus(AuthUserPrincipal principal, String messageId, String status) {
+        String normalizedStatus = normalizeStatus(status);
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new MessageNotFoundException("Message not found"));
+
+        Room room = ensureRoomExists(message.getRoomId());
+        ensureMembership(room, principal.getId());
+        if ("sent".equals(normalizedStatus)) {
+            throw new BadRequestException("status cannot be reverted to sent");
+        }
+
+        updateReceiptState(message, principal.getId(), normalizedStatus);
+        applyStatusFromReceipts(message, room);
+
+        Message saved = messageRepository.save(message);
+        MessageResponse response = messageMapper.toResponse(saved, messageAttachmentRepository.findByMessageId(saved.getId()));
+        messagingTemplate.convertAndSend("/topic/rooms/" + message.getRoomId() + "/status", response);
+        return response;
     }
 
 }

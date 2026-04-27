@@ -36,10 +36,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<UserProfileResponse> getUsers(String query) {
         if (query == null || query.isBlank()) {
-            return userRepository.findAll()
-                    .stream()
-                    .map(userMapper::toUserProfileResponse)
-                    .toList();
+            return List.of();
         }
         String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
         return userRepository.findByUsernameContainingIgnoreCase(normalizedQuery)

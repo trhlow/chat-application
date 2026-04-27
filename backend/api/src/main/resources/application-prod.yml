@@ -10,3 +10,14 @@ spring:
       port: ${SPRING_DATA_REDIS_PORT:6379}
       repositories:
         enabled: false
+
+# Production: no default JWT secret; OpenAPI UI disabled by default.
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

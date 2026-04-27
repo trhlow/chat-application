@@ -2,6 +2,7 @@ package com.chatrealtime.exception;
 
 import com.chatrealtime.dto.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -14,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApplicationException.class)
@@ -78,6 +80,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleException(Exception exception, HttpServletRequest request) {
+        log.error("Unhandled error {} {}", request.getMethod(), request.getRequestURI(), exception);
         return ResponseEntity.status(500)
                 .body(buildError(500, "INTERNAL_SERVER_ERROR", "Internal server error", request.getRequestURI(), null));
     }

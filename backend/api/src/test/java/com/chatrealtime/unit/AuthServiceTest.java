@@ -6,6 +6,8 @@ import com.chatrealtime.dto.request.RefreshTokenRequest;
 import com.chatrealtime.dto.request.RegisterRequest;
 import com.chatrealtime.domain.RefreshToken;
 import com.chatrealtime.dto.response.UserProfileResponse;
+import com.chatrealtime.exception.ExistsEmailException;
+import com.chatrealtime.exception.ExistsUsernameException;
 import com.chatrealtime.exception.InvalidCredentialsException;
 import com.chatrealtime.mapper.UserMapper;
 import com.chatrealtime.domain.User;
@@ -62,6 +64,39 @@ class AuthServiceTest {
 
     @InjectMocks
     private AuthServiceImpl authService;
+
+    @Test
+    void register_ShouldUseGenericConflictMessageWhenUsernameTaken() {
+        RegisterRequest request = new RegisterRequest(
+                "Alice",
+                "secret123",
+                "new@example.com",
+                null,
+                null
+        );
+        when(userRepository.existsByUsername("alice")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(ExistsUsernameException.class)
+                .hasMessage("An account with these details already exists");
+    }
+
+    @Test
+    void register_ShouldUseGenericConflictMessageWhenEmailTaken() {
+        RegisterRequest request = new RegisterRequest(
+                "Alice",
+                "secret123",
+                "taken@example.com",
+                null,
+                null
+        );
+        when(userRepository.existsByUsername("alice")).thenReturn(false);
+        when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.register(request))
+                .isInstanceOf(ExistsEmailException.class)
+                .hasMessage("An account with these details already exists");
+    }
 
     @Test
     void register_ShouldHashPasswordAndReturnToken() {

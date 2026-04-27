@@ -36,6 +36,7 @@ import java.util.Locale;
 @Transactional
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
+    private static final String REGISTER_CONFLICT_MESSAGE = "An account with these details already exists";
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
@@ -55,10 +56,10 @@ public class AuthServiceImpl implements AuthService {
                 ? request.displayName().trim()
                 : normalizedUsername;
         if (userRepository.existsByUsername(normalizedUsername)) {
-            throw new ExistsUsernameException("Username already exists");
+            throw new ExistsUsernameException(REGISTER_CONFLICT_MESSAGE);
         }
         if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new ExistsEmailException("Email already exists");
+            throw new ExistsEmailException(REGISTER_CONFLICT_MESSAGE);
         }
 
         Instant now = Instant.now();

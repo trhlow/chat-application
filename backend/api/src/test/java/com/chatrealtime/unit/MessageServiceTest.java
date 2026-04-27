@@ -262,7 +262,9 @@ class MessageServiceTest {
                 .build();
 
         when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
-        when(mongoTemplate.find(any(), eq(Message.class))).thenReturn(List.of(unreadMessage));
+        when(mongoTemplate.find(any(), eq(Message.class)))
+                .thenReturn(List.of(unreadMessage))
+                .thenReturn(List.of());
         when(messageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(messageAttachmentRepository.findByMessageIdIn(List.of("m1"))).thenReturn(List.of());
         when(messageMapper.toResponse(any(Message.class), any())).thenAnswer(invocation -> {

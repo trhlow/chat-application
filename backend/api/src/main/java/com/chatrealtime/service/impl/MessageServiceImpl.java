@@ -56,6 +56,8 @@ public class MessageServiceImpl implements MessageService {
     private static final String NOTIFICATION_NEW_MESSAGE = "new_message";
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 100;
+    /** Bound memory and write bursts when marking a room as read. */
+    private static final int MARK_READ_BATCH_SIZE = 500;
     private static final int MAX_CONTENT_LENGTH = 4000;
     private static final int MAX_PREVIEW_LENGTH = 120;
     private static final Set<String> ALLOWED_STATUS = Set.of("sent", "delivered", "seen");
@@ -172,17 +174,19 @@ public class MessageServiceImpl implements MessageService {
         Room room = ensureRoomExists(roomId);
         ensureMembership(room, principal.getId());
 
-        List<Message> unreadMessages = findUnreadMessages(roomId, principal.getId());
-        if (unreadMessages.isEmpty()) {
-            return;
-        }
+        while (true) {
+            List<Message> unreadMessages = findUnreadMessages(roomId, principal.getId(), MARK_READ_BATCH_SIZE);
+            if (unreadMessages.isEmpty()) {
+                return;
+            }
 
-        unreadMessages.forEach(message -> {
-            updateReceiptState(message, principal.getId(), "seen");
-            applyStatusFromReceipts(message, room);
-        });
-        List<Message> savedMessages = messageRepository.saveAll(unreadMessages);
-        publishStatusUpdates(savedMessages);
+            unreadMessages.forEach(message -> {
+                updateReceiptState(message, principal.getId(), "seen");
+                applyStatusFromReceipts(message, room);
+            });
+            List<Message> savedMessages = messageRepository.saveAll(unreadMessages);
+            publishStatusUpdates(savedMessages);
+        }
     }
 
     @Override
@@ -368,12 +372,12 @@ public class MessageServiceImpl implements MessageService {
         ));
     }
 
-    private List<Message> findUnreadMessages(String roomId, String actorUserId) {
+    private List<Message> findUnreadMessages(String roomId, String actorUserId, int limit) {
         Criteria criteria = Criteria.where("roomId").is(roomId)
                 .and("senderId").ne(actorUserId)
                 .and("readByUserIds").ne(actorUserId);
 
-        return mongoTemplate.find(Query.query(criteria), Message.class);
+        return mongoTemplate.find(Query.query(criteria).limit(limit), Message.class);
     }
 
     private void notifyOfflineRecipients(Room room, String senderId, String preview, String messageId) {

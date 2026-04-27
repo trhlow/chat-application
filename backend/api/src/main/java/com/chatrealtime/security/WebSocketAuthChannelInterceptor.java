@@ -12,6 +12,10 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Component;
 
+import io.jsonwebtoken.Claims;
+
+import java.util.Optional;
+
 @Component
 @RequiredArgsConstructor
 public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
@@ -45,12 +49,13 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         }
 
         String token = authorizationHeader.substring(7).trim();
-        if (!jwtTokenService.isTokenValid(token)) {
+        Optional<Claims> claims = jwtTokenService.parseValidClaims(token);
+        if (claims.isEmpty()) {
             throw new InvalidCredentialsException("Unauthorized");
         }
 
-        String userId = jwtTokenService.extractUserId(token);
-        int tokenVersion = jwtTokenService.extractTokenVersion(token);
+        String userId = claims.get().getSubject();
+        int tokenVersion = extractTokenVersion(claims.get());
         AuthUserPrincipal principal = loadActivePrincipal(userId, tokenVersion);
         return new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
     }
@@ -82,6 +87,14 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             throw new InvalidCredentialsException("Unauthorized");
         }
         return destination;
+    }
+
+    private static int extractTokenVersion(Claims claims) {
+        Object tokenVersion = claims.get("tokenVersion");
+        if (tokenVersion instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
     }
 }
 

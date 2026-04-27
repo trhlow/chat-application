@@ -9,6 +9,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Optional;
 
 @Service
 public class JwtTokenService {
@@ -46,13 +47,23 @@ public class JwtTokenService {
         return 0;
     }
 
-    public boolean isTokenValid(String token) {
+    /**
+     * Parses and verifies the token once; use from HTTP filters to avoid duplicate JWT work.
+     */
+    public Optional<Claims> parseValidClaims(String token) {
         try {
             Claims claims = parseClaims(token);
-            return claims.getExpiration() != null && claims.getExpiration().after(new Date());
+            if (claims.getExpiration() == null || !claims.getExpiration().after(new Date())) {
+                return Optional.empty();
+            }
+            return Optional.of(claims);
         } catch (RuntimeException exception) {
-            return false;
+            return Optional.empty();
         }
+    }
+
+    public boolean isTokenValid(String token) {
+        return parseValidClaims(token).isPresent();
     }
 
     private Claims parseClaims(String token) {

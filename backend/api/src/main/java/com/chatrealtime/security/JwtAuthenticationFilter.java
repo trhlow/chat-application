@@ -12,7 +12,10 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import io.jsonwebtoken.Claims;
+
 import java.io.IOException;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -33,13 +36,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = header.substring(7).trim();
-        if (!jwtTokenService.isTokenValid(token)) {
+        Optional<Claims> claims = jwtTokenService.parseValidClaims(token);
+        if (claims.isEmpty()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String userId = jwtTokenService.extractUserId(token);
-        int tokenVersion = jwtTokenService.extractTokenVersion(token);
+        String userId = claims.get().getSubject();
+        int tokenVersion = extractTokenVersion(claims.get());
         AuthUserPrincipal principal = loadPrincipal(userId);
         if (principal == null
                 || principal.getTokenVersion() != tokenVersion
@@ -64,6 +68,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (RuntimeException exception) {
             return null;
         }
+    }
+
+    private static int extractTokenVersion(Claims claims) {
+        Object tokenVersion = claims.get("tokenVersion");
+        if (tokenVersion instanceof Number number) {
+            return number.intValue();
+        }
+        return 0;
     }
 }
 

@@ -5,6 +5,7 @@ import com.chatrealtime.security.JwtTokenService;
 import com.chatrealtime.security.UserPrincipalService;
 import com.chatrealtime.security.WebSocketAuthChannelInterceptor;
 import com.chatrealtime.security.WebSocketAuthorizationService;
+import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -17,6 +18,8 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,9 +45,10 @@ class WebSocketAuthChannelInterceptorTest {
         );
         AuthUserPrincipal principal = new AuthUserPrincipal("u1", "alice", "pw", 3);
 
-        when(jwtTokenService.isTokenValid("token")).thenReturn(true);
-        when(jwtTokenService.extractUserId("token")).thenReturn("u1");
-        when(jwtTokenService.extractTokenVersion("token")).thenReturn(3);
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("u1");
+        when(claims.get("tokenVersion")).thenReturn(3);
+        when(jwtTokenService.parseValidClaims("token")).thenReturn(Optional.of(claims));
         when(userPrincipalService.loadByUserId("u1")).thenReturn(principal);
 
         Message<?> result = interceptor.preSend(connectMessage("token"), mock(MessageChannel.class));
@@ -63,9 +67,10 @@ class WebSocketAuthChannelInterceptorTest {
         );
         AuthUserPrincipal principal = new AuthUserPrincipal("u1", "alice", "pw", 4);
 
-        when(jwtTokenService.isTokenValid("token")).thenReturn(true);
-        when(jwtTokenService.extractUserId("token")).thenReturn("u1");
-        when(jwtTokenService.extractTokenVersion("token")).thenReturn(3);
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn("u1");
+        when(claims.get("tokenVersion")).thenReturn(3);
+        when(jwtTokenService.parseValidClaims("token")).thenReturn(Optional.of(claims));
         when(userPrincipalService.loadByUserId("u1")).thenReturn(principal);
 
         assertThatThrownBy(() -> interceptor.preSend(connectMessage("token"), mock(MessageChannel.class)))

@@ -25,6 +25,10 @@ public interface MessageService {
 
     MessageResponse updateRealtimeMessageStatus(AuthUserPrincipal principal, String messageId, String status);
 
+    /**
+     * Marks up to {@code app.messages.mark-read-max-batches} batches (each up to 500 messages) as seen.
+     * If the room still has unread messages after that, call this endpoint again until it returns success with no remaining backlog.
+     */
     void markRoomAsRead(String roomId);
 
     List<RoomUnreadCountResponse> getUnreadCounts();

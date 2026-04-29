@@ -13,18 +13,12 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
-    private static final String[] ALLOWED_ORIGIN_PATTERNS = {
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:3000",
-            "http://127.0.0.1:3000"
-    };
-
     private final WebSocketAuthChannelInterceptor webSocketAuthChannelInterceptor;
+    private final AppCorsProperties appCorsProperties;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws").setAllowedOriginPatterns(ALLOWED_ORIGIN_PATTERNS);
+        registry.addEndpoint("/ws").setAllowedOrigins(appCorsProperties.originArray());
     }
 
     @Override

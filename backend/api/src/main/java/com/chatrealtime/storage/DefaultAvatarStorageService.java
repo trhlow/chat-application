@@ -82,8 +82,13 @@ public class DefaultAvatarStorageService implements AvatarStorageService {
             Path target = uploadDir.resolve(filename).normalize();
             file.transferTo(target);
 
-            String publicBaseUrl = storageProperties.local().publicBaseUrl();
-            String url = stripTrailingSlash(publicBaseUrl) + "/uploads/avatars/" + filename;
+            String url;
+            if (userId.startsWith("room-")) {
+                String roomId = userId.substring("room-".length());
+                url = "/api/rooms/" + roomId + "/avatar";
+            } else {
+                url = "/api/users/" + userId + "/avatar";
+            }
             return new AvatarUploadResult(url, filename, PROVIDER_LOCAL);
         } catch (IOException exception) {
             throw new FileStorageException("Could not store avatar file");

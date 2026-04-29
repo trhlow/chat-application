@@ -60,6 +60,9 @@ public class MessageController {
         return messageService.updateMessageStatus(messageId, request.status());
     }
 
+    /**
+     * Marks read receipts in bounded batches; clients should invoke repeatedly while unread counts drop if rooms are very large.
+     */
     @PostMapping("/rooms/{roomId}/read")
     public ResponseEntity<Void> markRoomAsRead(@PathVariable String roomId) {
         messageService.markRoomAsRead(roomId);

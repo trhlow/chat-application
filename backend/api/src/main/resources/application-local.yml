@@ -7,3 +7,7 @@ spring:
       port: ${SPRING_DATA_REDIS_PORT:6379}
       repositories:
         enabled: false
+
+app:
+  jwt:
+    secret: change-this-dev-secret-change-this-dev-secret

@@ -27,20 +27,31 @@ public class MessageMapper {
                 normalizeStatus(message.getStatus()),
                 delivered,
                 readBy,
-                attachments.stream().map(this::toAttachmentResponse).toList()
+                attachments.stream().map(att -> toAttachmentResponse(message.getId(), att)).toList()
         );
     }
 
-    public MessageAttachmentResponse toAttachmentResponse(MessageAttachment attachment) {
+    /**
+     * Exposes only API-relative download paths (never raw Cloudinary/local disk URLs to clients).
+     */
+    public MessageAttachmentResponse toAttachmentResponse(String messageId, MessageAttachment attachment) {
+        String downloadPath = "/api/messages/" + messageId + "/attachments/" + attachment.getId() + "/download";
+        String storedThumb = attachment.getThumbnailUrl();
+        String storedFile = attachment.getFileUrl();
+        String thumbnailPath = downloadPath;
+        if (storedThumb != null && !storedThumb.isBlank()
+                && storedFile != null && !storedThumb.equals(storedFile)) {
+            thumbnailPath = downloadPath + "?variant=thumbnail";
+        }
         return new MessageAttachmentResponse(
                 attachment.getId(),
                 attachment.getMessageId(),
-                attachment.getFileUrl(),
+                downloadPath,
                 attachment.getFileType(),
                 attachment.getMimeType(),
                 attachment.getFileSize(),
                 attachment.getOriginalName(),
-                attachment.getThumbnailUrl()
+                thumbnailPath
         );
     }
 

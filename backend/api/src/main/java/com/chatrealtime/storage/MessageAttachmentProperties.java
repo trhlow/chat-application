@@ -13,7 +13,8 @@ public record MessageAttachmentProperties(
         List<String> videoMimeTypes,
         List<String> fileMimeTypes,
         Local local,
-        Cloudinary cloudinary
+        Cloudinary cloudinary,
+        int signedUrlTtlSeconds
 ) {
     public record Local(
             String uploadDir,

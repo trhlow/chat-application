@@ -19,6 +19,7 @@ import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.service.FriendService;
 import com.chatrealtime.service.NotificationService;
+import com.chatrealtime.util.UserIdPair;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,7 +54,7 @@ public class FriendServiceImpl implements FriendService {
             throw new BadRequestException("Cannot send a friend request to yourself");
         }
 
-        NormalizedPair pair = normalizePair(requester.getId(), receiver.getId());
+        UserIdPair.Ordered pair = UserIdPair.order(requester.getId(), receiver.getId());
         if (friendshipRepository.existsByUserIdAAndUserIdB(pair.userIdA(), pair.userIdB())) {
             throw new BadRequestException("Users are already friends");
         }
@@ -123,7 +124,7 @@ public class FriendServiceImpl implements FriendService {
         }
 
         User requester = getUser(friendRequest.getRequesterId());
-        NormalizedPair pair = normalizePair(friendRequest.getRequesterId(), friendRequest.getReceiverId());
+        UserIdPair.Ordered pair = UserIdPair.order(friendRequest.getRequesterId(), friendRequest.getReceiverId());
         if (!friendshipRepository.existsByUserIdAAndUserIdB(pair.userIdA(), pair.userIdB())) {
             friendshipRepository.save(Friendship.builder()
                     .userIdA(pair.userIdA())
@@ -211,7 +212,7 @@ public class FriendServiceImpl implements FriendService {
     public void removeFriend(String friendId) {
         User currentUser = getCurrentUser();
         getUser(friendId);
-        NormalizedPair pair = normalizePair(currentUser.getId(), friendId);
+        UserIdPair.Ordered pair = UserIdPair.order(currentUser.getId(), friendId);
         Friendship friendship = friendshipRepository.findByUserIdAAndUserIdB(pair.userIdA(), pair.userIdB())
                 .orElseThrow(() -> new FriendshipNotFoundException("Friendship not found"));
         friendshipRepository.delete(friendship);
@@ -244,13 +245,6 @@ public class FriendServiceImpl implements FriendService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
-    private NormalizedPair normalizePair(String userId1, String userId2) {
-        if (userId1.compareTo(userId2) <= 0) {
-            return new NormalizedPair(userId1, userId2);
-        }
-        return new NormalizedPair(userId2, userId1);
-    }
-
     private String otherUserId(Friendship friendship, String currentUserId) {
         return currentUserId.equals(friendship.getUserIdA()) ? friendship.getUserIdB() : friendship.getUserIdA();
     }
@@ -268,8 +262,5 @@ public class FriendServiceImpl implements FriendService {
             throw new UserNotFoundException("Friend user not found");
         }
         return friend;
-    }
-
-    private record NormalizedPair(String userIdA, String userIdB) {
     }
 }

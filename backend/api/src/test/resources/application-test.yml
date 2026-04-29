@@ -7,6 +7,8 @@ spring:
         enabled: false
 
 app:
+  jwt:
+    secret: test-jwt-secret-integration-test-32-chars-min
   redis:
     enabled: false
 

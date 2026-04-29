@@ -4,9 +4,13 @@ import com.chatrealtime.dto.request.AddRoomMembersRequest;
 import com.chatrealtime.dto.request.CreateRoomRequest;
 import com.chatrealtime.dto.request.UpdateRoomNameRequest;
 import com.chatrealtime.dto.response.RoomResponse;
-import jakarta.validation.Valid;
+import com.chatrealtime.security.AuthContextService;
+import com.chatrealtime.service.RoomAvatarDownloadService;
 import com.chatrealtime.service.RoomService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,6 +31,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RoomController {
     private final RoomService roomService;
+    private final AuthContextService authContextService;
+    private final RoomAvatarDownloadService roomAvatarDownloadService;
 
     @GetMapping
     public List<RoomResponse> getRooms() {
@@ -62,6 +68,25 @@ public class RoomController {
             @Valid @RequestBody UpdateRoomNameRequest request
     ) {
         return roomService.updateRoomName(roomId, request);
+    }
+
+    @GetMapping("/{roomId}/avatar")
+    public ResponseEntity<?> getRoomAvatar(@PathVariable String roomId) {
+        var principal = authContextService.requireCurrentUser();
+        RoomAvatarDownloadService.RoomAvatarDownloadResult result =
+                roomAvatarDownloadService.resolve(roomId, principal.getId());
+        if (result instanceof RoomAvatarDownloadService.RoomAvatarDownloadResult.Redirect redirect) {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(redirect.location())
+                    .build();
+        }
+        if (result instanceof RoomAvatarDownloadService.RoomAvatarDownloadResult.File file) {
+            return ResponseEntity.ok()
+                    .contentType(file.mediaType())
+                    .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
+                    .body(file.body());
+        }
+        throw new IllegalStateException("Unexpected room avatar result");
     }
 
     @PostMapping(value = "/{roomId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

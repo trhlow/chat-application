@@ -3,7 +3,9 @@ package com.chatrealtime.service.impl;
 import com.chatrealtime.service.UserService;
 
 import com.chatrealtime.dto.request.UpdateUserProfileRequest;
+import com.chatrealtime.dto.response.PublicUserProfileResponse;
 import com.chatrealtime.dto.response.UserProfileResponse;
+import com.chatrealtime.dto.response.UserSearchResultResponse;
 import com.chatrealtime.exception.ExistsUsernameException;
 import com.chatrealtime.exception.UserNotFoundException;
 import com.chatrealtime.mapper.UserMapper;
@@ -34,14 +36,14 @@ public class UserServiceImpl implements UserService {
     private final UserPrincipalService userPrincipalService;
 
     @Override
-    public List<UserProfileResponse> getUsers(String query) {
+    public List<UserSearchResultResponse> getUsers(String query) {
         if (query == null || query.isBlank()) {
             return List.of();
         }
         String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
         return userRepository.findByUsernameContainingIgnoreCase(normalizedQuery)
                 .stream()
-                .map(userMapper::toUserProfileResponse)
+                .map(userMapper::toSearchResult)
                 .toList();
     }
 
@@ -58,8 +60,8 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserProfileResponse getUserById(String userId) {
-        return userMapper.toUserProfileResponse(getUserEntityById(userId));
+    public PublicUserProfileResponse getPublicUserProfileById(String userId) {
+        return userMapper.toPublicUserProfileResponse(getUserEntityById(userId));
     }
 
     @Override

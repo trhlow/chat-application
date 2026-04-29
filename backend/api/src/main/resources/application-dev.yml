@@ -7,3 +7,7 @@ spring:
       port: ${SPRING_DATA_REDIS_PORT:6379}
       repositories:
         enabled: false
+
+app:
+  jwt:
+    secret: dev-jwt-secret-must-be-32-characters-long-min

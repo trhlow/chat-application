@@ -1,5 +1,6 @@
 package com.chatrealtime.service.impl;
 
+import com.chatrealtime.config.AppMessagesProperties;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
@@ -73,6 +74,7 @@ public class MessageServiceImpl implements MessageService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final PresenceService presenceService;
+    private final AppMessagesProperties appMessagesProperties;
 
     @Override
     public MessagePageResponse getMessagesByRoomId(String roomId, Integer limit, LocalDateTime before) {
@@ -174,7 +176,7 @@ public class MessageServiceImpl implements MessageService {
         Room room = ensureRoomExists(roomId);
         ensureMembership(room, principal.getId());
 
-        while (true) {
+        for (int batch = 0; batch < appMessagesProperties.markReadMaxBatches(); batch++) {
             List<Message> unreadMessages = findUnreadMessages(roomId, principal.getId(), MARK_READ_BATCH_SIZE);
             if (unreadMessages.isEmpty()) {
                 return;

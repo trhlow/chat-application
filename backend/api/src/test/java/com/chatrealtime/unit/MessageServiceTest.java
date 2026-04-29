@@ -1,5 +1,6 @@
 package com.chatrealtime.unit;
 
+import com.chatrealtime.config.AppMessagesProperties;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
@@ -21,6 +22,7 @@ import com.chatrealtime.service.impl.MessageServiceImpl;
 import com.chatrealtime.storage.MessageAttachmentStorageService;
 import com.chatrealtime.storage.StoredMessageAttachment;
 import org.bson.Document;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -43,9 +45,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class MessageServiceTest {
@@ -71,9 +75,16 @@ class MessageServiceTest {
     private NotificationService notificationService;
     @Mock
     private PresenceService presenceService;
+    @Mock
+    private AppMessagesProperties appMessagesProperties;
 
     @InjectMocks
     private MessageServiceImpl messageService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(appMessagesProperties.markReadMaxBatches()).thenReturn(20);
+    }
 
     @Test
     void createMessage_ShouldRejectWhenCurrentUserIsNotMember() {
@@ -289,6 +300,47 @@ class MessageServiceTest {
         assertThat(captor.getValue()).hasSize(1);
         assertThat(captor.getValue().get(0).getStatus()).isEqualTo("seen");
         assertThat(captor.getValue().get(0).getReadByUserIds()).contains("u2");
+    }
+
+    @Test
+    void markRoomAsRead_ShouldStopAfterMaxBatchesWhenUnreadPersists() {
+        when(appMessagesProperties.markReadMaxBatches()).thenReturn(3);
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
+
+        Room room = Room.builder().id("r1").memberIds(List.of("u1", "u2")).build();
+        Message unreadMessage = Message.builder()
+                .id("m1")
+                .roomId("r1")
+                .senderId("u1")
+                .content("hello")
+                .timestamp(LocalDateTime.now())
+                .status("delivered")
+                .deliveredToUserIds(Set.of("u1", "u2"))
+                .readByUserIds(Set.of("u1"))
+                .build();
+
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+        when(mongoTemplate.find(any(), eq(Message.class))).thenReturn(List.of(unreadMessage));
+        when(messageRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageAttachmentRepository.findByMessageIdIn(List.of("m1"))).thenReturn(List.of());
+        when(messageMapper.toResponse(any(Message.class), any())).thenAnswer(invocation -> {
+            Message saved = invocation.getArgument(0);
+            return new MessageResponse(
+                    saved.getId(),
+                    saved.getRoomId(),
+                    saved.getSenderId(),
+                    saved.getContent(),
+                    saved.getTimestamp(),
+                    saved.getStatus(),
+                    saved.getDeliveredToUserIds(),
+                    saved.getReadByUserIds(),
+                    List.of()
+            );
+        });
+
+        messageService.markRoomAsRead("r1");
+
+        verify(messageRepository, times(3)).saveAll(any());
     }
 
     @Test

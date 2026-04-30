@@ -274,6 +274,63 @@ class PrivacySecurityIntegrationTest {
     }
 
     @Test
+    void userProfileResponses_doNotExposeRawAvatarUrl() throws Exception {
+        saveUserWithCloudinaryAvatar(userA);
+
+        String meBody = mockMvc.perform(get("/api/users/me")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode me = objectMapper.readTree(meBody);
+        assertThat(me.has("avatar")).isFalse();
+        assertThat(me.has("avatarProvider")).isFalse();
+        assertThat(me.get("avatarEndpoint").asText()).isEqualTo("/api/users/" + userA + "/avatar");
+        assertThat(meBody).doesNotContain("res.cloudinary.com");
+
+        String publicBody = mockMvc.perform(get("/api/users/{id}", userA)
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode publicProfile = objectMapper.readTree(publicBody);
+        assertThat(publicProfile.has("avatar")).isFalse();
+        assertThat(publicProfile.has("avatarProvider")).isFalse();
+        assertThat(publicProfile.get("avatarEndpoint").asText()).isEqualTo("/api/users/" + userA + "/avatar");
+        assertThat(publicBody).doesNotContain("res.cloudinary.com");
+    }
+
+    @Test
+    void roomResponse_doesNotExposeRawAvatarUrl() throws Exception {
+        String roomId = "it-room-avatar-" + UUID.randomUUID();
+        roomRepository.save(Room.builder()
+                .id(roomId)
+                .name("Private room")
+                .type("group")
+                .avatar("https://res.cloudinary.com/demo/image/upload/room-avatar")
+                .avatarProvider("cloudinary")
+                .memberIds(List.of(userA, userB))
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+
+        String body = mockMvc.perform(get("/api/rooms/{id}", roomId)
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode room = objectMapper.readTree(body);
+        assertThat(room.has("avatar")).isFalse();
+        assertThat(room.has("avatarProvider")).isFalse();
+        assertThat(room.get("avatarEndpoint").asText()).isEqualTo("/api/rooms/" + roomId + "/avatar");
+        assertThat(body).doesNotContain("res.cloudinary.com");
+    }
+
+    @Test
     void getFriends_responseDoesNotExposeEmailOrPrivateFields() throws Exception {
         UserIdPair.Ordered pair = UserIdPair.order(userA, userB);
         friendshipRepository.save(Friendship.builder()

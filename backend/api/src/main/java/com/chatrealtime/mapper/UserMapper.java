@@ -5,15 +5,42 @@ import com.chatrealtime.dto.response.FriendUserResponse;
 import com.chatrealtime.dto.response.UserProfileResponse;
 import com.chatrealtime.dto.response.UserSearchResultResponse;
 import com.chatrealtime.domain.User;
-import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {
-    UserProfileResponse toUserProfileResponse(User user);
+    default UserProfileResponse toUserProfileResponse(User user) {
+        if (user == null) {
+            return null;
+        }
 
-    @Mapping(target = "online", expression = "java(user.isOnline())")
-    PublicUserProfileResponse toPublicUserProfileResponse(User user);
+        return new UserProfileResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getBio(),
+                user.getPhone(),
+                user.getThemePreference(),
+                avatarEndpoint(user),
+                user.isOnline(),
+                user.getLastSeenAt()
+        );
+    }
+
+    default PublicUserProfileResponse toPublicUserProfileResponse(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        return new PublicUserProfileResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getDisplayName(),
+                avatarEndpoint(user)
+        );
+    }
 
     @Mapping(target = "avatarEndpoint", expression = "java(\"/api/users/\" + user.getId() + \"/avatar\")")
     UserSearchResultResponse toSearchResult(User user);
@@ -27,8 +54,14 @@ public interface UserMapper {
                 user.getId(),
                 user.getUsername(),
                 user.getDisplayName(),
-                "/api/users/" + user.getId() + "/avatar"
+                avatarEndpoint(user)
         );
+    }
+
+    default String avatarEndpoint(User user) {
+        return user.getAvatar() == null || user.getAvatar().isBlank()
+                ? null
+                : "/api/users/" + user.getId() + "/avatar";
     }
 }
 

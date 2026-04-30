@@ -10,8 +10,7 @@ public record UserProfileResponse(
         String bio,
         String phone,
         String themePreference,
-        String avatar,
-        String avatarProvider,
+        String avatarEndpoint,
         boolean online,
         Instant lastSeenAt
 ) {

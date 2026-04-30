@@ -15,8 +15,7 @@ public class RoomMapper {
                 room.getId(),
                 room.getName(),
                 room.getType(),
-                room.getAvatar(),
-                room.getAvatarProvider(),
+                avatarEndpoint(room),
                 room.getMemberIds(),
                 room.getAdmins(),
                 room.getCreatedBy(),
@@ -27,6 +26,12 @@ public class RoomMapper {
                 room.getCreatedAt(),
                 room.getUpdatedAt()
         );
+    }
+
+    private String avatarEndpoint(Room room) {
+        return room.getAvatar() == null || room.getAvatar().isBlank()
+                ? null
+                : "/api/rooms/" + room.getId() + "/avatar";
     }
 }
 

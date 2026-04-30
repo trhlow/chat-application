@@ -1,0 +1,38 @@
+---
+description: How AI agents should behave when editing this repository
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# AI Agent Behavior
+
+- Do not mass rewrite.
+- Do not rename files or packages unless required.
+- Do not change formatting-only across many files.
+- Do not add dependencies casually.
+- Do not hide uncertainty.
+- Do not say something is fixed unless the code change directly addresses the root cause.
+- Prefer one focused change per task.
+- If the repo contains existing conventions, follow them.
+- If the repo has no tests, suggest the smallest meaningful test setup instead of pretending everything is fine.
+
+# When Asked To Fix
+
+Use this workflow:
+
+1. Reproduce or identify the likely failure point.
+2. Locate the minimal affected files.
+3. Explain the root cause.
+4. Patch the smallest safe change.
+5. Add or suggest tests.
+6. Provide verification commands.
+
+# When Asked To Review
+
+Use severity labels:
+
+- P0: data loss, app unusable, severe security issue
+- P1: serious bug/security issue
+- P2: important maintainability/correctness issue
+- P3: minor cleanup

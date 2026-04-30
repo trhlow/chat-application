@@ -1,0 +1,43 @@
+---
+description: Testing and verification rules
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Testing Rules
+
+## General
+
+- Every bug fix should include a regression test when practical.
+- Every business rule should have a test or a manual verification path.
+- Do not claim tests passed unless they were actually run.
+
+## Backend Commands
+
+Use commands appropriate to the project:
+
+- `./mvnw test`
+- `mvn test`
+- `./gradlew test`
+- `gradle test`
+
+For Spring Boot API/security/database changes, prefer integration tests if available.
+
+## Mobile Commands
+
+Use:
+
+- `flutter analyze`
+- `flutter test`
+
+For networking or Android manifest changes, also verify release/profile configuration.
+
+## Completion Format
+
+Always include:
+
+- Tests run
+- Tests not run
+- Manual checks needed
+- Remaining risks

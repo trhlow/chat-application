@@ -1,0 +1,57 @@
+---
+description: Flutter mobile app coding rules
+globs:
+  - "mobile/**/*.dart"
+  - "mobile/android/**/*.xml"
+  - "mobile/pubspec.yaml"
+alwaysApply: false
+---
+
+# Flutter Mobile Rules
+
+## Structure
+
+- Separate UI, models, services/API clients, storage, and state management.
+- Avoid putting API calls directly inside widgets.
+- Avoid large widgets with mixed responsibilities.
+- Extract reusable widgets only when reuse or readability improves.
+
+## State Handling
+
+Every feature screen should handle:
+
+- Loading
+- Empty
+- Error
+- Success
+
+## API Handling
+
+- Handle timeout.
+- Handle no internet.
+- Handle unauthorized response.
+- Handle backend validation errors.
+- Do not crash on unexpected JSON.
+- Do not log tokens or sensitive data.
+
+## Android
+
+- If the app calls APIs, ensure `android/app/src/main/AndroidManifest.xml` includes INTERNET permission.
+- Debug-only permissions are not enough for release/profile builds.
+- If using HTTP instead of HTTPS, configure cleartext only for development.
+
+## UX
+
+- Prevent double-submit on forms.
+- Show useful error messages.
+- Use correct keyboard/input types.
+- Avoid hardcoded screen sizes.
+- Support small mobile screens.
+
+## Verification
+
+After Flutter changes, run:
+
+- `flutter analyze`
+- `flutter test`
+- manual emulator/device check

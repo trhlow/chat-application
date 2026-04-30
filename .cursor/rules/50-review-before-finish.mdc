@@ -1,0 +1,46 @@
+---
+description: Mandatory final review checklist before completing a task
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Final Review Checklist
+
+Before saying the task is complete, check:
+
+## Code Quality
+
+- Is the change minimal?
+- Is naming clear?
+- Is duplicated code avoided?
+- Is the responsibility placed in the correct layer?
+
+## Correctness
+
+- Does it satisfy the actual requirement?
+- Are edge cases handled?
+- Are null/empty/error cases handled?
+- Are date and money calculations safe?
+
+## Security
+
+- Is authentication required where needed?
+- Is authorization enforced?
+- Are secrets protected?
+- Are logs safe?
+
+## Compatibility
+
+- Does backend compile?
+- Does mobile analyze/build?
+- Are Android release settings correct?
+- Are existing APIs preserved unless intentionally changed?
+
+## Output
+
+End with:
+
+- Verdict: Pass / Needs work
+- Main risk
+- Next best improvement

@@ -1,0 +1,44 @@
+---
+description: Project-wide context and behavior rules for this Flutter + Spring Boot project
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Project Context
+
+This project is a personal mobile application with:
+
+- Java Spring Boot backend
+- Flutter / Dart mobile app
+- User-owned private data
+- Money/date/calculation logic
+- Authentication and token-based API access
+
+# Core Rules
+
+- Act like a senior engineer reviewing a real project, not a tutorial bot.
+- Inspect existing code before proposing changes.
+- Make minimal, safe, reviewable edits.
+- Do not invent missing files, APIs, classes, dependencies, or business rules.
+- Prefer fixing root causes over patching symptoms.
+- Protect user privacy and private financial/order data.
+- Do not create unauthenticated flows that expose or recreate access tokens.
+- Every change must include verification steps.
+
+# Response Style
+
+When reviewing:
+
+1. Critical issues
+2. Important issues
+3. Minor improvements
+4. Suggested fix
+5. Tests to run
+
+When coding:
+
+1. Files changed
+2. Key decisions
+3. Verification commands
+4. Risks

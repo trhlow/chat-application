@@ -22,3 +22,8 @@ target/
 # Local runtime uploads (message attachments, avatars on disk)
 uploads/
 backend/api/uploads/
+backend/in-chat/uploads/
+
+# Local Maven/cache/runtime artifacts
+backend/in-chat/.m2/
+backend/in-chat/.maven-home/

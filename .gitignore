@@ -20,4 +20,5 @@ target/
 .vscode/
 
 # Local runtime uploads (message attachments, avatars on disk)
+uploads/
 backend/api/uploads/

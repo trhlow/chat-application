@@ -15,6 +15,12 @@ public interface FriendRequestRepository extends MongoRepository<FriendRequest, 
             FriendRequestStatus status
     );
 
+    boolean existsByUserIdAAndUserIdBAndStatus(
+            String userIdA,
+            String userIdB,
+            FriendRequestStatus status
+    );
+
     List<FriendRequest> findByReceiverIdAndStatusOrderByCreatedAtDesc(
             String receiverId,
             FriendRequestStatus status

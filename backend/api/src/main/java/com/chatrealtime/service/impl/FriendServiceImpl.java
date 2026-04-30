@@ -8,6 +8,7 @@ import com.chatrealtime.dto.request.CreateFriendRequestRequest;
 import com.chatrealtime.dto.response.FriendRequestResponse;
 import com.chatrealtime.dto.response.FriendshipResponse;
 import com.chatrealtime.exception.BadRequestException;
+import com.chatrealtime.exception.ConflictException;
 import com.chatrealtime.exception.FriendRequestNotFoundException;
 import com.chatrealtime.exception.FriendshipNotFoundException;
 import com.chatrealtime.exception.UserNotFoundException;
@@ -21,6 +22,7 @@ import com.chatrealtime.service.FriendService;
 import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.util.UserIdPair;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,25 +61,28 @@ public class FriendServiceImpl implements FriendService {
             throw new BadRequestException("Users are already friends");
         }
 
-        boolean hasPendingRequest = friendRequestRepository.existsByRequesterIdAndReceiverIdAndStatus(
-                requester.getId(),
-                receiver.getId(),
-                FriendRequestStatus.PENDING
-        ) || friendRequestRepository.existsByRequesterIdAndReceiverIdAndStatus(
-                receiver.getId(),
-                requester.getId(),
+        boolean hasPendingRequest = friendRequestRepository.existsByUserIdAAndUserIdBAndStatus(
+                pair.userIdA(),
+                pair.userIdB(),
                 FriendRequestStatus.PENDING
         );
         if (hasPendingRequest) {
             throw new BadRequestException("A pending friend request already exists");
         }
 
-        FriendRequest savedRequest = friendRequestRepository.save(FriendRequest.builder()
-                .requesterId(requester.getId())
-                .receiverId(receiver.getId())
-                .status(FriendRequestStatus.PENDING)
-                .createdAt(Instant.now())
-                .build());
+        FriendRequest savedRequest;
+        try {
+            savedRequest = friendRequestRepository.save(FriendRequest.builder()
+                    .requesterId(requester.getId())
+                    .receiverId(receiver.getId())
+                    .userIdA(pair.userIdA())
+                    .userIdB(pair.userIdB())
+                    .status(FriendRequestStatus.PENDING)
+                    .createdAt(Instant.now())
+                    .build());
+        } catch (DuplicateKeyException exception) {
+            throw new ConflictException("A pending friend request already exists");
+        }
 
         notificationService.createSystemNotification(
                 receiver.getId(),
@@ -126,12 +131,16 @@ public class FriendServiceImpl implements FriendService {
         User requester = getUser(friendRequest.getRequesterId());
         UserIdPair.Ordered pair = UserIdPair.order(friendRequest.getRequesterId(), friendRequest.getReceiverId());
         if (!friendshipRepository.existsByUserIdAAndUserIdB(pair.userIdA(), pair.userIdB())) {
-            friendshipRepository.save(Friendship.builder()
-                    .userIdA(pair.userIdA())
-                    .userIdB(pair.userIdB())
-                    .userIds(List.of(pair.userIdA(), pair.userIdB()))
-                    .createdAt(Instant.now())
-                    .build());
+            try {
+                friendshipRepository.save(Friendship.builder()
+                        .userIdA(pair.userIdA())
+                        .userIdB(pair.userIdB())
+                        .userIds(List.of(pair.userIdA(), pair.userIdB()))
+                        .createdAt(Instant.now())
+                        .build());
+            } catch (DuplicateKeyException ignored) {
+                // Another request accepted the same canonical pair concurrently.
+            }
         }
 
         friendRequest.setStatus(FriendRequestStatus.ACCEPTED);

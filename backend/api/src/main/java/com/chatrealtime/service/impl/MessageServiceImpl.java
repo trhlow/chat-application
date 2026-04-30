@@ -25,6 +25,7 @@ import com.chatrealtime.service.PresenceService;
 import com.chatrealtime.storage.MessageAttachmentStorageService;
 import com.chatrealtime.storage.StoredMessageAttachment;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -53,6 +54,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class MessageServiceImpl implements MessageService {
     private static final String NOTIFICATION_NEW_MESSAGE = "new_message";
     private static final int DEFAULT_LIMIT = 50;
@@ -119,40 +121,45 @@ public class MessageServiceImpl implements MessageService {
         String normalizedContent = normalizeOptionalContent(content);
         StoredMessageAttachment storedAttachment = messageAttachmentStorageService.store(principal.getId(), file);
 
-        Message message = Message.builder()
-                .roomId(roomId)
-                .senderId(principal.getId())
-                .content(normalizedContent == null ? "" : normalizedContent)
-                .timestamp(LocalDateTime.now())
-                .status("sent")
-                .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
-                .readByUserIds(new HashSet<>(Set.of(principal.getId())))
-                .build();
+        try {
+            Message message = Message.builder()
+                    .roomId(roomId)
+                    .senderId(principal.getId())
+                    .content(normalizedContent == null ? "" : normalizedContent)
+                    .timestamp(LocalDateTime.now())
+                    .status("sent")
+                    .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
+                    .readByUserIds(new HashSet<>(Set.of(principal.getId())))
+                    .build();
 
-        Message savedMessage = messageRepository.save(message);
-        MessageAttachment attachment = messageAttachmentRepository.save(MessageAttachment.builder()
-                .messageId(savedMessage.getId())
-                .fileUrl(storedAttachment.fileUrl())
-                .fileType(storedAttachment.fileType())
-                .mimeType(storedAttachment.mimeType())
-                .fileSize(storedAttachment.fileSize())
-                .originalName(storedAttachment.originalName())
-                .thumbnailUrl(storedAttachment.thumbnailUrl())
-                .storageProvider(storedAttachment.storageProvider())
-                .storagePublicId(storedAttachment.storagePublicId())
-                .createdAt(Instant.now())
-                .build());
+            Message savedMessage = messageRepository.save(message);
+            MessageAttachment attachment = messageAttachmentRepository.save(MessageAttachment.builder()
+                    .messageId(savedMessage.getId())
+                    .fileUrl(storedAttachment.fileUrl())
+                    .fileType(storedAttachment.fileType())
+                    .mimeType(storedAttachment.mimeType())
+                    .fileSize(storedAttachment.fileSize())
+                    .originalName(storedAttachment.originalName())
+                    .thumbnailUrl(storedAttachment.thumbnailUrl())
+                    .storageProvider(storedAttachment.storageProvider())
+                    .storagePublicId(storedAttachment.storagePublicId())
+                    .createdAt(Instant.now())
+                    .build());
 
-        updateRoomLastMessage(room, normalizedContent, attachment.getFileType());
-        notifyOfflineRecipients(
-                room,
-                principal.getId(),
-                buildMessagePreview(normalizedContent, attachment.getFileType()),
-                savedMessage.getId()
-        );
-        MessageResponse response = messageMapper.toResponse(savedMessage, List.of(attachment));
-        messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/messages", response);
-        return response;
+            updateRoomLastMessage(room, normalizedContent, attachment.getFileType());
+            notifyOfflineRecipients(
+                    room,
+                    principal.getId(),
+                    buildMessagePreview(normalizedContent, attachment.getFileType()),
+                    savedMessage.getId()
+            );
+            MessageResponse response = messageMapper.toResponse(savedMessage, List.of(attachment));
+            messagingTemplate.convertAndSend("/topic/rooms/" + roomId + "/messages", response);
+            return response;
+        } catch (RuntimeException exception) {
+            cleanupStoredAttachment(storedAttachment);
+            throw exception;
+        }
     }
 
     @Override
@@ -407,6 +414,14 @@ public class MessageServiceImpl implements MessageService {
                 senderDisplayName + " sent a message in " + roomName + ": " + messagePreview,
                 room.getId()
         ));
+    }
+
+    private void cleanupStoredAttachment(StoredMessageAttachment storedAttachment) {
+        try {
+            messageAttachmentStorageService.delete(storedAttachment);
+        } catch (RuntimeException cleanupException) {
+            log.warn("Failed to cleanup orphan attachment: {}", storedAttachment.storagePublicId(), cleanupException);
+        }
     }
 
     private String resolveRoomDisplayName(Room room, String fallback) {

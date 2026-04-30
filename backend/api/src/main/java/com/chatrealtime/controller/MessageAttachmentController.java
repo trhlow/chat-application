@@ -55,6 +55,7 @@ public class MessageAttachmentController {
                 .contentType(delivery.mediaType())
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
+                .header("X-Content-Type-Options", "nosniff")
                 .body(body);
     }
 }

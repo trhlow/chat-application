@@ -3,6 +3,7 @@ package com.chatrealtime.storage;
 import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.exception.FileStorageException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DefaultMessageAttachmentStorageService implements MessageAttachmentStorageService {
     private static final String PROVIDER_CLOUDINARY = "cloudinary";
     private static final String PROVIDER_LOCAL = "local";
@@ -46,6 +48,21 @@ public class DefaultMessageAttachmentStorageService implements MessageAttachment
             return uploadToCloudinary(userId, file, metadata);
         }
         return uploadToLocalStorage(userId, file, metadata);
+    }
+
+    @Override
+    public void delete(StoredMessageAttachment attachment) {
+        if (attachment == null || attachment.storagePublicId() == null || attachment.storagePublicId().isBlank()) {
+            return;
+        }
+        String provider = attachment.storageProvider() == null ? PROVIDER_LOCAL : attachment.storageProvider();
+        if (PROVIDER_CLOUDINARY.equalsIgnoreCase(provider)) {
+            deleteFromCloudinary(attachment);
+            return;
+        }
+        if (PROVIDER_LOCAL.equalsIgnoreCase(provider)) {
+            deleteFromLocalStorage(attachment);
+        }
     }
 
     private AttachmentMetadata scanMetadata(MultipartFile file) {
@@ -161,6 +178,47 @@ public class DefaultMessageAttachmentStorageService implements MessageAttachment
             throw new FileStorageException("Could not read message attachment");
         } catch (RuntimeException exception) {
             throw new FileStorageException("Cloudinary attachment upload failed");
+        }
+    }
+
+    private void deleteFromLocalStorage(StoredMessageAttachment attachment) {
+        try {
+            Path baseDir = Path.of(attachmentProperties.local().uploadDir()).toAbsolutePath().normalize();
+            Path target = baseDir.resolve(attachment.storagePublicId()).normalize();
+            if (!target.startsWith(baseDir)) {
+                log.warn("Skipping attachment cleanup outside upload root: {}", attachment.storagePublicId());
+                return;
+            }
+            Files.deleteIfExists(target);
+        } catch (IOException exception) {
+            throw new FileStorageException("Could not delete message attachment");
+        }
+    }
+
+    private void deleteFromCloudinary(StoredMessageAttachment attachment) {
+        requireCloudinaryConfig();
+
+        long timestamp = Instant.now().getEpochSecond();
+        String resourceType = cloudinaryResourceType(attachment.fileType());
+        Map<String, String> signatureParams = new TreeMap<>();
+        signatureParams.put("public_id", attachment.storagePublicId());
+        signatureParams.put("timestamp", String.valueOf(timestamp));
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("api_key", storageProperties.cloudinary().apiKey());
+        body.add("public_id", attachment.storagePublicId());
+        body.add("timestamp", String.valueOf(timestamp));
+        body.add("signature", sign(signatureParams, storageProperties.cloudinary().apiSecret()));
+
+        try {
+            restClient.post()
+                    .uri("/v1_1/{cloudName}/{resourceType}/destroy", storageProperties.cloudinary().cloudName(), resourceType)
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RuntimeException exception) {
+            throw new FileStorageException("Cloudinary attachment cleanup failed");
         }
     }
 

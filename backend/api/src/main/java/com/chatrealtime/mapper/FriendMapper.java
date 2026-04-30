@@ -20,8 +20,8 @@ public class FriendMapper {
     ) {
         return new FriendRequestResponse(
                 friendRequest.getId(),
-                userMapper.toUserProfileResponse(requester),
-                userMapper.toUserProfileResponse(receiver),
+                userMapper.toFriendUserResponse(requester),
+                userMapper.toFriendUserResponse(receiver),
                 friendRequest.getStatus(),
                 friendRequest.getCreatedAt(),
                 friendRequest.getRespondedAt()
@@ -31,7 +31,7 @@ public class FriendMapper {
     public FriendshipResponse toFriendshipResponse(Friendship friendship, User friend) {
         return new FriendshipResponse(
                 friendship.getId(),
-                userMapper.toUserProfileResponse(friend),
+                userMapper.toFriendUserResponse(friend),
                 friendship.getCreatedAt()
         );
     }

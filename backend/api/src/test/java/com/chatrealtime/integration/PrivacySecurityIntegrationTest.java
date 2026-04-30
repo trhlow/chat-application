@@ -5,6 +5,8 @@ import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.chatrealtime.repository.FriendshipRepository;
 import com.chatrealtime.repository.MessageAttachmentRepository;
 import com.chatrealtime.repository.MessageRepository;
@@ -43,6 +45,8 @@ class PrivacySecurityIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+    @Autowired
+    private ObjectMapper objectMapper;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -267,6 +271,39 @@ class PrivacySecurityIntegrationTest {
                 .getContentAsString();
 
         assertThat(body).doesNotContain("\"email\"");
+    }
+
+    @Test
+    void getFriends_responseDoesNotExposeEmailOrPrivateFields() throws Exception {
+        UserIdPair.Ordered pair = UserIdPair.order(userA, userB);
+        friendshipRepository.save(Friendship.builder()
+                .id("it-fr-" + UUID.randomUUID())
+                .userIdA(pair.userIdA())
+                .userIdB(pair.userIdB())
+                .userIds(List.of(pair.userIdA(), pair.userIdB()))
+                .createdAt(Instant.now())
+                .build());
+
+        String body = mockMvc.perform(get("/api/friends")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode root = objectMapper.readTree(body);
+
+        assertThat(root).hasSize(1);
+        JsonNode friend = root.get(0).get("friend");
+        assertThat(friend.get("id").asText()).isEqualTo(userB);
+        assertThat(friend.has("username")).isTrue();
+        assertThat(friend.has("displayName")).isTrue();
+        assertThat(friend.has("avatarEndpoint")).isTrue();
+        assertThat(friend.has("email")).isFalse();
+        assertThat(friend.has("phone")).isFalse();
+        assertThat(friend.has("bio")).isFalse();
+        assertThat(friend.has("themePreference")).isFalse();
+        assertThat(friend.has("lastSeenAt")).isFalse();
     }
 
     private void saveUserWithCloudinaryAvatar(String userId) {

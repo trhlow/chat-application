@@ -6,8 +6,8 @@ import java.time.Instant;
 
 public record FriendRequestResponse(
         String id,
-        UserProfileResponse requester,
-        UserProfileResponse receiver,
+        FriendUserResponse requester,
+        FriendUserResponse receiver,
         FriendRequestStatus status,
         Instant createdAt,
         Instant respondedAt

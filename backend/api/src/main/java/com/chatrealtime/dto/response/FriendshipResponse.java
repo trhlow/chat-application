@@ -4,7 +4,7 @@ import java.time.Instant;
 
 public record FriendshipResponse(
         String id,
-        UserProfileResponse friend,
+        FriendUserResponse friend,
         Instant createdAt
 ) {
 }

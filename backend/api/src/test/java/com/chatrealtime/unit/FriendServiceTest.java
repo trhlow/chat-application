@@ -7,6 +7,7 @@ import com.chatrealtime.domain.User;
 import com.chatrealtime.dto.request.CreateFriendRequestRequest;
 import com.chatrealtime.dto.response.FriendRequestResponse;
 import com.chatrealtime.exception.BadRequestException;
+import com.chatrealtime.exception.ConflictException;
 import com.chatrealtime.mapper.FriendMapper;
 import com.chatrealtime.repository.FriendRequestRepository;
 import com.chatrealtime.repository.FriendshipRepository;
@@ -21,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -29,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -81,6 +84,25 @@ class FriendServiceTest {
     }
 
     @Test
+    void sendFriendRequest_WhenDuplicateKeyRaceOccurs_ShouldReturnConflict() {
+        User requester = user("u1", "alice");
+        User receiver = user("u2", "bob");
+        CreateFriendRequestRequest request = new CreateFriendRequestRequest("u2");
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(userRepository.findById("u1")).thenReturn(Optional.of(requester));
+        when(userRepository.findById("u2")).thenReturn(Optional.of(receiver));
+        when(friendshipRepository.existsByUserIdAAndUserIdB("u1", "u2")).thenReturn(false);
+        when(friendRequestRepository.existsByUserIdAAndUserIdBAndStatus("u1", "u2", FriendRequestStatus.PENDING))
+                .thenReturn(false);
+        when(friendRequestRepository.save(any(FriendRequest.class))).thenThrow(new DuplicateKeyException("duplicate"));
+
+        assertThatThrownBy(() -> friendService.sendFriendRequest(request))
+                .isInstanceOf(ConflictException.class);
+        verify(notificationService, never()).createSystemNotification(anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
     void acceptRequest_ShouldCreateFriendshipAndNotifyRequester() {
         User requester = user("u1", "alice");
         User receiver = user("u2", "bob");
@@ -115,6 +137,35 @@ class FriendServiceTest {
                 eq("bob accepted your friend request"),
                 eq("fr1")
         );
+        assertThat(response.status()).isEqualTo(FriendRequestStatus.ACCEPTED);
+    }
+
+    @Test
+    void acceptRequest_WhenFriendshipDuplicateKeyRaceOccurs_ShouldStillAcceptRequest() {
+        User requester = user("u1", "alice");
+        User receiver = user("u2", "bob");
+        FriendRequest friendRequest = FriendRequest.builder()
+                .id("fr1")
+                .requesterId("u1")
+                .receiverId("u2")
+                .status(FriendRequestStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
+        when(userRepository.findById("u2")).thenReturn(Optional.of(receiver));
+        when(userRepository.findById("u1")).thenReturn(Optional.of(requester));
+        when(friendRequestRepository.findById("fr1")).thenReturn(Optional.of(friendRequest));
+        when(friendshipRepository.existsByUserIdAAndUserIdB("u1", "u2")).thenReturn(false);
+        when(friendshipRepository.save(any(Friendship.class))).thenThrow(new DuplicateKeyException("duplicate"));
+        when(friendRequestRepository.save(any(FriendRequest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(friendMapper.toFriendRequestResponse(any(FriendRequest.class), eq(requester), eq(receiver)))
+                .thenReturn(new FriendRequestResponse("fr1", null, null, FriendRequestStatus.ACCEPTED, friendRequest.getCreatedAt(), Instant.now()));
+
+        FriendRequestResponse response = friendService.acceptRequest("fr1");
+
+        verify(friendshipRepository).save(any(Friendship.class));
+        assertThat(friendRequest.getStatus()).isEqualTo(FriendRequestStatus.ACCEPTED);
         assertThat(response.status()).isEqualTo(FriendRequestStatus.ACCEPTED);
     }
 

@@ -32,15 +32,18 @@ public class DefaultAvatarStorageService implements AvatarStorageService {
     private static final String PROVIDER_LOCAL = "local";
 
     private final StorageProperties storageProperties;
+    private final FileMimeDetector fileMimeDetector;
     private final RestClient restClient = RestClient.create("https://api.cloudinary.com");
 
     @Override
     public AvatarUploadResult uploadAvatar(String userId, MultipartFile file) {
-        validateFile(file);
+        validateFileRequired(file);
+        String detectedMimeType = fileMimeDetector.detect(file);
+        validateFile(file, detectedMimeType);
         if (PROVIDER_CLOUDINARY.equalsIgnoreCase(storageProperties.provider())) {
             return uploadToCloudinary(userId, file);
         }
-        return uploadToLocalStorage(userId, file);
+        return uploadToLocalStorage(userId, file, detectedMimeType);
     }
 
     @Override
@@ -59,25 +62,28 @@ public class DefaultAvatarStorageService implements AvatarStorageService {
         }
     }
 
-    private void validateFile(MultipartFile file) {
+    private void validateFileRequired(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("avatar file is required");
         }
+    }
+
+    private void validateFile(MultipartFile file, String detectedMimeType) {
         if (file.getSize() > storageProperties.maxFileSizeBytes()) {
             throw new BadRequestException("avatar file size exceeds the allowed limit");
         }
-        if (file.getContentType() == null || storageProperties.allowedContentTypes().stream()
-                .noneMatch(contentType -> contentType.equalsIgnoreCase(file.getContentType()))) {
+        if (detectedMimeType == null || detectedMimeType.isBlank() || storageProperties.allowedContentTypes().stream()
+                .noneMatch(contentType -> contentType.equalsIgnoreCase(detectedMimeType))) {
             throw new BadRequestException("avatar file type must be image/jpeg, image/png, or image/webp");
         }
     }
 
-    private AvatarUploadResult uploadToLocalStorage(String userId, MultipartFile file) {
+    private AvatarUploadResult uploadToLocalStorage(String userId, MultipartFile file, String detectedMimeType) {
         try {
             Path uploadDir = Path.of(storageProperties.local().uploadDir()).toAbsolutePath().normalize();
             Files.createDirectories(uploadDir);
 
-            String extension = extensionFromContentType(file.getContentType());
+            String extension = extensionFromContentType(detectedMimeType);
             String filename = userId + "-" + UUID.randomUUID() + extension;
             Path target = uploadDir.resolve(filename).normalize();
             file.transferTo(target);

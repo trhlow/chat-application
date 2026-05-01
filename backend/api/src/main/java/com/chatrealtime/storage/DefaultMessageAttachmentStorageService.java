@@ -39,6 +39,7 @@ public class DefaultMessageAttachmentStorageService implements MessageAttachment
 
     private final MessageAttachmentProperties attachmentProperties;
     private final StorageProperties storageProperties;
+    private final FileMimeDetector fileMimeDetector;
     private final RestClient restClient = RestClient.create("https://api.cloudinary.com");
 
     @Override
@@ -69,7 +70,7 @@ public class DefaultMessageAttachmentStorageService implements MessageAttachment
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("attachment file is required");
         }
-        String mimeType = file.getContentType();
+        String mimeType = fileMimeDetector.detect(file);
         if (mimeType == null || mimeType.isBlank()) {
             throw new BadRequestException("attachment mime type is required");
         }

@@ -217,6 +217,65 @@ class PrivacySecurityIntegrationTest {
     }
 
     @Test
+    void messageResponse_doesNotExposeRawAttachmentUrl() throws Exception {
+        String roomId = "it-room-attachment-response-" + UUID.randomUUID();
+        roomRepository.save(Room.builder()
+                .id(roomId)
+                .type("group")
+                .memberIds(List.of(userA, userB))
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build());
+
+        String messageId = "it-msg-attachment-response-" + UUID.randomUUID();
+        messageRepository.save(Message.builder()
+                .id(messageId)
+                .roomId(roomId)
+                .senderId(userA)
+                .content("with attachment")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .deliveredToUserIds(Set.of(userA, userB))
+                .readByUserIds(Set.of(userA))
+                .build());
+
+        String attachmentId = "it-att-response-" + UUID.randomUUID();
+        messageAttachmentRepository.save(MessageAttachment.builder()
+                .id(attachmentId)
+                .messageId(messageId)
+                .fileUrl("https://res.cloudinary.com/demo/image/upload/private-attachment.png")
+                .fileType("image")
+                .mimeType("image/png")
+                .fileSize(123)
+                .originalName("private.png")
+                .thumbnailUrl("http://localhost:8080/uploads/message-attachments/image/private.png")
+                .storageProvider("cloudinary")
+                .storagePublicId("private-attachment")
+                .createdAt(Instant.now())
+                .build());
+
+        String body = mockMvc.perform(get("/api/messages").param("roomId", roomId)
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode attachment = objectMapper.readTree(body)
+                .get("items")
+                .get(0)
+                .get("attachments")
+                .get(0);
+
+        assertThat(attachment.has("fileUrl")).isFalse();
+        assertThat(attachment.has("thumbnailUrl")).isFalse();
+        assertThat(attachment.get("downloadEndpoint").asText())
+                .isEqualTo("/api/messages/" + messageId + "/attachments/" + attachmentId + "/download");
+        assertThat(body).doesNotContain("res.cloudinary.com");
+        assertThat(body).doesNotContain("/uploads/");
+    }
+
+    @Test
     void avatar_stranger_returns403() throws Exception {
         saveUserWithCloudinaryAvatar(userA);
 

@@ -31,18 +31,8 @@ public class MessageMapper {
         );
     }
 
-    /**
-     * Exposes only API-relative download paths (never raw Cloudinary/local disk URLs to clients).
-     */
     public MessageAttachmentResponse toAttachmentResponse(String messageId, MessageAttachment attachment) {
         String downloadPath = "/api/messages/" + messageId + "/attachments/" + attachment.getId() + "/download";
-        String storedThumb = attachment.getThumbnailUrl();
-        String storedFile = attachment.getFileUrl();
-        String thumbnailPath = downloadPath;
-        if (storedThumb != null && !storedThumb.isBlank()
-                && storedFile != null && !storedThumb.equals(storedFile)) {
-            thumbnailPath = downloadPath + "?variant=thumbnail";
-        }
         return new MessageAttachmentResponse(
                 attachment.getId(),
                 attachment.getMessageId(),
@@ -50,8 +40,7 @@ public class MessageMapper {
                 attachment.getFileType(),
                 attachment.getMimeType(),
                 attachment.getFileSize(),
-                attachment.getOriginalName(),
-                thumbnailPath
+                attachment.getOriginalName()
         );
     }
 

@@ -6,6 +6,7 @@ import com.chatrealtime.dto.request.UpdateUserProfileRequest;
 import com.chatrealtime.dto.response.PublicUserProfileResponse;
 import com.chatrealtime.dto.response.UserProfileResponse;
 import com.chatrealtime.dto.response.UserSearchResultResponse;
+import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.exception.ExistsUsernameException;
 import com.chatrealtime.exception.UserNotFoundException;
 import com.chatrealtime.mapper.UserMapper;
@@ -17,6 +18,8 @@ import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.security.UserPrincipalService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,11 +40,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserSearchResultResponse> getUsers(String query) {
-        if (query == null || query.isBlank()) {
-            return List.of();
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.length() < 2) {
+            throw new BadRequestException("Search query must be at least 2 characters");
         }
-        String normalizedQuery = query.trim().toLowerCase(Locale.ROOT);
-        return userRepository.findByUsernameContainingIgnoreCase(normalizedQuery)
+
+        PageRequest pageRequest = PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "username"));
+        return userRepository.findByUsernameContainingIgnoreCase(normalizedQuery, pageRequest)
                 .stream()
                 .map(userMapper::toSearchResult)
                 .toList();

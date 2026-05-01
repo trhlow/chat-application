@@ -23,6 +23,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -137,6 +139,56 @@ class RoomServiceTest {
         assertThat(response.memberIds()).containsExactly("u1", "u2", "u3");
         assertThat(response.unreadCount()).isEqualTo(4L);
         verify(notificationService).createSystemNotification(eq("u3"), eq("group_member_added"), eq("Added to group"), eq("Alice added you to group Project A"), eq("g1"));
+    }
+
+    @Test
+    void getRoomById_WhenCurrentUserIsNotMember_ShouldThrowAccessDenied() {
+        Room room = Room.builder()
+                .id("g1")
+                .type("group")
+                .memberIds(List.of("u2", "u3"))
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+
+        assertThatThrownBy(() -> roomService.getRoomById("g1"))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void updateRoomName_WhenCurrentUserIsNotAdmin_ShouldThrowAccessDenied() {
+        Room room = Room.builder()
+                .id("g1")
+                .type("group")
+                .memberIds(List.of("u1", "u2", "u3"))
+                .admins(List.of("u2"))
+                .ownerId("u2")
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+
+        assertThatThrownBy(() -> roomService.updateRoomName("g1", new UpdateRoomNameRequest("Renamed")))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void dissolveRoom_WhenCurrentUserIsNotOwner_ShouldThrowAccessDenied() {
+        Room room = Room.builder()
+                .id("g1")
+                .type("group")
+                .memberIds(List.of("u1", "u2", "u3"))
+                .admins(List.of("u1", "u2"))
+                .ownerId("u2")
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+
+        assertThatThrownBy(() -> roomService.dissolveRoom("g1"))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(messageRepository, never()).findByRoomId("g1");
     }
 
     @Test

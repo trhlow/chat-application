@@ -34,6 +34,7 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -95,7 +96,7 @@ class MessageServiceTest {
         CreateMessageRequest request = new CreateMessageRequest("r1", "hello");
 
         assertThatThrownBy(() -> messageService.createMessage(request))
-                .isInstanceOf(BadRequestException.class);
+                .isInstanceOf(AccessDeniedException.class);
         verify(messageRepository, never()).save(any(Message.class));
     }
 
@@ -204,6 +205,63 @@ class MessageServiceTest {
         assertThat(attachmentCaptor.getValue().getMessageId()).isEqualTo("m1");
         assertThat(attachmentCaptor.getValue().getFileType()).isEqualTo("image");
         assertThat(response.id()).isEqualTo("m1");
+    }
+
+    @Test
+    void createMessageWithAttachment_WhenMessageSaveFails_ShouldCleanupStoredAttachmentAndRethrow() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("r1"))
+                .thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", new byte[] {1, 2, 3});
+        StoredMessageAttachment storedAttachment = new StoredMessageAttachment(
+                "http://localhost:8080/uploads/message-attachments/image/a.png",
+                "image",
+                "image/png",
+                3L,
+                "avatar.png",
+                "http://localhost:8080/uploads/message-attachments/image/a.png",
+                "local",
+                "image/a.png"
+        );
+        RuntimeException dbFailure = new IllegalStateException("db save failed");
+
+        when(messageAttachmentStorageService.store("u1", file)).thenReturn(storedAttachment);
+        when(messageRepository.save(any(Message.class))).thenThrow(dbFailure);
+
+        assertThatThrownBy(() -> messageService.createMessageWithAttachment("r1", "hello", file))
+                .isSameAs(dbFailure);
+        verify(messageAttachmentStorageService).delete(storedAttachment);
+        verify(messageAttachmentRepository, never()).save(any(MessageAttachment.class));
+    }
+
+    @Test
+    void createMessageWithAttachment_WhenCleanupFails_ShouldKeepOriginalException() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("r1"))
+                .thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", new byte[] {1, 2, 3});
+        StoredMessageAttachment storedAttachment = new StoredMessageAttachment(
+                "http://localhost:8080/uploads/message-attachments/image/a.png",
+                "image",
+                "image/png",
+                3L,
+                "avatar.png",
+                "http://localhost:8080/uploads/message-attachments/image/a.png",
+                "local",
+                "image/a.png"
+        );
+        RuntimeException dbFailure = new IllegalStateException("db save failed");
+
+        when(messageAttachmentStorageService.store("u1", file)).thenReturn(storedAttachment);
+        when(messageRepository.save(any(Message.class))).thenThrow(dbFailure);
+        org.mockito.Mockito.doThrow(new RuntimeException("cleanup failed"))
+                .when(messageAttachmentStorageService)
+                .delete(storedAttachment);
+
+        assertThatThrownBy(() -> messageService.createMessageWithAttachment("r1", "hello", file))
+                .isSameAs(dbFailure);
     }
 
     @Test

@@ -1,6 +1,8 @@
 package com.chatrealtime.unit;
 
 import com.chatrealtime.dto.request.UpdateUserProfileRequest;
+import com.chatrealtime.dto.response.UserSearchResultResponse;
+import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.dto.response.UserProfileResponse;
 import com.chatrealtime.mapper.UserMapper;
 import com.chatrealtime.domain.User;
@@ -17,12 +19,17 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,10 +51,43 @@ class UserServiceTest {
     private UserServiceImpl userService;
 
     @Test
-    void getUsers_WhenQueryBlank_ShouldReturnEmptyWithoutListingAllUsers() {
-        assertThat(userService.getUsers(null)).isEmpty();
-        assertThat(userService.getUsers("   ")).isEmpty();
+    void getUsers_WhenQueryTooShort_ShouldRejectWithoutListingAllUsers() {
+        assertThatThrownBy(() -> userService.getUsers(null))
+                .isInstanceOf(BadRequestException.class);
+        assertThatThrownBy(() -> userService.getUsers(" a "))
+                .isInstanceOf(BadRequestException.class);
+
         verify(userRepository, never()).findAll();
+        verify(userRepository, never()).findByUsernameContainingIgnoreCase(any(String.class), any(Pageable.class));
+    }
+
+    @Test
+    void getUsers_ShouldLimitSearchToTwentySortedResults() {
+        User user = User.builder()
+                .id("u1")
+                .username("alice")
+                .displayName("Alice")
+                .avatar("https://res.cloudinary.com/demo/image/upload/avatar.png")
+                .build();
+        UserSearchResultResponse mapped = new UserSearchResultResponse(
+                "u1",
+                "alice",
+                "Alice",
+                "/api/users/u1/avatar"
+        );
+
+        when(userRepository.findByUsernameContainingIgnoreCase(eq("al"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(user)));
+        when(userMapper.toSearchResult(user)).thenReturn(mapped);
+
+        List<UserSearchResultResponse> response = userService.getUsers(" al ");
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(userRepository).findByUsernameContainingIgnoreCase(eq("al"), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
+        assertThat(pageableCaptor.getValue().getSort().getOrderFor("username").isAscending()).isTrue();
+        assertThat(response).containsExactly(mapped);
+        assertThat(response.getFirst().avatarEndpoint()).isEqualTo("/api/users/u1/avatar");
     }
 
     @Test

@@ -34,6 +34,7 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -261,7 +262,7 @@ public class MessageServiceImpl implements MessageService {
 
     private void ensureMembership(Room room, String userId) {
         if (room.getMemberIds() == null || !room.getMemberIds().contains(userId)) {
-            throw new BadRequestException("Current user is not a member of this room");
+            throw new AccessDeniedException("Forbidden");
         }
     }
 

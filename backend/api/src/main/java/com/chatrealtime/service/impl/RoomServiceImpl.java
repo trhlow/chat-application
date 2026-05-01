@@ -24,6 +24,7 @@ import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.storage.AvatarStorageService;
 import com.chatrealtime.storage.AvatarUploadResult;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -74,7 +75,7 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
         if (room.getMemberIds() == null || !room.getMemberIds().contains(principal.getId())) {
-            throw new BadRequestException("Current user is not a member of this room");
+            throw new AccessDeniedException("Forbidden");
         }
         long unreadCount = messageService.getUnreadCountMap(List.of(room.getId())).getOrDefault(room.getId(), 0L);
         return roomMapper.toResponse(room, unreadCount);
@@ -249,7 +250,7 @@ public class RoomServiceImpl implements RoomService {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = requireGroupRoomForMember(roomId, principal.getId());
         if (!principal.getId().equals(room.getOwnerId())) {
-            throw new BadRequestException("Only the room owner can dissolve this room");
+            throw new AccessDeniedException("Forbidden");
         }
         deleteRoomData(room);
     }
@@ -267,14 +268,14 @@ public class RoomServiceImpl implements RoomService {
             throw new BadRequestException("This operation is only supported for group rooms");
         }
         if (room.getMemberIds() == null || !room.getMemberIds().contains(userId)) {
-            throw new BadRequestException("Current user is not a member of this room");
+            throw new AccessDeniedException("Forbidden");
         }
         return room;
     }
 
     private void ensureAdmin(Room room, String userId) {
         if (!safeAdmins(room).contains(userId)) {
-            throw new BadRequestException("Only room admins can perform this action");
+            throw new AccessDeniedException("Forbidden");
         }
     }
 

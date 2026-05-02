@@ -1,5 +1,6 @@
 package com.chatrealtime.unit;
 
+import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
 import com.chatrealtime.dto.request.AddRoomMembersRequest;
@@ -23,6 +24,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.time.Instant;
@@ -35,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -58,6 +62,8 @@ class RoomServiceTest {
     private NotificationService notificationService;
     @Mock
     private AvatarStorageService avatarStorageService;
+    @Mock
+    private MongoTemplate mongoTemplate;
 
     @InjectMocks
     private RoomServiceImpl roomService;
@@ -192,6 +198,35 @@ class RoomServiceTest {
     }
 
     @Test
+    void dissolveRoom_WhenOwner_ShouldDeleteMessagesInBatchesWithoutLoadingEntireRoom() {
+        Room room = Room.builder()
+                .id("g1")
+                .type("group")
+                .memberIds(List.of("u1", "u2", "u3"))
+                .admins(List.of("u1"))
+                .ownerId("u1")
+                .avatarProvider("local")
+                .avatarPublicId("room-avatar.png")
+                .build();
+        Message message = Message.builder().id("m1").roomId("g1").build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+        when(mongoTemplate.find(any(Query.class), eq(Message.class)))
+                .thenReturn(List.of(message))
+                .thenReturn(List.of());
+
+        roomService.dissolveRoom("g1");
+
+        verify(messageRepository, never()).findByRoomId("g1");
+        verify(messageAttachmentRepository).deleteByMessageIdIn(List.of("m1"));
+        verify(mongoTemplate, times(2)).find(any(Query.class), eq(Message.class));
+        verify(mongoTemplate).remove(any(Query.class), eq(Message.class));
+        verify(avatarStorageService).deleteAvatar("local", "room-avatar.png");
+        verify(roomRepository).delete(room);
+    }
+
+    @Test
     void leaveRoom_ShouldTransferOwnershipWhenOwnerLeaves() {
         Room room = Room.builder()
                 .id("g1")
@@ -223,6 +258,7 @@ class RoomServiceTest {
                 room.getId(),
                 room.getName(),
                 room.getType(),
+                room.getAvatar() == null ? null : "/api/rooms/" + room.getId() + "/avatar",
                 room.getAvatar() == null ? null : "/api/rooms/" + room.getId() + "/avatar",
                 room.getMemberIds(),
                 room.getAdmins(),

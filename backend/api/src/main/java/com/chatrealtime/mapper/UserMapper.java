@@ -15,6 +15,7 @@ public interface UserMapper {
             return null;
         }
 
+        String avatarEndpoint = avatarEndpoint(user);
         return new UserProfileResponse(
                 user.getId(),
                 user.getUsername(),
@@ -23,7 +24,8 @@ public interface UserMapper {
                 user.getBio(),
                 user.getPhone(),
                 user.getThemePreference(),
-                avatarEndpoint(user),
+                avatarEndpoint,
+                avatarEndpoint,
                 user.isOnline(),
                 user.getLastSeenAt()
         );
@@ -34,11 +36,13 @@ public interface UserMapper {
             return null;
         }
 
+        String avatarEndpoint = avatarEndpoint(user);
         return new PublicUserProfileResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getDisplayName(),
-                avatarEndpoint(user)
+                avatarEndpoint,
+                avatarEndpoint
         );
     }
 

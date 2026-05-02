@@ -343,10 +343,11 @@ class PrivacySecurityIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         JsonNode me = objectMapper.readTree(meBody);
-        assertThat(me.has("avatar")).isFalse();
         assertThat(me.has("avatarProvider")).isFalse();
         assertThat(me.get("avatarEndpoint").asText()).isEqualTo("/api/users/" + userA + "/avatar");
+        assertThat(me.get("avatar").asText()).isEqualTo("/api/users/" + userA + "/avatar");
         assertThat(meBody).doesNotContain("res.cloudinary.com");
+        assertThat(meBody).doesNotContain("/uploads/");
 
         String publicBody = mockMvc.perform(get("/api/users/{id}", userA)
                         .header("Authorization", "Bearer " + tokenB))
@@ -355,10 +356,11 @@ class PrivacySecurityIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         JsonNode publicProfile = objectMapper.readTree(publicBody);
-        assertThat(publicProfile.has("avatar")).isFalse();
         assertThat(publicProfile.has("avatarProvider")).isFalse();
         assertThat(publicProfile.get("avatarEndpoint").asText()).isEqualTo("/api/users/" + userA + "/avatar");
+        assertThat(publicProfile.get("avatar").asText()).isEqualTo("/api/users/" + userA + "/avatar");
         assertThat(publicBody).doesNotContain("res.cloudinary.com");
+        assertThat(publicBody).doesNotContain("/uploads/");
     }
 
     @Test
@@ -383,10 +385,11 @@ class PrivacySecurityIntegrationTest {
                 .getContentAsString();
 
         JsonNode room = objectMapper.readTree(body);
-        assertThat(room.has("avatar")).isFalse();
         assertThat(room.has("avatarProvider")).isFalse();
         assertThat(room.get("avatarEndpoint").asText()).isEqualTo("/api/rooms/" + roomId + "/avatar");
+        assertThat(room.get("avatar").asText()).isEqualTo("/api/rooms/" + roomId + "/avatar");
         assertThat(body).doesNotContain("res.cloudinary.com");
+        assertThat(body).doesNotContain("/uploads/");
     }
 
     @Test

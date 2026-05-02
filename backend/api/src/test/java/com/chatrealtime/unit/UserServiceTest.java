@@ -160,6 +160,7 @@ class UserServiceTest {
         assertThat(captor.getValue().getAvatarPublicId()).isEqualTo("new-public-id");
         assertThat(captor.getValue().getAvatarProvider()).isEqualTo("cloudinary");
         assertThat(response.avatarEndpoint()).isEqualTo("/api/users/u1/avatar");
+        assertThat(response.avatar()).isEqualTo("/api/users/u1/avatar");
     }
 
     private UserProfileResponse toResponse(User user) {
@@ -171,6 +172,7 @@ class UserServiceTest {
                 user.getBio(),
                 user.getPhone(),
                 user.getThemePreference(),
+                user.getAvatar() == null ? null : "/api/users/" + user.getId() + "/avatar",
                 user.getAvatar() == null ? null : "/api/users/" + user.getId() + "/avatar",
                 user.isOnline(),
                 user.getLastSeenAt()

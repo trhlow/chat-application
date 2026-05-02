@@ -11,11 +11,13 @@ public class RoomMapper {
     }
 
     public RoomResponse toResponse(Room room, long unreadCount) {
+        String avatarEndpoint = avatarEndpoint(room);
         return new RoomResponse(
                 room.getId(),
                 room.getName(),
                 room.getType(),
-                avatarEndpoint(room),
+                avatarEndpoint,
+                avatarEndpoint,
                 room.getMemberIds(),
                 room.getAdmins(),
                 room.getCreatedBy(),

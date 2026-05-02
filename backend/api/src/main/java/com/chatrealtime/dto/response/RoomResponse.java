@@ -8,6 +8,8 @@ public record RoomResponse(
         String name,
         String type,
         String avatarEndpoint,
+        @Deprecated(forRemoval = true)
+        String avatar,
         List<String> memberIds,
         List<String> admins,
         String createdBy,

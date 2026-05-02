@@ -11,6 +11,8 @@ public record UserProfileResponse(
         String phone,
         String themePreference,
         String avatarEndpoint,
+        @Deprecated(forRemoval = true)
+        String avatar,
         boolean online,
         Instant lastSeenAt
 ) {

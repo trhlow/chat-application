@@ -315,6 +315,39 @@ Before production deployment:
 - Restrict CORS and WebSocket origins.
 - Put the API behind TLS.
 - Configure object storage credentials when using Cloudinary.
+- Apply MongoDB friend uniqueness scripts before deploying builds that rely on canonical friend indexes.
+
+### MongoDB Friend Index Migration
+
+The `Friendship` and `FriendRequest` documents use canonical pairs (`userIdA`, `userIdB`) and production must have matching unique indexes. Do not rely on entity annotations alone.
+
+Run from the repository root, replacing the URI with the production MongoDB connection string:
+
+```bash
+mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/000_backfill_friend_pairs.js
+mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/001_check_friend_duplicates.js
+mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/002_cleanup_friend_duplicates.js
+mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/003_create_friend_indexes.js
+```
+
+Required order:
+
+1. Take a MongoDB backup.
+2. Run `000_backfill_friend_pairs.js`.
+3. Run `001_check_friend_duplicates.js`.
+4. If duplicates exist, review `002_cleanup_friend_duplicates.js` dry-run output.
+5. Re-run cleanup only with explicit opt-in:
+   ```bash
+   mongosh "$SPRING_DATA_MONGODB_URI" --eval "var RUN_CLEANUP=true" backend/api/scripts/mongodb/002_cleanup_friend_duplicates.js
+   ```
+6. Re-run duplicate check until it reports zero duplicate groups.
+7. Run `003_create_friend_indexes.js`.
+8. Deploy the application.
+
+The created indexes are:
+
+- `friendships`: `{ userIdA: 1, userIdB: 1 }`, unique, `uk_friendship_pair`
+- `friend_requests`: `{ userIdA: 1, userIdB: 1, status: 1 }`, unique, `uk_friend_request_pair_status`
 
 ---
 

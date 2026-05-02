@@ -18,6 +18,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
+import com.mongodb.client.result.UpdateResult;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +44,8 @@ class NotificationServiceTest {
     private UserRepository userRepository;
     @Mock
     private NotificationRealtimeEventBus notificationRealtimeEventBus;
+    @Mock
+    private MongoTemplate mongoTemplate;
 
     @InjectMocks
     private NotificationServiceImpl notificationService;
@@ -81,16 +88,14 @@ class NotificationServiceTest {
 
     @Test
     void markAllAsRead_ShouldUpdateUnreadNotificationsAndPushRealtimeEvent() {
-        Notification first = notification("n1", "u1", false);
-        Notification second = notification("n2", "u1", false);
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
-        when(notificationRepository.findByUserIdAndReadFalseOrderByCreatedAtDesc("u1")).thenReturn(List.of(first, second));
+        when(mongoTemplate.updateMulti(any(Query.class), any(Update.class), eq(Notification.class)))
+                .thenReturn(UpdateResult.acknowledged(2, 2L, null));
 
         notificationService.markAllAsRead();
 
-        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
-        verify(notificationRepository).saveAll(captor.capture());
-        assertThat(captor.getValue()).allMatch(Notification::isRead);
+        verify(mongoTemplate).updateMulti(any(Query.class), any(Update.class), eq(Notification.class));
+        verify(notificationRepository, never()).saveAll(any());
         verify(notificationRealtimeEventBus).publish(eq("alice"), any());
     }
 

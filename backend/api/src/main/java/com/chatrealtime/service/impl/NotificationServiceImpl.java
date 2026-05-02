@@ -17,11 +17,14 @@ import com.chatrealtime.security.AuthUserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.List;
 
 @Service
 @Transactional
@@ -31,6 +34,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final AuthContextService authContextService;
     private final UserRepository userRepository;
     private final NotificationRealtimeEventBus notificationRealtimeEventBus;
+    private final MongoTemplate mongoTemplate;
 
     @Override
     public NotificationPageResponse getNotificationsByCurrentUser(int page, int size) {
@@ -96,12 +100,11 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void markAllAsRead() {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
-        List<Notification> unreadNotifications = notificationRepository.findByUserIdAndReadFalseOrderByCreatedAtDesc(principal.getId());
-        if (unreadNotifications.isEmpty()) {
+        Query query = Query.query(Criteria.where("userId").is(principal.getId()).and("read").is(false));
+        Update update = new Update().set("read", true);
+        if (mongoTemplate.updateMulti(query, update, Notification.class).getModifiedCount() == 0) {
             return;
         }
-        unreadNotifications.forEach(notification -> notification.setRead(true));
-        notificationRepository.saveAll(unreadNotifications);
         notificationRealtimeEventBus.publish(
                 principal.getUsername(),
                 new NotificationRealtimeEventResponse("all_read", null, 0L)

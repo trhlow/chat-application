@@ -24,6 +24,9 @@ import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.storage.AvatarStorageService;
 import com.chatrealtime.storage.AvatarUploadResult;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,7 @@ public class RoomServiceImpl implements RoomService {
     private static final String ROOM_TYPE_DIRECT = "direct";
     private static final String ROOM_TYPE_GROUP = "group";
     private static final String NOTIFICATION_GROUP_ADDED = "group_member_added";
+    private static final int ROOM_DELETE_MESSAGE_BATCH_SIZE = 500;
 
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
@@ -56,6 +60,7 @@ public class RoomServiceImpl implements RoomService {
     private final MessageService messageService;
     private final NotificationService notificationService;
     private final AvatarStorageService avatarStorageService;
+    private final MongoTemplate mongoTemplate;
 
     @Override
     public List<RoomResponse> getCurrentUserRooms() {
@@ -357,11 +362,20 @@ public class RoomServiceImpl implements RoomService {
     }
 
     private void deleteRoomData(Room room) {
-        List<Message> messages = messageRepository.findByRoomId(room.getId());
-        List<String> messageIds = messages.stream().map(Message::getId).toList();
-        if (!messageIds.isEmpty()) {
+        while (true) {
+            Query batchQuery = Query.query(Criteria.where("roomId").is(room.getId()))
+                    .limit(ROOM_DELETE_MESSAGE_BATCH_SIZE);
+            batchQuery.fields().include("_id");
+
+            List<String> messageIds = mongoTemplate.find(batchQuery, Message.class)
+                    .stream()
+                    .map(Message::getId)
+                    .toList();
+            if (messageIds.isEmpty()) {
+                break;
+            }
             messageAttachmentRepository.deleteByMessageIdIn(messageIds);
-            messageRepository.deleteAll(messages);
+            mongoTemplate.remove(Query.query(Criteria.where("_id").in(messageIds)), Message.class);
         }
         avatarStorageService.deleteAvatar(room.getAvatarProvider(), room.getAvatarPublicId());
         roomRepository.delete(room);

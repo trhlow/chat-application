@@ -62,6 +62,7 @@ class DefaultMessageAttachmentStorageServiceTest {
         assertThat(stored.mimeType()).isEqualTo("image/png");
         assertThat(stored.storageProvider()).isEqualTo("local");
         assertThat(stored.storagePublicId()).startsWith("image/");
+        assertThat(stored.storagePublicId()).endsWith(".png");
         assertThat(uploadDir.resolve(stored.storagePublicId())).exists();
     }
 

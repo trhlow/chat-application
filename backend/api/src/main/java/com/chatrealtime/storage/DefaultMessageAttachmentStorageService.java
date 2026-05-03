@@ -253,20 +253,28 @@ public class DefaultMessageAttachmentStorageService implements MessageAttachment
     }
 
     private String extensionFor(String mimeType, String originalName) {
-        String extension = StringUtils.getFilenameExtension(originalName);
-        if (extension != null && !extension.isBlank()) {
-            return "." + extension.toLowerCase(Locale.ROOT);
-        }
-        return switch (mimeType) {
+        String extensionByMime = switch (mimeType) {
             case "image/jpeg" -> ".jpg";
             case "image/png" -> ".png";
             case "image/webp" -> ".webp";
+            case "image/gif" -> ".gif";
             case "video/mp4" -> ".mp4";
             case "video/webm" -> ".webm";
+            case "video/quicktime" -> ".mov";
             case "application/pdf" -> ".pdf";
             case "application/zip" -> ".zip";
-            default -> ".bin";
+            case "application/msword" -> ".doc";
+            case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> ".docx";
+            case "application/vnd.ms-excel" -> ".xls";
+            case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> ".xlsx";
+            case "text/plain" -> ".txt";
+            default -> null;
         };
+        if (extensionByMime != null) {
+            return extensionByMime;
+        }
+        String extension = StringUtils.getFilenameExtension(originalName);
+        return extension == null || extension.isBlank() ? ".bin" : "." + extension.toLowerCase(Locale.ROOT);
     }
 
     private void requireCloudinaryConfig() {

@@ -5,7 +5,6 @@ import com.chatrealtime.dto.response.FriendUserResponse;
 import com.chatrealtime.dto.response.UserProfileResponse;
 import com.chatrealtime.dto.response.UserSearchResultResponse;
 import com.chatrealtime.domain.User;
-import org.mapstruct.Mapping;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
@@ -46,19 +45,33 @@ public interface UserMapper {
         );
     }
 
-    @Mapping(target = "avatarEndpoint", expression = "java(\"/api/users/\" + user.getId() + \"/avatar\")")
-    UserSearchResultResponse toSearchResult(User user);
+    default UserSearchResultResponse toSearchResult(User user) {
+        if (user == null) {
+            return null;
+        }
+
+        String avatarEndpoint = avatarEndpoint(user);
+        return new UserSearchResultResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getDisplayName(),
+                avatarEndpoint,
+                avatarEndpoint
+        );
+    }
 
     default FriendUserResponse toFriendUserResponse(User user) {
         if (user == null) {
             return null;
         }
 
+        String avatarEndpoint = avatarEndpoint(user);
         return new FriendUserResponse(
                 user.getId(),
                 user.getUsername(),
                 user.getDisplayName(),
-                avatarEndpoint(user)
+                avatarEndpoint,
+                avatarEndpoint
         );
     }
 

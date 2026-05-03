@@ -266,11 +266,16 @@ class PrivacySecurityIntegrationTest {
                 .get(0)
                 .get("attachments")
                 .get(0);
+        JsonNode message = objectMapper.readTree(body)
+                .get("items")
+                .get(0);
 
         assertThat(attachment.has("fileUrl")).isFalse();
         assertThat(attachment.has("thumbnailUrl")).isFalse();
         assertThat(attachment.get("downloadEndpoint").asText())
                 .isEqualTo("/api/messages/" + messageId + "/attachments/" + attachmentId + "/download");
+        assertThat(message.get("deliveredToUserIds")).isEmpty();
+        assertThat(message.get("readByUserIds")).isEmpty();
         assertThat(body).doesNotContain("res.cloudinary.com");
         assertThat(body).doesNotContain("/uploads/");
     }
@@ -330,6 +335,9 @@ class PrivacySecurityIntegrationTest {
                 .getContentAsString();
 
         assertThat(body).doesNotContain("\"email\"");
+        JsonNode first = objectMapper.readTree(body).get(0);
+        assertThat(first.has("avatarEndpoint")).isTrue();
+        assertThat(first.has("avatar")).isTrue();
     }
 
     @Test
@@ -418,6 +426,7 @@ class PrivacySecurityIntegrationTest {
         assertThat(friend.has("username")).isTrue();
         assertThat(friend.has("displayName")).isTrue();
         assertThat(friend.has("avatarEndpoint")).isTrue();
+        assertThat(friend.has("avatar")).isTrue();
         assertThat(friend.has("email")).isFalse();
         assertThat(friend.has("phone")).isFalse();
         assertThat(friend.has("bio")).isFalse();

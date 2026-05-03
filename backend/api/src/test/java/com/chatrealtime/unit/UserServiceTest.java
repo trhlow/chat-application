@@ -73,6 +73,7 @@ class UserServiceTest {
                 "u1",
                 "alice",
                 "Alice",
+                "/api/users/u1/avatar",
                 "/api/users/u1/avatar"
         );
 

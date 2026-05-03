@@ -16,8 +16,6 @@ public class MessageMapper {
     }
 
     public MessageResponse toResponse(Message message, List<MessageAttachment> attachments) {
-        Set<String> delivered = message.getDeliveredToUserIds() == null ? Set.of() : message.getDeliveredToUserIds();
-        Set<String> readBy = message.getReadByUserIds() == null ? Set.of() : message.getReadByUserIds();
         return new MessageResponse(
                 message.getId(),
                 message.getRoomId(),
@@ -25,8 +23,8 @@ public class MessageMapper {
                 message.getContent(),
                 message.getTimestamp(),
                 normalizeStatus(message.getStatus()),
-                delivered,
-                readBy,
+                Set.of(),
+                Set.of(),
                 attachments.stream().map(att -> toAttachmentResponse(message.getId(), att)).toList()
         );
     }

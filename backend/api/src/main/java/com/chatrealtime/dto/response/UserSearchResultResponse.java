@@ -7,6 +7,8 @@ public record UserSearchResultResponse(
         String id,
         String username,
         String displayName,
-        String avatarEndpoint
+        String avatarEndpoint,
+        @Deprecated(forRemoval = true)
+        String avatar
 ) {
 }

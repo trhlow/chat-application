@@ -1,5 +1,6 @@
 package com.chatrealtime.integration;
 
+import com.chatrealtime.config.FriendGraphIndexInitializer;
 import com.chatrealtime.domain.FriendRequest;
 import com.chatrealtime.domain.FriendRequestStatus;
 import com.chatrealtime.domain.Friendship;
@@ -10,9 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
@@ -31,26 +30,11 @@ class FriendUniqueIndexIntegrationTest {
     private FriendshipRepository friendshipRepository;
     @Autowired
     private FriendRequestRepository friendRequestRepository;
-
     @BeforeEach
-    void recreateCollectionsWithUniqueIndexes() {
+    void recreateCollections() {
         mongoTemplate.dropCollection("friendships");
         mongoTemplate.dropCollection("friend_requests");
-
-        mongoTemplate.indexOps("friendships")
-                .ensureIndex(new Index()
-                        .on("userIdA", Sort.Direction.ASC)
-                        .on("userIdB", Sort.Direction.ASC)
-                        .unique()
-                        .named("uk_friendship_pair"));
-
-        mongoTemplate.indexOps("friend_requests")
-                .ensureIndex(new Index()
-                        .on("userIdA", Sort.Direction.ASC)
-                        .on("userIdB", Sort.Direction.ASC)
-                        .on("status", Sort.Direction.ASC)
-                        .unique()
-                        .named("uk_friend_request_pair_status"));
+        indexInitializer().afterPropertiesSet();
     }
 
     @Test
@@ -94,6 +78,38 @@ class FriendUniqueIndexIntegrationTest {
         );
 
         assertThat(saved.getId()).startsWith("r2-");
+    }
+
+    @Test
+    void initializer_WhenDuplicateFriendshipDataExists_ShouldFailBeforeCreatingUniqueIndex() {
+        mongoTemplate.dropCollection("friendships");
+        mongoTemplate.dropCollection("friend_requests");
+        String userA = uniqueUserId("a");
+        String userB = uniqueUserId("b");
+        mongoTemplate.save(friendship("f1", userA, userB));
+        mongoTemplate.save(friendship("f2", userA, userB));
+
+        assertThatThrownBy(() -> indexInitializer().afterPropertiesSet())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Duplicate friendship pair exists");
+    }
+
+    @Test
+    void initializer_WhenDuplicateFriendRequestDataExists_ShouldFailBeforeCreatingUniqueIndex() {
+        mongoTemplate.dropCollection("friendships");
+        mongoTemplate.dropCollection("friend_requests");
+        String userA = uniqueUserId("a");
+        String userB = uniqueUserId("b");
+        mongoTemplate.save(friendRequest("r1", userA, userB, userA, userB, FriendRequestStatus.PENDING));
+        mongoTemplate.save(friendRequest("r2", userB, userA, userA, userB, FriendRequestStatus.PENDING));
+
+        assertThatThrownBy(() -> indexInitializer().afterPropertiesSet())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Duplicate friend request pair/status exists");
+    }
+
+    private FriendGraphIndexInitializer indexInitializer() {
+        return new FriendGraphIndexInitializer(mongoTemplate);
     }
 
     private Friendship friendship(String id, String userA, String userB) {

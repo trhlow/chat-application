@@ -17,6 +17,8 @@ app:
     secret: ${APP_JWT_SECRET}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  rate-limit:
+    distributed: ${APP_RATE_LIMIT_DISTRIBUTED:true}
 
 springdoc:
   api-docs:

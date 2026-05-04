@@ -218,6 +218,8 @@ public class MessageServiceImpl implements MessageService {
             return Map.of();
         }
 
+        ensurePrincipalMemberOfAllRooms(principal, roomIds);
+
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("roomId").in(roomIds)
                         .and("senderId").ne(principal.getId())
@@ -263,6 +265,21 @@ public class MessageServiceImpl implements MessageService {
     private void ensureMembership(Room room, String userId) {
         if (room.getMemberIds() == null || !room.getMemberIds().contains(userId)) {
             throw new AccessDeniedException("Forbidden");
+        }
+    }
+
+    /**
+     * Defensive check so callers cannot aggregate unread counts across arbitrary room ids.
+     */
+    private void ensurePrincipalMemberOfAllRooms(AuthUserPrincipal principal, Collection<String> roomIds) {
+        List<String> distinctRoomIds = roomIds.stream().distinct().toList();
+        List<Room> rooms = roomRepository.findAllById(distinctRoomIds);
+        if (rooms.size() != distinctRoomIds.size()) {
+            throw new AccessDeniedException("Forbidden");
+        }
+        String userId = principal.getId();
+        for (Room room : rooms) {
+            ensureMembership(room, userId);
         }
     }
 

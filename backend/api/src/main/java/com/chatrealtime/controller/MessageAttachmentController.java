@@ -43,9 +43,7 @@ public class MessageAttachmentController {
 
         String mime = delivery.mediaType().toString();
         boolean inline = mime.startsWith("image/") || mime.startsWith("video/");
-        String filename = delivery.originalName() == null || delivery.originalName().isBlank()
-                ? "attachment"
-                : delivery.originalName();
+        String filename = safeAttachmentFilename(delivery.originalName());
         ContentDisposition disposition = ContentDisposition.builder(inline ? "inline" : "attachment")
                 .filename(filename, StandardCharsets.UTF_8)
                 .build();
@@ -57,5 +55,21 @@ public class MessageAttachmentController {
                 .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
                 .header("X-Content-Type-Options", "nosniff")
                 .body(body);
+    }
+
+    private static String safeAttachmentFilename(String original) {
+        if (original == null || original.isBlank()) {
+            return "attachment";
+        }
+        String cleaned = original.replace('\r', '_').replace('\n', '_').trim();
+        cleaned = cleaned.replace("..", "_");
+        int lastSlash = Math.max(cleaned.lastIndexOf('/'), cleaned.lastIndexOf('\\'));
+        if (lastSlash >= 0) {
+            cleaned = cleaned.substring(lastSlash + 1);
+        }
+        if (cleaned.isBlank()) {
+            return "attachment";
+        }
+        return cleaned.length() > 200 ? cleaned.substring(0, 200) : cleaned;
     }
 }

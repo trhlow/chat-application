@@ -44,6 +44,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -408,6 +409,10 @@ class MessageServiceTest {
                 Room.builder().id("r1").build(),
                 Room.builder().id("r2").build()
         ));
+        when(roomRepository.findAllById(anyList())).thenReturn(List.of(
+                Room.builder().id("r1").memberIds(List.of("u2")).build(),
+                Room.builder().id("r2").memberIds(List.of("u2")).build()
+        ));
         @SuppressWarnings("unchecked")
         AggregationResults<Document> aggregationResults = new AggregationResults<>(
                 List.of(new Document("_id", "r1").append("unreadCount", 2L)),
@@ -422,5 +427,16 @@ class MessageServiceTest {
                 new RoomUnreadCountResponse("r1", 2L),
                 new RoomUnreadCountResponse("r2", 0L)
         );
+    }
+
+    @Test
+    void getUnreadCountMap_WhenPrincipalNotMember_ShouldDeny() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
+        when(roomRepository.findAllById(List.of("r-secret"))).thenReturn(List.of(
+                Room.builder().id("r-secret").memberIds(List.of("u1", "u3")).build()
+        ));
+
+        assertThatThrownBy(() -> messageService.getUnreadCountMap(List.of("r-secret")))
+                .isInstanceOf(AccessDeniedException.class);
     }
 }

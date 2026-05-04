@@ -164,6 +164,38 @@ class UserServiceTest {
         assertThat(response.avatar()).isEqualTo("/api/users/u1/avatar");
     }
 
+    @Test
+    void uploadCurrentUserAvatar_WhenSaveFails_ShouldDeleteNewlyUploadedAvatar() {
+        User user = User.builder()
+                .id("u1")
+                .username("alice")
+                .email("alice@example.com")
+                .avatar("http://localhost:8080/uploads/avatars/old.png")
+                .avatarPublicId("old.png")
+                .avatarProvider("local")
+                .build();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "avatar.png",
+                "image/png",
+                new byte[]{1, 2, 3}
+        );
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(avatarStorageService.uploadAvatar("u1", file))
+                .thenReturn(new AvatarUploadResult("https://cdn.example/avatar.png", "new-public-id", "cloudinary"));
+        when(userRepository.save(any(User.class))).thenThrow(new IllegalStateException("db save failed"));
+
+        assertThatThrownBy(() -> userService.uploadCurrentUserAvatar(file))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("db save failed");
+
+        verify(avatarStorageService).deleteAvatar("cloudinary", "new-public-id");
+        verify(avatarStorageService, never()).deleteAvatar("local", "old.png");
+        verify(userPrincipalService, never()).evictUserCaches(any(), any());
+    }
+
     private UserProfileResponse toResponse(User user) {
         return new UserProfileResponse(
                 user.getId(),

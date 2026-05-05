@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -194,6 +195,39 @@ class UserServiceTest {
         verify(avatarStorageService).deleteAvatar("cloudinary", "new-public-id");
         verify(avatarStorageService, never()).deleteAvatar("local", "old.png");
         verify(userPrincipalService, never()).evictUserCaches(any(), any());
+    }
+
+    @Test
+    void uploadCurrentUserAvatar_WhenSaveSucceedsButEvictFails_ShouldNotDeleteNewAvatar() {
+        User user = User.builder()
+                .id("u1")
+                .username("alice")
+                .email("alice@example.com")
+                .avatar("http://localhost:8080/uploads/avatars/old.png")
+                .avatarPublicId("old.png")
+                .avatarProvider("local")
+                .build();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "avatar.png",
+                "image/png",
+                new byte[]{1, 2, 3}
+        );
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(avatarStorageService.uploadAvatar("u1", file))
+                .thenReturn(new AvatarUploadResult("https://cdn.example/avatar.png", "new-public-id", "cloudinary"));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new IllegalStateException("cache evict failed"))
+                .when(userPrincipalService)
+                .evictUserCaches(eq("u1"), eq("alice"));
+
+        assertThatThrownBy(() -> userService.uploadCurrentUserAvatar(file))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("cache evict failed");
+
+        verify(avatarStorageService, never()).deleteAvatar(any(), any());
     }
 
     private UserProfileResponse toResponse(User user) {

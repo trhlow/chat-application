@@ -117,15 +117,17 @@ public class UserServiceImpl implements UserService {
         user.setAvatarProvider(uploadedAvatar.provider());
         user.setUpdatedAt(Instant.now());
 
+        final User savedUser;
         try {
-            User savedUser = userRepository.save(user);
-            userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
-            avatarStorageService.deleteAvatar(oldAvatarProvider, oldAvatarPublicId);
-            return userMapper.toUserProfileResponse(savedUser);
+            savedUser = userRepository.save(user);
         } catch (RuntimeException exception) {
             avatarStorageService.deleteAvatar(uploadedAvatar.provider(), uploadedAvatar.publicId());
             throw exception;
         }
+
+        userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
+        avatarStorageService.deleteAvatar(oldAvatarProvider, oldAvatarPublicId);
+        return userMapper.toUserProfileResponse(savedUser);
     }
 
     private String trimToNull(String value) {

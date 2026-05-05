@@ -60,7 +60,7 @@ public class WebSocketAuthorizationService {
             return;
         }
 
-        if ("/topic/presence".equals(destination) || destination.startsWith("/user/queue/")) {
+        if (destination.startsWith("/user/queue/")) {
             return;
         }
 

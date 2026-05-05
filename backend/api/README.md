@@ -276,7 +276,7 @@ Subscriptions:
 |---------|-------|
 | Room messages | `/topic/rooms/{roomId}/messages` |
 | Room status updates | `/topic/rooms/{roomId}/status` |
-| Presence updates | `/topic/presence` |
+| Presence updates for friends (subject user + mutual friends only) | Subscribe to `/user/queue/presence` (per authenticated user; replaces legacy `/topic/presence`). |
 
 ---
 

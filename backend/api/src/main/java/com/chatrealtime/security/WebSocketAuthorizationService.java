@@ -60,11 +60,19 @@ public class WebSocketAuthorizationService {
             return;
         }
 
-        if (destination.startsWith("/user/queue/")) {
+        if (isAllowedUserQueueSubscription(destination)) {
             return;
         }
 
         throw new AccessDeniedException("Forbidden");
+    }
+
+    /**
+     * Only known user-specific queues may be subscribed to (presence + in-app notifications).
+     */
+    private static boolean isAllowedUserQueueSubscription(String destination) {
+        return "/user/queue/presence".equals(destination)
+                || "/user/queue/notifications".equals(destination);
     }
 
     private void requireRoomMembership(String userId, String roomId) {

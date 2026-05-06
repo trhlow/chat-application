@@ -2,10 +2,12 @@ package com.chatrealtime.unit;
 
 import com.chatrealtime.config.AppRedisProperties;
 import com.chatrealtime.domain.Friendship;
+import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
 import com.chatrealtime.dto.response.PresenceResponse;
 import com.chatrealtime.realtime.PresenceRealtimeEventBus;
 import com.chatrealtime.repository.FriendshipRepository;
+import com.chatrealtime.repository.RoomRepository;
 import com.chatrealtime.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +44,8 @@ class PresenceRealtimeEventBusTest {
     @Mock
     private FriendshipRepository friendshipRepository;
     @Mock
+    private RoomRepository roomRepository;
+    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
@@ -53,7 +57,8 @@ class PresenceRealtimeEventBusTest {
 
         PresenceResponse event = new PresenceResponse("u1", true, Instant.now());
         Friendship friendship = Friendship.builder().userIdA("u1").userIdB("u2").build();
-        when(friendshipRepository.findByUserIdsContaining("u1")).thenReturn(List.of(friendship));
+        when(friendshipRepository.findByUserIdAOrUserIdB("u1", "u1")).thenReturn(List.of(friendship));
+        when(roomRepository.findByMemberIdsContaining("u1")).thenReturn(List.of());
 
         User self = User.builder().id("u1").username("alice").build();
         User friendUser = User.builder().id("u2").username("bob").build();
@@ -67,11 +72,31 @@ class PresenceRealtimeEventBusTest {
     }
 
     @Test
-    void publish_whenRedisDisabled_andNoFriends_sendsOnlyToSelf() {
+    void publish_whenRedisDisabled_roomMembersReceivePresenceEvenWhenNotFriends() {
+        when(redisProperties.enabled()).thenReturn(false);
+
+        PresenceResponse event = new PresenceResponse("u1", true, Instant.now());
+        when(friendshipRepository.findByUserIdAOrUserIdB("u1", "u1")).thenReturn(List.of());
+        Room room = Room.builder().id("r1").memberIds(List.of("u1", "u2")).build();
+        when(roomRepository.findByMemberIdsContaining("u1")).thenReturn(List.of(room));
+
+        User self = User.builder().id("u1").username("alice").build();
+        User coMember = User.builder().id("u2").username("bob").build();
+        when(userRepository.findAllById(anyIterable())).thenReturn(List.of(self, coMember));
+
+        presenceRealtimeEventBus.publish(event);
+
+        verify(messagingTemplate).convertAndSendToUser("alice", "/queue/presence", event);
+        verify(messagingTemplate).convertAndSendToUser("bob", "/queue/presence", event);
+    }
+
+    @Test
+    void publish_whenRedisDisabled_andNoFriendsOrRooms_sendsOnlyToSelf() {
         when(redisProperties.enabled()).thenReturn(false);
 
         PresenceResponse event = new PresenceResponse("u1", false, Instant.now());
-        when(friendshipRepository.findByUserIdsContaining("u1")).thenReturn(List.of());
+        when(friendshipRepository.findByUserIdAOrUserIdB("u1", "u1")).thenReturn(List.of());
+        when(roomRepository.findByMemberIdsContaining("u1")).thenReturn(List.of());
 
         User self = User.builder().id("u1").username("alice").build();
         when(userRepository.findAllById(anyIterable())).thenReturn(List.of(self));

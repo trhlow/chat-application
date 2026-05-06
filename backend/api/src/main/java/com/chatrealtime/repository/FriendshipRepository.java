@@ -14,4 +14,6 @@ public interface FriendshipRepository extends MongoRepository<Friendship, String
     Optional<Friendship> findByUserIdAAndUserIdB(String userIdA, String userIdB);
 
     List<Friendship> findByUserIdsContaining(String userId);
+
+    List<Friendship> findByUserIdAOrUserIdB(String userIdA, String userIdB);
 }

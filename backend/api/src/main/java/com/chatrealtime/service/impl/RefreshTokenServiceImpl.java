@@ -1,5 +1,6 @@
 package com.chatrealtime.service.impl;
 
+import com.chatrealtime.service.RefreshRotationResult;
 import com.chatrealtime.service.RefreshTokenService;
 
 import com.chatrealtime.exception.InvalidCredentialsException;
@@ -7,6 +8,11 @@ import com.chatrealtime.domain.RefreshToken;
 import com.chatrealtime.repository.RefreshTokenRepository;
 import com.chatrealtime.security.JwtProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +30,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private static final int TOKEN_BYTE_LENGTH = 64;
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final MongoTemplate mongoTemplate;
     private final JwtProperties jwtProperties;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -56,24 +63,46 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     }
 
     @Override
-    public String rotateToken(RefreshToken refreshToken) {
-        String newRawToken = generateSecureToken();
-        String newTokenHash = hash(newRawToken);
+    public RefreshRotationResult rotateRefreshToken(String rawRefreshToken) {
+        if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
+            throw new InvalidCredentialsException("Invalid refresh token");
+        }
+
+        String tokenHash = hash(rawRefreshToken);
         Instant now = Instant.now();
 
-        refreshToken.setRevokedAt(now);
-        refreshToken.setReplacedByTokenHash(newTokenHash);
+        String newRawToken = generateSecureToken();
+        String newTokenHash = hash(newRawToken);
+
+        Query query = Query.query(
+                Criteria.where("tokenHash").is(tokenHash)
+                        .and("revokedAt").is(null)
+                        .and("expiresAt").gt(now)
+        );
+        Update update = new Update()
+                .set("revokedAt", now)
+                .set("replacedByTokenHash", newTokenHash);
+
+        RefreshToken revoked = mongoTemplate.findAndModify(
+                query,
+                update,
+                FindAndModifyOptions.options().returnNew(false),
+                RefreshToken.class
+        );
+
+        if (revoked == null) {
+            throw new InvalidCredentialsException("Invalid refresh token");
+        }
 
         RefreshToken newRefreshToken = RefreshToken.builder()
-                .userId(refreshToken.getUserId())
+                .userId(revoked.getUserId())
                 .tokenHash(newTokenHash)
                 .createdAt(now)
                 .expiresAt(now.plusMillis(jwtProperties.refreshExpirationMs()))
                 .build();
-
-        refreshTokenRepository.save(refreshToken);
         refreshTokenRepository.save(newRefreshToken);
-        return newRawToken;
+
+        return new RefreshRotationResult(newRawToken, revoked.getUserId());
     }
 
     @Override

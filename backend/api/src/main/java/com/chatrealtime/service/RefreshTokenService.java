@@ -7,7 +7,11 @@ public interface RefreshTokenService {
 
     RefreshToken requireActiveToken(String rawToken);
 
-    String rotateToken(RefreshToken refreshToken);
+    /**
+     * Revokes the presented token and persists a new refresh token in one logical flow.
+     * Uses an atomic update so concurrent refresh requests cannot both rotate the same token.
+     */
+    RefreshRotationResult rotateRefreshToken(String rawRefreshToken);
 
     void revokeUserToken(String userId, String rawToken);
 

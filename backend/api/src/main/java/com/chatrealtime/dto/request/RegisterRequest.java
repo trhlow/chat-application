@@ -20,6 +20,9 @@ public record RegisterRequest(
         @Size(max = 120, message = "displayName must be at most 120 characters")
         String displayName,
 
+        /**
+         * Ignored by the server: use {@code POST /api/users/me/avatar} after login to set an avatar.
+         */
         @Size(max = 512, message = "avatar URL must be at most 512 characters")
         String avatar
 ) {

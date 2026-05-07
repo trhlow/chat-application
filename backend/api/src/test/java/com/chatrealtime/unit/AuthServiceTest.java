@@ -4,7 +4,6 @@ import com.chatrealtime.dto.request.LoginRequest;
 import com.chatrealtime.dto.request.LogoutRequest;
 import com.chatrealtime.dto.request.RefreshTokenRequest;
 import com.chatrealtime.dto.request.RegisterRequest;
-import com.chatrealtime.domain.RefreshToken;
 import com.chatrealtime.dto.response.UserProfileResponse;
 import com.chatrealtime.exception.ExistsEmailException;
 import com.chatrealtime.exception.ExistsUsernameException;
@@ -13,6 +12,7 @@ import com.chatrealtime.mapper.UserMapper;
 import com.chatrealtime.domain.User;
 import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.service.PresenceService;
+import com.chatrealtime.service.RefreshRotationResult;
 import com.chatrealtime.service.RefreshTokenService;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
@@ -134,6 +134,7 @@ class AuthServiceTest {
         assertThat(captor.getValue().getPassword()).isEqualTo("hashed");
         assertThat(captor.getValue().getUsername()).isEqualTo("alice");
         assertThat(captor.getValue().getDisplayName()).isEqualTo("Alice Nguyen");
+        assertThat(captor.getValue().getAvatar()).isNull();
         assertThat(response.accessToken()).isEqualTo("token");
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
     }
@@ -160,11 +161,6 @@ class AuthServiceTest {
     void refresh_ShouldRotateRefreshTokenAndReturnNewTokens() {
         RefreshTokenRequest request = new RefreshTokenRequest("old-refresh");
 
-        RefreshToken refreshToken = RefreshToken.builder()
-                .userId("u1")
-                .tokenHash("old-hash")
-                .expiresAt(Instant.now().plusSeconds(60))
-                .build();
         User user = User.builder()
                 .id("u1")
                 .username("alice")
@@ -172,9 +168,9 @@ class AuthServiceTest {
                 .password("hashed")
                 .build();
 
-        when(refreshTokenService.requireActiveToken("old-refresh")).thenReturn(refreshToken);
+        when(refreshTokenService.rotateRefreshToken("old-refresh"))
+                .thenReturn(new RefreshRotationResult("new-refresh", "u1"));
         when(userRepository.findById("u1")).thenReturn(Optional.of(user));
-        when(refreshTokenService.rotateToken(refreshToken)).thenReturn("new-refresh");
         when(jwtTokenService.generateToken(any(AuthUserPrincipal.class))).thenReturn("new-access");
         when(jwtProperties.accessExpirationMs()).thenReturn(1000L);
         when(jwtProperties.refreshExpirationMs()).thenReturn(2000L);

@@ -12,8 +12,8 @@ import com.chatrealtime.exception.ExistsEmailException;
 import com.chatrealtime.exception.ExistsUsernameException;
 import com.chatrealtime.exception.InvalidCredentialsException;
 import com.chatrealtime.exception.UserNotFoundException;
-import com.chatrealtime.domain.RefreshToken;
 import com.chatrealtime.service.PresenceService;
+import com.chatrealtime.service.RefreshRotationResult;
 import com.chatrealtime.service.RefreshTokenService;
 import com.chatrealtime.mapper.UserMapper;
 import com.chatrealtime.domain.User;
@@ -69,7 +69,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(normalizedEmail)
                 .displayName(displayName)
                 .themePreference("system")
-                .avatar(request.avatar())
+                .avatar(null)
                 .isOnline(false)
                 .createdAt(now)
                 .updatedAt(now)
@@ -98,15 +98,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse refresh(RefreshTokenRequest request) {
-        RefreshToken refreshToken = refreshTokenService.requireActiveToken(request.refreshToken());
-        User user = userRepository.findById(refreshToken.getUserId())
+        RefreshRotationResult rotation = refreshTokenService.rotateRefreshToken(request.refreshToken());
+        User user = userRepository.findById(rotation.userId())
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        String rotatedRefreshToken = refreshTokenService.rotateToken(refreshToken);
         String accessToken = jwtTokenService.generateToken(AuthUserPrincipal.from(user));
         return new AuthResponse(
                 accessToken,
-                rotatedRefreshToken,
+                rotation.newRefreshToken(),
                 "Bearer",
                 jwtProperties.accessExpirationMs(),
                 jwtProperties.refreshExpirationMs(),

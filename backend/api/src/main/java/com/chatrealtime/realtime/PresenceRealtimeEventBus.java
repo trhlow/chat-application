@@ -83,7 +83,8 @@ public class PresenceRealtimeEventBus {
         }
 
         List<User> users = userRepository.findAllById(recipientIds);
-        Map<String, User> byId = users.stream().collect(Collectors.toMap(User::getId, Function.identity()));
+        Map<String, User> byId = users.stream()
+                .collect(Collectors.toMap(User::getId, Function.identity(), (left, right) -> left));
         for (String recipientId : recipientIds) {
             User user = byId.get(recipientId);
             if (user == null || user.getUsername() == null || user.getUsername().isBlank()) {

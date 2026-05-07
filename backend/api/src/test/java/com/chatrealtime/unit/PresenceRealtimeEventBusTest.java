@@ -124,4 +124,22 @@ class PresenceRealtimeEventBusTest {
         verify(messagingTemplate, never()).convertAndSendToUser(anyString(), anyString(), any());
         verify(messagingTemplate, never()).convertAndSend(anyString(), any(Object.class));
     }
+
+    @Test
+    void publish_whenRedisDisabled_duplicateUsersFromRepository_keepsFirstAndStillDelivers() {
+        when(redisProperties.enabled()).thenReturn(false);
+
+        PresenceResponse event = new PresenceResponse("u1", true, Instant.now());
+        when(friendshipRepository.findByUserIdAOrUserIdB("u1", "u1")).thenReturn(List.of());
+        when(roomRepository.findByMemberIdsContaining("u1")).thenReturn(List.of());
+
+        User first = User.builder().id("u1").username("alice").build();
+        User duplicateId = User.builder().id("u1").username("alice_dup").build();
+        when(userRepository.findAllById(anyIterable())).thenReturn(List.of(first, duplicateId));
+
+        presenceRealtimeEventBus.publish(event);
+
+        verify(messagingTemplate).convertAndSendToUser("alice", "/queue/presence", event);
+        verify(messagingTemplate, never()).convertAndSendToUser("alice_dup", "/queue/presence", event);
+    }
 }

@@ -213,7 +213,14 @@ public class RoomServiceImpl implements RoomService {
         room.setAvatarPublicId(uploadedAvatar.publicId());
         room.setUpdatedAt(Instant.now());
 
-        Room savedRoom = roomRepository.save(room);
+        final Room savedRoom;
+        try {
+            savedRoom = roomRepository.save(room);
+        } catch (RuntimeException exception) {
+            avatarStorageService.deleteAvatar(uploadedAvatar.provider(), uploadedAvatar.publicId());
+            throw exception;
+        }
+
         avatarStorageService.deleteAvatar(oldAvatarProvider, oldAvatarPublicId);
         long unreadCount = messageService.getUnreadCountMap(List.of(savedRoom.getId())).getOrDefault(savedRoom.getId(), 0L);
         return roomMapper.toResponse(savedRoom, unreadCount);

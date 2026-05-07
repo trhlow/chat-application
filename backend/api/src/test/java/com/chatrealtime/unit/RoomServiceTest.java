@@ -18,6 +18,7 @@ import com.chatrealtime.service.MessageService;
 import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.service.impl.RoomServiceImpl;
 import com.chatrealtime.storage.AvatarStorageService;
+import com.chatrealtime.storage.AvatarUploadResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -224,6 +226,34 @@ class RoomServiceTest {
         verify(mongoTemplate).remove(any(Query.class), eq(Message.class));
         verify(avatarStorageService).deleteAvatar("local", "room-avatar.png");
         verify(roomRepository).delete(room);
+    }
+
+    @Test
+    void updateRoomAvatar_WhenSaveFails_ShouldDeleteNewUploadOnlyAndRethrow() {
+        Room room = Room.builder()
+                .id("g1")
+                .name("Project A")
+                .type("group")
+                .memberIds(List.of("u1", "u2"))
+                .admins(List.of("u1"))
+                .ownerId("u1")
+                .avatarProvider("local")
+                .avatarPublicId("old-room.png")
+                .build();
+        MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
+        AvatarUploadResult uploaded = new AvatarUploadResult("http://local/new.png", "new-room.png", "local");
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+        when(avatarStorageService.uploadAvatar("room-g1", file)).thenReturn(uploaded);
+        when(roomRepository.save(any(Room.class))).thenThrow(new RuntimeException("db"));
+
+        assertThatThrownBy(() -> roomService.updateRoomAvatar("g1", file))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("db");
+
+        verify(avatarStorageService).deleteAvatar("local", "new-room.png");
+        verify(avatarStorageService, never()).deleteAvatar("local", "old-room.png");
     }
 
     @Test

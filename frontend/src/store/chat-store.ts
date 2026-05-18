@@ -6,6 +6,7 @@ import {
   parsePresenceEvent,
   parseRealtimeMessage,
 } from "@/lib/realtime-client";
+import { useAuthStore } from "@/store/auth-store";
 import type {
   ChatMessage,
   ChatRoom,
@@ -63,6 +64,7 @@ interface ChatState {
   }) => Promise<void>;
   uploadAvatar: (file: File) => Promise<void>;
   markVisibleMessages: (roomId: string) => void;
+  markMessageStatus: (message: ChatMessage, status: "delivered" | "seen") => void;
   connectRealtime: (accessToken: string) => void;
   disconnectRealtime: () => void;
   handleIncomingMessage: (message: ChatMessage) => void;
@@ -71,6 +73,7 @@ interface ChatState {
 }
 
 const realtimeClient = new ChatRealtimeClient();
+const statusUpdatesInFlight = new Set<string>();
 
 const sortRooms = (rooms: ChatRoom[]) =>
   [...rooms].sort((a, b) => {
@@ -89,6 +92,18 @@ const uniqueMessages = (messages: ChatMessage[]) => {
 
 const mergeRooms = (rooms: ChatRoom[], room: ChatRoom) =>
   sortRooms([room, ...rooms.filter((item) => item.id !== room.id)]);
+
+const getProfileAvatar = (profile: UserProfile) =>
+  profile.avatarEndpoint ?? profile.avatar;
+
+const mapProfileToAuthUser = (profile: UserProfile) => ({
+  fullName: profile.displayName?.trim() || profile.username,
+  username: profile.username,
+  email: profile.email,
+  avatarUrl: getProfileAvatar(profile),
+  isOnline: profile.online,
+  lastSeenAt: profile.lastSeenAt,
+});
 
 export const useChatStore = create<ChatState>((set, get) => ({
   rooms: [],
@@ -395,6 +410,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const response = await chatApi.getProfile();
       set({ profile: response.data });
+      useAuthStore.getState().updateUser(mapProfileToAuthUser(response.data));
+      const state = get();
+      const selectedRoomId = state.selectedRoomId;
+      if (selectedRoomId) {
+        state.markVisibleMessages(selectedRoomId);
+      }
+      Object.entries(state.messagesByRoomId).forEach(([roomId, messages]) => {
+        if (roomId === selectedRoomId) {
+          return;
+        }
+
+        messages
+          .filter((message) => message.senderId !== response.data.id)
+          .filter((message) => !message.deliveredToUserIds.includes(response.data.id))
+          .forEach((message) => state.markMessageStatus(message, "delivered"));
+      });
     } catch (_error) {
       set({ error: "Khong the tai ho so." });
     } finally {
@@ -412,6 +443,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         themePreference: payload.themePreference,
       });
       set({ profile: response.data });
+      useAuthStore.getState().updateUser(mapProfileToAuthUser(response.data));
     } catch (_error) {
       set({ error: "Khong the cap nhat ho so." });
     } finally {
@@ -423,6 +455,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const response = await chatApi.uploadAvatar(file);
       set({ profile: response.data });
+      useAuthStore.getState().updateUser(mapProfileToAuthUser(response.data));
     } catch (_error) {
       set({ error: "Khong the upload avatar." });
     } finally {
@@ -439,13 +472,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
       .filter((message) => message.senderId !== currentUserId)
       .filter((message) => !message.readByUserIds.includes(currentUserId))
       .forEach((message) => {
-        const status = "seen" as const;
-        const wasSentRealtime = realtimeClient.sendMessageStatus(message.id, status);
-        if (!wasSentRealtime) {
-          void chatApi.updateMessageStatus(message.id, status).then((response) => {
-            get().handleMessageStatus(response.data);
-          }).catch(() => undefined);
-        }
+        get().markMessageStatus(message, "seen");
+      });
+  },
+  markMessageStatus: (message, status) => {
+    const currentUserId = get().profile?.id;
+    if (!currentUserId || message.senderId === currentUserId) {
+      return;
+    }
+
+    if (status === "delivered" && message.deliveredToUserIds.includes(currentUserId)) {
+      return;
+    }
+
+    if (status === "seen" && message.readByUserIds.includes(currentUserId)) {
+      return;
+    }
+
+    const requestKey = `${message.id}:${status}`;
+    if (statusUpdatesInFlight.has(requestKey)) {
+      return;
+    }
+
+    statusUpdatesInFlight.add(requestKey);
+    const wasSentRealtime = realtimeClient.sendMessageStatus(message.id, status);
+
+    if (wasSentRealtime) {
+      window.setTimeout(() => {
+        statusUpdatesInFlight.delete(requestKey);
+      }, 5000);
+      return;
+    }
+
+    void chatApi.updateMessageStatus(message.id, status)
+      .then((response) => {
+        get().handleMessageStatus(response.data);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        statusUpdatesInFlight.delete(requestKey);
       });
   },
   connectRealtime: (accessToken) => {
@@ -491,12 +556,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
       };
     });
 
+    const currentUserId = get().profile?.id;
+    if (!currentUserId || message.senderId === currentUserId) {
+      return;
+    }
+
     if (get().selectedRoomId === message.roomId) {
       void chatApi.markRoomAsRead(message.roomId).catch(() => undefined);
       get().markVisibleMessages(message.roomId);
+    } else {
+      get().markMessageStatus(message, "delivered");
     }
   },
   handleMessageStatus: (message) => {
+    const currentUserId = get().profile?.id;
+    if (currentUserId) {
+      if (message.deliveredToUserIds.includes(currentUserId)) {
+        statusUpdatesInFlight.delete(`${message.id}:delivered`);
+      }
+      if (message.readByUserIds.includes(currentUserId)) {
+        statusUpdatesInFlight.delete(`${message.id}:seen`);
+      }
+    }
+
     set((state) => {
       const roomMessages = state.messagesByRoomId[message.roomId] ?? [];
       return {

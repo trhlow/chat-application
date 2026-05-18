@@ -712,13 +712,26 @@ export const ChatWindowBody = ({
 }) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const previousRoomIdRef = useRef<string | null>(null);
+  const previousLastMessageIdRef = useRef<string | null>(null);
   const fetchOlderMessages = useChatStore((state) => state.fetchOlderMessages);
   const markVisibleMessages = useChatStore((state) => state.markVisibleMessages);
+  const lastMessageId = messages.at(-1)?.id ?? null;
 
   useEffect(() => {
-    if (!pageState?.loadingOlder) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const roomChanged = previousRoomIdRef.current !== roomId;
+    const newMessageAtBottom =
+      previousLastMessageIdRef.current !== null &&
+      previousLastMessageIdRef.current !== lastMessageId;
+
+    if (roomChanged || newMessageAtBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: roomChanged ? "auto" : "smooth" });
+    }
+
+    previousRoomIdRef.current = roomId;
+    previousLastMessageIdRef.current = lastMessageId;
     markVisibleMessages(roomId);
-  }, [messages.length, pageState?.loadingOlder, markVisibleMessages, roomId]);
+  }, [lastMessageId, markVisibleMessages, roomId]);
 
   const handleScroll = () => {
     const node = scrollRef.current;

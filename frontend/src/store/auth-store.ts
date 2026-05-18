@@ -38,6 +38,7 @@ interface AuthState {
   isBootstrapping: boolean;
   setAccessToken: (token: string | null) => void;
   setSession: (payload: { accessToken: string; user: AuthUser }) => void;
+  updateUser: (payload: Partial<AuthUser>) => void;
   clearSession: () => void;
   signup: (values: SignUpFormValues) => Promise<void>;
   signin: (values: SignInFormValues) => Promise<void>;
@@ -61,6 +62,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessToken,
       user,
     });
+  },
+  updateUser: (payload) => {
+    set((state) => ({
+      user: state.user ? { ...state.user, ...payload } : state.user,
+    }));
   },
   clearSession: () => {
     authStorage.clear();

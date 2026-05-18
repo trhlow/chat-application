@@ -16,7 +16,7 @@ const mapAuthUser = (user: BackendAuthUser): AuthUser => ({
   fullName: user.displayName?.trim() || user.username,
   username: user.username,
   email: user.email,
-  avatarUrl: user.avatar,
+  avatarUrl: user.avatarEndpoint ?? user.avatar,
   isOnline: user.online,
   lastSeenAt: user.lastSeenAt,
 });

@@ -1,18 +1,23 @@
 import {
+  Bell,
+  Camera,
+  Check,
   Hash,
+  Loader2,
   LogOut,
   MessageCircleMore,
   MoonStar,
+  Plus,
   Search,
   SendHorizontal,
-  SmilePlus,
-  Sparkles,
   SunMedium,
+  UserPlus,
   UsersRound,
+  X,
 } from "lucide-react";
 import {
+  type ChangeEvent,
   type FormEvent,
-  type KeyboardEvent,
   type ReactNode,
   useEffect,
   useMemo,
@@ -22,57 +27,37 @@ import {
 
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
+import { API_URL } from "@/lib/config";
+import { chatApi } from "@/lib/chat-client";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth-store";
 import { useChatStore } from "@/store/chat-store";
 import type { AuthUser } from "@/types/auth";
-import type { ChatMessage, ChatRoom, ChatUser } from "@/types/chat";
+import type { ChatMessage, ChatRoom, ChatUser, FriendRequest, FriendUser } from "@/types/chat";
 
-const emojiItems = [
-  "😀",
-  "😁",
-  "😂",
-  "😊",
-  "😍",
-  "😎",
-  "🥳",
-  "👍",
-  "🙏",
-  "🔥",
-  "✨",
-  "💬",
-  "❤️",
-  "✅",
-  "🎯",
-  "🚀",
-];
+type SidebarTab = "chats" | "friends" | "profile";
+
+const apiOrigin = API_URL.replace(/\/api\/?$/, "");
+
+const resolveMediaUrl = (value?: string | null) => {
+  if (!value) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(value) || value.startsWith("data:")) {
+    return value;
+  }
+  return `${apiOrigin}${value.startsWith("/") ? value : `/${value}`}`;
+};
 
 const formatRelativeTime = (value?: string | null) => {
-  if (!value) {
-    return "";
-  }
-
+  if (!value) return "";
   const date = new Date(value);
-  const diffMs = Date.now() - date.getTime();
-  const diffMinutes = Math.max(1, Math.floor(diffMs / 60000));
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  if (diffMinutes < 60) {
-    return `${diffMinutes}m`;
-  }
-
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMinutes = Math.max(1, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (diffMinutes < 60) return `${diffMinutes}m`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours}h`;
-  }
-
-  return date.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-  });
+  if (diffHours < 24) return `${diffHours}h`;
+  return date.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
 };
 
 const getInitials = (name: string) =>
@@ -84,6 +69,9 @@ const getInitials = (name: string) =>
     .join("") || "IC";
 
 const isDirectRoom = (room: ChatRoom) => room.type?.toUpperCase() === "DIRECT";
+
+const getFriendName = (user: FriendUser) =>
+  user.displayName?.trim() || user.username || "User";
 
 const getRoomPeer = (
   room: ChatRoom,
@@ -99,10 +87,7 @@ const getRoomName = (
   currentUser: AuthUser,
   usersById: Record<string, ChatUser>,
 ) => {
-  if (!isDirectRoom(room)) {
-    return room.name?.trim() || "Group chat";
-  }
-
+  if (!isDirectRoom(room)) return room.name?.trim() || "Group chat";
   const peer = getRoomPeer(room, currentUser.id, usersById);
   return peer?.displayName?.trim() || peer?.username || room.name || "Direct chat";
 };
@@ -112,11 +97,9 @@ const getRoomAvatar = (
   currentUser: AuthUser,
   usersById: Record<string, ChatUser>,
 ) => {
-  if (!isDirectRoom(room)) {
-    return room.avatar;
-  }
-
-  return getRoomPeer(room, currentUser.id, usersById)?.avatar ?? room.avatar;
+  if (!isDirectRoom(room)) return room.avatarEndpoint ?? room.avatar;
+  const peer = getRoomPeer(room, currentUser.id, usersById);
+  return peer?.avatarEndpoint ?? peer?.avatar ?? room.avatarEndpoint ?? room.avatar;
 };
 
 const getRoomOnline = (
@@ -127,7 +110,6 @@ const getRoomOnline = (
   if (!isDirectRoom(room)) {
     return room.memberIds.some((id) => id !== currentUser.id && usersById[id]?.online);
   }
-
   return Boolean(getRoomPeer(room, currentUser.id, usersById)?.online);
 };
 
@@ -151,7 +133,7 @@ export const UserAvatar = ({
     )}
   >
     {src ? (
-      <img src={src} alt={name} className="h-full w-full object-cover" />
+      <img src={resolveMediaUrl(src) ?? undefined} alt={name} className="h-full w-full object-cover" />
     ) : (
       <span>{getInitials(name)}</span>
     )}
@@ -159,86 +141,94 @@ export const UserAvatar = ({
   </div>
 );
 
-export const StatusBadge = ({
-  online,
-  compact,
-}: {
-  online: boolean;
-  compact?: boolean;
-}) => (
+export const StatusBadge = ({ online, compact }: { online: boolean; compact?: boolean }) => (
   <span
     className={cn(
       "inline-flex items-center gap-1.5 text-xs font-medium",
-      compact
-        ? "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card p-0"
-        : "text-muted-foreground",
+      compact ? "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card p-0" : "text-muted-foreground",
     )}
   >
-    <span
-      className={cn(
-        "h-2.5 w-2.5 rounded-full",
-        online ? "bg-emerald-500" : "bg-muted-foreground/50",
-        compact && "h-full w-full",
-      )}
-    />
+    <span className={cn("h-2.5 w-2.5 rounded-full", online ? "bg-emerald-500" : "bg-muted-foreground/50", compact && "h-full w-full")} />
     {compact ? null : online ? "Online" : "Offline"}
   </span>
 );
 
-export const UnreadBadge = ({ count }: { count: number }) => {
-  if (count <= 0) {
-    return null;
-  }
-
-  return (
+const UnreadBadge = ({ count }: { count: number }) =>
+  count > 0 ? (
     <span className="grid min-w-6 place-items-center rounded-full bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
       {count > 99 ? "99+" : count}
     </span>
-  );
-};
+  ) : null;
 
-interface ChatCardProps {
-  room: ChatRoom;
-  active: boolean;
-  currentUser: AuthUser;
-  usersById: Record<string, ChatUser>;
-  icon: "direct" | "group";
-  onSelect: () => void;
-}
+const SkeletonLine = ({ className }: { className?: string }) => (
+  <div className={cn("animate-pulse rounded-md bg-muted", className)} />
+);
+
+const ListSkeleton = () => (
+  <div className="space-y-2">
+    {Array.from({ length: 6 }).map((_, index) => (
+      <div key={index} className="grid grid-cols-[auto_1fr] gap-3 rounded-lg border border-border p-3">
+        <SkeletonLine className="h-11 w-11" />
+        <div className="space-y-2">
+          <SkeletonLine className="h-4 w-2/3" />
+          <SkeletonLine className="h-3 w-full" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const Modal = ({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: ReactNode;
+  onClose: () => void;
+}) => (
+  <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4 backdrop-blur-sm">
+    <section className="max-h-[88vh] w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-soft">
+      <header className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h2 className="text-base font-bold">{title}</h2>
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={onClose} aria-label="Close" title="Close">
+          <X className="h-4 w-4" />
+        </Button>
+      </header>
+      <div className="pretty-scrollbar max-h-[calc(88vh-58px)] overflow-y-auto p-4">{children}</div>
+    </section>
+  </div>
+);
 
 const ChatCard = ({
   room,
   active,
   currentUser,
   usersById,
-  icon,
   onSelect,
-}: ChatCardProps) => {
+}: {
+  room: ChatRoom;
+  active: boolean;
+  currentUser: AuthUser;
+  usersById: Record<string, ChatUser>;
+  onSelect: () => void;
+}) => {
   const name = getRoomName(room, currentUser, usersById);
   const online = getRoomOnline(room, currentUser, usersById);
+  const group = !isDirectRoom(room);
 
   return (
     <button
       className={cn(
         "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border p-3 text-left transition",
-        active
-          ? "border-primary/45 bg-primary/10 shadow-soft"
-          : "border-transparent hover:border-border hover:bg-muted/70",
+        active ? "border-primary/45 bg-primary/10 shadow-soft" : "border-transparent hover:border-border hover:bg-muted/70",
       )}
       onClick={onSelect}
     >
-      <UserAvatar
-        name={name}
-        src={getRoomAvatar(room, currentUser, usersById)}
-        online={online}
-      />
+      <UserAvatar name={name} src={getRoomAvatar(room, currentUser, usersById)} online={online} />
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-2">
-          {icon === "group" ? (
-            <UsersRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          ) : (
-            <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          )}
+          {group ? <UsersRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
           <span className="truncate text-sm font-semibold">{name}</span>
         </span>
         <span className="mt-1 block truncate text-xs text-muted-foreground">
@@ -246,115 +236,36 @@ const ChatCard = ({
         </span>
       </span>
       <span className="flex flex-col items-end gap-2">
-        <span className="text-xs text-muted-foreground">
-          {formatRelativeTime(room.lastMessageAt)}
-        </span>
+        <span className="text-xs text-muted-foreground">{formatRelativeTime(room.lastMessageAt)}</span>
         <UnreadBadge count={room.unreadCount} />
       </span>
     </button>
   );
 };
 
-export const DirectMessageCard = (props: Omit<ChatCardProps, "icon">) => (
-  <ChatCard {...props} icon="direct" />
-);
-
-export const GroupChatCard = (props: Omit<ChatCardProps, "icon">) => (
-  <ChatCard {...props} icon="group" />
-);
-
-export const DirectMessageList = ({
-  rooms,
-  currentUser,
-  usersById,
-  selectedRoomId,
-  onSelect,
-}: {
-  rooms: ChatRoom[];
-  currentUser: AuthUser;
-  usersById: Record<string, ChatUser>;
-  selectedRoomId: string | null;
-  onSelect: (roomId: string) => void;
-}) => (
-  <ChatListSection title="Direct messages" count={rooms.length}>
-    {rooms.map((room) => (
-      <DirectMessageCard
-        key={room.id}
-        room={room}
-        active={room.id === selectedRoomId}
-        currentUser={currentUser}
-        usersById={usersById}
-        onSelect={() => onSelect(room.id)}
-      />
-    ))}
-  </ChatListSection>
-);
-
-export const GroupChatList = ({
-  rooms,
-  currentUser,
-  usersById,
-  selectedRoomId,
-  onSelect,
-}: {
-  rooms: ChatRoom[];
-  currentUser: AuthUser;
-  usersById: Record<string, ChatUser>;
-  selectedRoomId: string | null;
-  onSelect: (roomId: string) => void;
-}) => (
-  <ChatListSection title="Groups" count={rooms.length}>
-    {rooms.map((room) => (
-      <GroupChatCard
-        key={room.id}
-        room={room}
-        active={room.id === selectedRoomId}
-        currentUser={currentUser}
-        usersById={usersById}
-        onSelect={() => onSelect(room.id)}
-      />
-    ))}
-  </ChatListSection>
-);
-
-const ChatListSection = ({
-  title,
-  count,
-  children,
-}: {
-  title: string;
-  count: number;
-  children: ReactNode;
-}) => (
+const ChatListSection = ({ title, count, children }: { title: string; count: number; children: ReactNode }) => (
   <section className="space-y-2">
     <div className="flex items-center justify-between px-1">
-      <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
-        {title}
-      </h2>
+      <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">{title}</h2>
       <span className="text-xs text-muted-foreground">{count}</span>
     </div>
     <div className="space-y-1.5">{children}</div>
   </section>
 );
 
-export const NavUser = ({ user }: { user: AuthUser }) => {
+export const NavUser = ({ user, onProfile }: { user: AuthUser; onProfile: () => void }) => {
   const signout = useAuthStore((state) => state.signout);
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-      <UserAvatar name={user.fullName} src={user.avatarUrl} online={user.isOnline} />
-      <div className="min-w-0 flex-1">
+      <button className="contents" onClick={onProfile} aria-label="Open profile">
+        <UserAvatar name={user.fullName} src={user.avatarUrl} online={user.isOnline} />
+      </button>
+      <button className="min-w-0 flex-1 text-left" onClick={onProfile}>
         <p className="truncate text-sm font-semibold">{user.fullName}</p>
         <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9 rounded-lg"
-        onClick={() => void signout()}
-        aria-label="Sign out"
-        title="Sign out"
-      >
+      </button>
+      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => void signout()} aria-label="Sign out" title="Sign out">
         <LogOut className="h-4 w-4" />
       </Button>
     </div>
@@ -368,18 +279,17 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
   const selectedRoomId = useChatStore((state) => state.selectedRoomId);
   const setSelectedRoomId = useChatStore((state) => state.setSelectedRoomId);
   const isLoadingRooms = useChatStore((state) => state.isLoadingRooms);
+  const friends = useChatStore((state) => state.friends);
+  const incomingRequests = useChatStore((state) => state.incomingFriendRequests);
+  const isLoadingFriends = useChatStore((state) => state.isLoadingFriends);
   const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<SidebarTab>("chats");
+  const [modal, setModal] = useState<"friend" | "requests" | "group" | null>(null);
 
   const filteredRooms = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return rooms;
-    }
-
-    return rooms.filter((room) =>
-      getRoomName(room, user, usersById).toLowerCase().includes(normalizedQuery),
-    );
+    if (!normalizedQuery) return rooms;
+    return rooms.filter((room) => getRoomName(room, user, usersById).toLowerCase().includes(normalizedQuery));
   }, [query, rooms, user, usersById]);
 
   const directRooms = filteredRooms.filter(isDirectRoom);
@@ -388,98 +298,366 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
   return (
     <aside className="flex h-full min-h-0 flex-col border-r border-border bg-card/85">
       <div className="space-y-4 border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-primary-foreground">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
               <MessageCircleMore className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-base font-bold">InChat</p>
-              <p className="text-xs text-muted-foreground">Realtime workspace</p>
+            <div className="min-w-0">
+              <p className="truncate text-base font-bold">InChat</p>
+              <p className="truncate text-xs text-muted-foreground">Realtime workspace</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-9 w-9 rounded-lg"
-            onClick={toggleTheme}
-            aria-label="Toggle theme"
-            title="Toggle theme"
-          >
-            {theme === "dark" ? (
-              <SunMedium className="h-4 w-4" />
-            ) : (
-              <MoonStar className="h-4 w-4" />
-            )}
-          </Button>
+          <div className="flex gap-1">
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setModal("friend")} aria-label="Add friend" title="Add friend">
+              <UserPlus className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
+              {theme === "dark" ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
 
-        <label className="relative block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-            placeholder="Search chats"
-          />
-        </label>
+        <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background p-1">
+          {(["chats", "friends", "profile"] as SidebarTab[]).map((item) => (
+            <button
+              key={item}
+              className={cn("rounded-md px-2 py-2 text-xs font-semibold capitalize transition", tab === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+              onClick={() => setTab(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+
+        {tab === "chats" ? (
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+              placeholder="Search chats"
+            />
+          </label>
+        ) : null}
       </div>
 
       <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto p-3">
-        {isLoadingRooms ? (
-          <div className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
-            Dang tai cuoc tro chuyen...
-          </div>
-        ) : (
-          <>
-            <DirectMessageList
-              rooms={directRooms}
-              currentUser={user}
-              usersById={usersById}
-              selectedRoomId={selectedRoomId}
-              onSelect={setSelectedRoomId}
-            />
-            <GroupChatList
-              rooms={groupRooms}
-              currentUser={user}
-              usersById={usersById}
-              selectedRoomId={selectedRoomId}
-              onSelect={setSelectedRoomId}
-            />
-          </>
+        {tab === "chats" && (
+          isLoadingRooms ? <ListSkeleton /> : (
+            <>
+              <div className="flex justify-end">
+                <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setModal("group")}>
+                  <Plus className="mr-2 h-4 w-4" /> New group
+                </Button>
+              </div>
+              <ChatListSection title="Direct messages" count={directRooms.length}>
+                {directRooms.map((room) => (
+                  <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
+                ))}
+              </ChatListSection>
+              <ChatListSection title="Groups" count={groupRooms.length}>
+                {groupRooms.map((room) => (
+                  <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
+                ))}
+              </ChatListSection>
+            </>
+          )
         )}
+        {tab === "friends" && (
+          <FriendsPanel
+            loading={isLoadingFriends}
+            friends={friends}
+            incomingCount={incomingRequests.length}
+            onAddFriend={() => setModal("friend")}
+            onRequests={() => setModal("requests")}
+          />
+        )}
+        {tab === "profile" && <ProfilePanel />}
       </div>
 
       <div className="border-t border-border p-3">
-        <NavUser user={user} />
+        <NavUser user={user} onProfile={() => setTab("profile")} />
       </div>
+
+      {modal === "friend" ? <AddFriendModal onClose={() => setModal(null)} /> : null}
+      {modal === "requests" ? <FriendRequestsModal onClose={() => setModal(null)} /> : null}
+      {modal === "group" ? <CreateGroupModal onClose={() => setModal(null)} /> : null}
     </aside>
   );
 };
+
+const FriendsPanel = ({
+  loading,
+  friends,
+  incomingCount,
+  onAddFriend,
+  onRequests,
+}: {
+  loading: boolean;
+  friends: { id: string; friend: FriendUser }[];
+  incomingCount: number;
+  onAddFriend: () => void;
+  onRequests: () => void;
+}) => {
+  const createDirectRoom = useChatStore((state) => state.createDirectRoom);
+  if (loading) return <ListSkeleton />;
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" className="rounded-lg" onClick={onAddFriend}><UserPlus className="mr-2 h-4 w-4" /> Add</Button>
+        <Button variant="outline" className="rounded-lg" onClick={onRequests}><Bell className="mr-2 h-4 w-4" /> Requests {incomingCount ? `(${incomingCount})` : ""}</Button>
+      </div>
+      <ChatListSection title="Friends" count={friends.length}>
+        {friends.length === 0 ? <EmptyText text="Chua co ban be nao." /> : friends.map(({ id, friend }) => (
+          <button key={id} className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition hover:bg-muted" onClick={() => void createDirectRoom(friend.id)}>
+            <UserAvatar name={getFriendName(friend)} src={friend.avatarEndpoint ?? friend.avatar} />
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold">{getFriendName(friend)}</span>
+              <span className="block truncate text-xs text-muted-foreground">@{friend.username}</span>
+            </span>
+          </button>
+        ))}
+      </ChatListSection>
+    </div>
+  );
+};
+
+const ProfilePanel = () => {
+  const profile = useChatStore((state) => state.profile);
+  const isLoadingProfile = useChatStore((state) => state.isLoadingProfile);
+  const isMutating = useChatStore((state) => state.isMutating);
+  const updateProfile = useChatStore((state) => state.updateProfile);
+  const uploadAvatar = useChatStore((state) => state.uploadAvatar);
+  const [form, setForm] = useState({ username: "", displayName: "", bio: "", phone: "", themePreference: "system" });
+
+  useEffect(() => {
+    if (profile) {
+      setForm({
+        username: profile.username,
+        displayName: profile.displayName ?? "",
+        bio: profile.bio ?? "",
+        phone: profile.phone ?? "",
+        themePreference: profile.themePreference ?? "system",
+      });
+    }
+  }, [profile]);
+
+  if (isLoadingProfile || !profile) return <ListSkeleton />;
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    void updateProfile(form);
+  };
+
+  return (
+    <form className="space-y-4" onSubmit={submit}>
+      <div className="flex items-center gap-3">
+        <UserAvatar name={form.displayName || form.username} src={profile.avatarEndpoint ?? profile.avatar} size="lg" online={profile.online} />
+        <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-background px-3 text-xs font-semibold hover:bg-muted">
+          <Camera className="mr-2 h-4 w-4" /> Avatar
+          <input type="file" accept="image/*" className="sr-only" onChange={(event) => handleAvatarChange(event, uploadAvatar)} />
+        </label>
+      </div>
+      <TextInput label="Username" value={form.username} onChange={(value) => setForm((current) => ({ ...current, username: value }))} />
+      <TextInput label="Display name" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
+      <TextInput label="Phone" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
+      <label className="block space-y-1.5">
+        <span className="text-xs font-semibold text-muted-foreground">Bio</span>
+        <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={4} className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />
+      </label>
+      <select value={form.themePreference} onChange={(event) => setForm((current) => ({ ...current, themePreference: event.target.value }))} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none">
+        <option value="system">System</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+      <Button type="submit" className="w-full rounded-lg" disabled={isMutating}>{isMutating ? "Saving..." : "Save profile"}</Button>
+    </form>
+  );
+};
+
+const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>, uploadAvatar: (file: File) => Promise<void>) => {
+  const file = event.target.files?.[0];
+  if (file) void uploadAvatar(file);
+  event.target.value = "";
+};
+
+const TextInput = ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => (
+  <label className="block space-y-1.5">
+    <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+    <input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />
+  </label>
+);
+
+const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
+  const currentUser = useAuthStore((state) => state.user);
+  const sendFriendRequest = useChatStore((state) => state.sendFriendRequest);
+  const isMutating = useChatStore((state) => state.isMutating);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<ChatUser[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      void chatApi.searchUsers(query).then((response) => {
+        setResults(response.data.filter((user) => user.id !== currentUser?.id));
+      }).finally(() => setLoading(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [currentUser?.id, query]);
+
+  return (
+    <Modal title="Add friend" onClose={onClose}>
+      <div className="space-y-3">
+        <TextInput label="Search user" value={query} onChange={setQuery} />
+        {loading ? <ListSkeleton /> : results.map((user) => (
+          <div key={user.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+            <UserAvatar name={user.displayName || user.username} src={user.avatarEndpoint ?? user.avatar} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{user.displayName || user.username}</p>
+              <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
+            </div>
+            <Button size="sm" className="rounded-lg" disabled={isMutating} onClick={() => void sendFriendRequest(user.id)}>Send</Button>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+};
+
+const FriendRequestsModal = ({ onClose }: { onClose: () => void }) => {
+  const incoming = useChatStore((state) => state.incomingFriendRequests);
+  const outgoing = useChatStore((state) => state.outgoingFriendRequests);
+  const acceptFriendRequest = useChatStore((state) => state.acceptFriendRequest);
+  const rejectFriendRequest = useChatStore((state) => state.rejectFriendRequest);
+  const isMutating = useChatStore((state) => state.isMutating);
+  const [firstMessages, setFirstMessages] = useState<Record<string, string>>({});
+
+  return (
+    <Modal title="Friend requests" onClose={onClose}>
+      <div className="space-y-5">
+        <ChatListSection title="Incoming" count={incoming.length}>
+          {incoming.length === 0 ? <EmptyText text="Khong co loi moi moi." /> : incoming.map((request) => (
+            <RequestCard
+              key={request.id}
+              request={request}
+              value={firstMessages[request.id] ?? ""}
+              onChange={(value) => setFirstMessages((current) => ({ ...current, [request.id]: value }))}
+              onAccept={() => void acceptFriendRequest(request.id, firstMessages[request.id])}
+              onReject={() => void rejectFriendRequest(request.id)}
+              disabled={isMutating}
+            />
+          ))}
+        </ChatListSection>
+        <ChatListSection title="Outgoing" count={outgoing.length}>
+          {outgoing.length === 0 ? <EmptyText text="Chua gui loi moi nao." /> : outgoing.map((request) => (
+            <SimpleUserRow key={request.id} user={request.receiver} suffix="Pending" />
+          ))}
+        </ChatListSection>
+      </div>
+    </Modal>
+  );
+};
+
+const RequestCard = ({
+  request,
+  value,
+  onChange,
+  onAccept,
+  onReject,
+  disabled,
+}: {
+  request: FriendRequest;
+  value: string;
+  onChange: (value: string) => void;
+  onAccept: () => void;
+  onReject: () => void;
+  disabled: boolean;
+}) => (
+  <div className="space-y-3 rounded-lg border border-border p-3">
+    <SimpleUserRow user={request.requester} suffix={formatRelativeTime(request.createdAt)} />
+    <input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none" placeholder="Tin nhan dau tien sau khi dong y" />
+    <div className="flex justify-end gap-2">
+      <Button variant="outline" size="sm" className="rounded-lg" disabled={disabled} onClick={onReject}><X className="mr-2 h-4 w-4" /> Reject</Button>
+      <Button size="sm" className="rounded-lg" disabled={disabled} onClick={onAccept}><Check className="mr-2 h-4 w-4" /> Accept</Button>
+    </div>
+  </div>
+);
+
+const CreateGroupModal = ({ onClose }: { onClose: () => void }) => {
+  const friends = useChatStore((state) => state.friends);
+  const createGroupRoom = useChatStore((state) => state.createGroupRoom);
+  const isMutating = useChatStore((state) => state.isMutating);
+  const [name, setName] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    const room = await createGroupRoom({ name, memberIds: selectedIds });
+    if (room) onClose();
+  };
+
+  return (
+    <Modal title="New group" onClose={onClose}>
+      <form className="space-y-4" onSubmit={submit}>
+        <TextInput label="Group name" value={name} onChange={setName} />
+        <ChatListSection title="Members" count={selectedIds.length}>
+          {friends.map(({ friend }) => (
+            <label key={friend.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(friend.id)}
+                onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, friend.id] : current.filter((id) => id !== friend.id))}
+              />
+              <UserAvatar name={getFriendName(friend)} src={friend.avatarEndpoint ?? friend.avatar} />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">{getFriendName(friend)}</span>
+                <span className="block truncate text-xs text-muted-foreground">@{friend.username}</span>
+              </span>
+            </label>
+          ))}
+        </ChatListSection>
+        <Button type="submit" className="w-full rounded-lg" disabled={isMutating || !name.trim() || selectedIds.length < 2}>Create group</Button>
+      </form>
+    </Modal>
+  );
+};
+
+const SimpleUserRow = ({ user, suffix }: { user: FriendUser; suffix?: string }) => (
+  <div className="flex items-center gap-3">
+    <UserAvatar name={getFriendName(user)} src={user.avatarEndpoint ?? user.avatar} />
+    <div className="min-w-0 flex-1">
+      <p className="truncate text-sm font-semibold">{getFriendName(user)}</p>
+      <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
+    </div>
+    {suffix ? <span className="text-xs text-muted-foreground">{suffix}</span> : null}
+  </div>
+);
+
+const EmptyText = ({ text }: { text: string }) => (
+  <p className="rounded-lg border border-border bg-background p-4 text-center text-sm text-muted-foreground">{text}</p>
+);
 
 export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
   const rooms = useChatStore((state) => state.rooms);
   const usersById = useChatStore((state) => state.usersById);
   const selectedRoomId = useChatStore((state) => state.selectedRoomId);
   const messagesByRoomId = useChatStore((state) => state.messagesByRoomId);
+  const messagePagesByRoomId = useChatStore((state) => state.messagePagesByRoomId);
   const isLoadingMessages = useChatStore((state) => state.isLoadingMessages);
 
   const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? null;
   const messages = selectedRoomId ? messagesByRoomId[selectedRoomId] ?? [] : [];
+  const pageState = selectedRoomId ? messagePagesByRoomId[selectedRoomId] : undefined;
 
-  if (!selectedRoom) {
-    return <WelcomeScreen />;
-  }
+  if (!selectedRoom || !selectedRoomId) return <WelcomeScreen />;
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-background">
       <ChatWindowHeader room={selectedRoom} user={user} usersById={usersById} />
-      <ChatWindowBody
-        messages={messages}
-        currentUser={user}
-        usersById={usersById}
-        loading={isLoadingMessages}
-      />
+      <ChatWindowBody roomId={selectedRoomId} messages={messages} currentUser={user} usersById={usersById} loading={isLoadingMessages} pageState={pageState} />
       <MessageInput />
     </section>
   );
@@ -489,91 +667,81 @@ const WelcomeScreen = () => (
   <section className="grid h-full place-items-center bg-background p-6">
     <div className="max-w-md text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-accent text-accent-foreground">
-        <Sparkles className="h-7 w-7" />
+        <MessageCircleMore className="h-7 w-7" />
       </div>
-      <h1 className="mt-5 text-2xl font-bold tracking-tight">
-        Chon mot cuoc tro chuyen
-      </h1>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Tin nhan, trang thai online va so unread se cap nhat realtime khi ban
-        bat dau mo mot chat.
-      </p>
+      <h1 className="mt-5 text-2xl font-bold tracking-tight">Chon mot cuoc tro chuyen</h1>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">Tin nhan, trang thai online va so unread se cap nhat realtime khi ban mo chat.</p>
     </div>
   </section>
 );
 
-export const ChatWindowHeader = ({
-  room,
-  user,
-  usersById,
-}: {
-  room: ChatRoom;
-  user: AuthUser;
-  usersById: Record<string, ChatUser>;
-}) => {
+export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; user: AuthUser; usersById: Record<string, ChatUser> }) => {
   const name = getRoomName(room, user, usersById);
   const online = getRoomOnline(room, user, usersById);
   const peer = getRoomPeer(room, user.id, usersById);
 
   return (
     <header className="flex items-center gap-3 border-b border-border bg-card/80 px-4 py-3 backdrop-blur">
-      <UserAvatar
-        name={name}
-        src={getRoomAvatar(room, user, usersById)}
-        online={online}
-        size="lg"
-      />
+      <UserAvatar name={name} src={getRoomAvatar(room, user, usersById)} online={online} size="lg" />
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-base font-bold">{name}</h1>
         <div className="mt-1 flex items-center gap-2">
           <StatusBadge online={online} />
-          {!online && peer?.lastSeenAt ? (
-            <span className="text-xs text-muted-foreground">
-              Last seen {formatRelativeTime(peer.lastSeenAt)}
-            </span>
-          ) : null}
+          {!online && peer?.lastSeenAt ? <span className="text-xs text-muted-foreground">Last seen {formatRelativeTime(peer.lastSeenAt)}</span> : null}
         </div>
       </div>
+      {!isDirectRoom(room) ? <span className="text-xs text-muted-foreground">{room.memberIds.length} members</span> : null}
     </header>
   );
 };
 
 export const ChatWindowBody = ({
+  roomId,
   messages,
   currentUser,
   usersById,
   loading,
+  pageState,
 }: {
+  roomId: string;
   messages: ChatMessage[];
   currentUser: AuthUser;
   usersById: Record<string, ChatUser>;
   loading: boolean;
+  pageState?: { hasMore: boolean; loadingOlder: boolean };
 }) => {
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const fetchOlderMessages = useChatStore((state) => state.fetchOlderMessages);
+  const markVisibleMessages = useChatStore((state) => state.markVisibleMessages);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    if (!pageState?.loadingOlder) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    markVisibleMessages(roomId);
+  }, [messages.length, pageState?.loadingOlder, markVisibleMessages, roomId]);
+
+  const handleScroll = () => {
+    const node = scrollRef.current;
+    if (!node || node.scrollTop > 48 || !pageState?.hasMore || pageState.loadingOlder) return;
+    const previousHeight = node.scrollHeight;
+    void fetchOlderMessages(roomId).then(() => {
+      window.requestAnimationFrame(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight - previousHeight;
+      });
+    });
+  };
 
   return (
-    <div className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5">
+    <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5">
+      {pageState?.loadingOlder ? <p className="mb-3 flex items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading older messages</p> : null}
       {loading ? (
-        <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-          Dang tai tin nhan...
-        </p>
+        <MessageSkeleton />
       ) : messages.length === 0 ? (
-        <p className="mx-auto max-w-sm rounded-lg border border-border bg-card p-4 text-center text-sm text-muted-foreground">
-          Chua co tin nhan nao. Hay gui loi chao dau tien.
-        </p>
+        <EmptyText text="Chua co tin nhan nao. Hay gui loi chao dau tien." />
       ) : (
         <div className="space-y-3">
           {messages.map((message) => (
-            <MessageItem
-              key={message.id}
-              message={message}
-              mine={message.senderId === currentUser.id}
-              sender={usersById[message.senderId]}
-            />
+            <MessageItem key={message.id} message={message} mine={message.senderId === currentUser.id} sender={usersById[message.senderId]} currentUserId={currentUser.id} />
           ))}
         </div>
       )}
@@ -582,63 +750,52 @@ export const ChatWindowBody = ({
   );
 };
 
-export const MessageItem = ({
-  message,
-  mine,
-  sender,
-}: {
-  message: ChatMessage;
-  mine: boolean;
-  sender?: ChatUser;
-}) => {
+const MessageSkeleton = () => (
+  <div className="space-y-3">
+    <SkeletonLine className="h-12 w-2/3" />
+    <SkeletonLine className="ml-auto h-12 w-1/2" />
+    <SkeletonLine className="h-12 w-3/5" />
+  </div>
+);
+
+export const MessageItem = ({ message, mine, sender, currentUserId }: { message: ChatMessage; mine: boolean; sender?: ChatUser; currentUserId: string }) => {
   const senderName = sender?.displayName || sender?.username || "User";
+  const receipt = getReceiptLabel(message, currentUserId);
 
   return (
     <div className={cn("flex gap-2", mine && "justify-end")}>
-      {!mine ? <UserAvatar name={senderName} src={sender?.avatar} size="sm" /> : null}
+      {!mine ? <UserAvatar name={senderName} src={sender?.avatarEndpoint ?? sender?.avatar} size="sm" /> : null}
       <div className={cn("max-w-[78%]", mine && "text-right")}>
-        {!mine ? (
-          <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">
-            {senderName}
-          </p>
-        ) : null}
-        <div
-          className={cn(
-            "rounded-lg px-4 py-2 text-sm leading-6 shadow-sm",
-            mine
-              ? "bg-primary text-primary-foreground"
-              : "border border-border bg-card text-card-foreground",
-          )}
-        >
+        {!mine ? <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">{senderName}</p> : null}
+        <div className={cn("rounded-lg px-4 py-2 text-sm leading-6 shadow-sm", mine ? "bg-primary text-primary-foreground" : "border border-border bg-card text-card-foreground")}>
           {message.content}
         </div>
         <p className="mt-1 px-1 text-xs text-muted-foreground">
-          {new Date(message.timestamp).toLocaleTimeString(undefined, {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-          {mine ? ` · ${message.status.toLowerCase()}` : ""}
+          {new Date(message.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+          {mine ? ` - ${receipt}` : ""}
         </p>
       </div>
     </div>
   );
 };
 
+const getReceiptLabel = (message: ChatMessage, currentUserId: string) => {
+  const readByOthers = message.readByUserIds.filter((id) => id !== currentUserId);
+  if (readByOthers.length > 0 || message.status?.toLowerCase() === "seen") return "Seen";
+  const deliveredToOthers = message.deliveredToUserIds.filter((id) => id !== currentUserId);
+  if (deliveredToOthers.length > 0 || message.status?.toLowerCase() === "delivered") return "Delivered";
+  return "Sent";
+};
+
 export const MessageInput = () => {
   const sendMessage = useChatStore((state) => state.sendMessage);
   const isSending = useChatStore((state) => state.isSending);
   const [value, setValue] = useState("");
-  const [showEmoji, setShowEmoji] = useState(false);
 
   const sendCurrentValue = () => {
     const content = value.trim();
-
-    if (!content) {
-      return;
-    }
-
+    if (!content) return;
     setValue("");
-    setShowEmoji(false);
     void sendMessage(content);
   };
 
@@ -648,40 +805,12 @@ export const MessageInput = () => {
   };
 
   return (
-    <form
-      onSubmit={submit}
-      className="relative border-t border-border bg-card/80 p-3 backdrop-blur"
-    >
-      {showEmoji ? (
-        <div className="absolute bottom-[76px] left-3 grid w-64 grid-cols-8 gap-1 rounded-lg border border-border bg-card p-2 shadow-soft">
-          {emojiItems.map((emoji) => (
-            <button
-              key={emoji}
-              type="button"
-              className="grid h-8 w-8 place-items-center rounded-md text-lg transition hover:bg-muted"
-              onClick={() => setValue((current) => `${current}${emoji}`)}
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      ) : null}
-
+    <form onSubmit={submit} className="border-t border-border bg-card/80 p-3 backdrop-blur">
       <div className="flex items-end gap-2 rounded-lg border border-input bg-background p-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-lg"
-          onClick={() => setShowEmoji((current) => !current)}
-          aria-label="Open emoji picker"
-          title="Emoji"
-        >
-          <SmilePlus className="h-5 w-5" />
-        </Button>
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          onKeyDown={(event: KeyboardEvent<HTMLTextAreaElement>) => {
+          onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
               sendCurrentValue();
@@ -691,14 +820,7 @@ export const MessageInput = () => {
           className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 outline-none"
           placeholder="Nhap tin nhan..."
         />
-        <Button
-          type="submit"
-          size="icon"
-          className="h-10 w-10 rounded-lg"
-          disabled={isSending || !value.trim()}
-          aria-label="Send message"
-          title="Send"
-        >
+        <Button type="submit" size="icon" className="h-10 w-10 rounded-lg" disabled={isSending || !value.trim()} aria-label="Send message" title="Send">
           <SendHorizontal className="h-5 w-5" />
         </Button>
       </div>

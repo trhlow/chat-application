@@ -92,6 +92,10 @@ export class ChatRealtimeClient {
     return this.send(`/app/rooms/${roomId}/messages`, { content });
   }
 
+  sendMessageStatus(messageId: string, status: "delivered" | "seen") {
+    return this.send(`/app/messages/${messageId}/status`, { status });
+  }
+
   private send(destination: string, payload: unknown) {
     if (!this.connected || this.socket?.readyState !== WebSocket.OPEN) {
       return false;

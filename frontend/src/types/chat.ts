@@ -3,9 +3,10 @@ export type RoomType = "DIRECT" | "GROUP" | string;
 export interface ChatUser {
   id: string;
   username: string;
-  email: string;
+  email?: string;
   displayName: string | null;
   avatar: string | null;
+  avatarEndpoint?: string | null;
   online: boolean;
   lastSeenAt: string | null;
 }
@@ -15,6 +16,7 @@ export interface ChatRoom {
   name: string | null;
   type: RoomType;
   avatar: string | null;
+  avatarEndpoint?: string | null;
   avatarProvider: string | null;
   memberIds: string[];
   admins: string[];
@@ -63,4 +65,41 @@ export interface PresenceEvent {
 export interface RoomUnreadCount {
   roomId: string;
   unreadCount: number;
+}
+
+export interface FriendUser {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarEndpoint: string | null;
+  avatar: string | null;
+}
+
+export interface FriendRequest {
+  id: string;
+  requester: FriendUser;
+  receiver: FriendUser;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "CANCELED" | string;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export interface Friendship {
+  id: string;
+  friend: FriendUser;
+  createdAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string | null;
+  bio: string | null;
+  phone: string | null;
+  themePreference: string | null;
+  avatarEndpoint: string | null;
+  avatar: string | null;
+  online: boolean;
+  lastSeenAt: string | null;
 }

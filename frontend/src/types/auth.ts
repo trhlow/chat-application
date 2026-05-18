@@ -16,6 +16,7 @@ export interface BackendAuthUser {
   bio: string | null;
   phone: string | null;
   themePreference: string | null;
+  avatarEndpoint?: string | null;
   avatar: string | null;
   avatarProvider: string | null;
   online: boolean;

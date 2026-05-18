@@ -8,12 +8,16 @@ export const ChatPage = () => {
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const fetchConversations = useChatStore((state) => state.fetchConversations);
+  const fetchFriends = useChatStore((state) => state.fetchFriends);
+  const fetchProfile = useChatStore((state) => state.fetchProfile);
   const connectRealtime = useChatStore((state) => state.connectRealtime);
   const disconnectRealtime = useChatStore((state) => state.disconnectRealtime);
 
   useEffect(() => {
     void fetchConversations();
-  }, [fetchConversations]);
+    void fetchFriends();
+    void fetchProfile();
+  }, [fetchConversations, fetchFriends, fetchProfile]);
 
   useEffect(() => {
     if (!accessToken) {

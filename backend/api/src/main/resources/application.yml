@@ -38,14 +38,14 @@ spring:
           insert:
             header: X-API-Version
   data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
       timeout: ${SPRING_DATA_REDIS_TIMEOUT:2s}
       repositories:
         enabled: false
+  mongodb:
+    uri: ${SPRING_MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat}}
   servlet:
     multipart:
       max-file-size: 50MB

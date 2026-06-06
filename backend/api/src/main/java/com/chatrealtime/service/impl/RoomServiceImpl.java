@@ -24,6 +24,7 @@ import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.storage.AvatarStorageService;
 import com.chatrealtime.storage.AvatarUploadResult;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -45,6 +46,7 @@ import java.util.Set;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class RoomServiceImpl implements RoomService {
     private static final String ROOM_TYPE_DIRECT = "direct";
     private static final String ROOM_TYPE_GROUP = "group";
@@ -120,6 +122,14 @@ public class RoomServiceImpl implements RoomService {
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
+
+        if (ROOM_TYPE_DIRECT.equals(roomType)) {
+            Optional<Room> lateExistingDirectRoom = findExistingDirectRoom(uniqueMemberIds);
+            if (lateExistingDirectRoom.isPresent()) {
+                log.debug("Direct room appeared between checks; returning existing {}", lateExistingDirectRoom.get().getId());
+                return roomMapper.toResponse(lateExistingDirectRoom.get(), 0L);
+            }
+        }
 
         Room savedRoom = roomRepository.save(room);
         if (ROOM_TYPE_GROUP.equals(roomType)) {

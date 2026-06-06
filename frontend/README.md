@@ -17,13 +17,23 @@ This frontend includes:
 2. Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 3. Start the app:
 
 ```bash
-npm run dev
+pnpm dev:web
 ```
 
 The frontend runs on `http://localhost:5173` by default.
+
+## Run with the full Docker stack
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+The Docker stack serves this frontend at `http://localhost:5173` and builds it against the API at `http://localhost:8080/api`.

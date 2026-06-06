@@ -2,12 +2,12 @@
 
 ## Project Overview
 
-This is a personal mobile application project with:
+This is a personal realtime chat application project with:
 
 - Backend: Java, Spring Boot
-- Mobile: Flutter / Dart
-- Database: PostgreSQL or relational database depending on environment
-- Purpose: personal taxi income/order management, authentication, data privacy, calculation history, PDF/file-based input when applicable
+- Frontend: React, TypeScript, Vite
+- Database: MongoDB
+- Purpose: authentication, realtime chat, room/message management, friends, notifications, presence, and private media/file handling where applicable
 
 The agent must behave like a senior full-stack reviewer, not a blind code generator.
 
@@ -31,7 +31,7 @@ The agent must behave like a senior full-stack reviewer, not a blind code genera
 - Validate all request input.
 - Prefer DTOs over exposing entities directly.
 - Use explicit authorization checks for user-owned data.
-- Mobile apps must not rely on hidden client-side secrets for security.
+- Frontend clients must not rely on hidden client-side secrets for security.
 
 ## Backend Rules
 
@@ -52,14 +52,13 @@ The agent must behave like a senior full-stack reviewer, not a blind code genera
 - Use transactions for write operations that touch multiple records.
 - Add tests for important business logic and security-sensitive changes.
 
-## Mobile Rules
+## Frontend Rules
 
 - Keep UI, state, API client, models, and storage separated.
-- Do not put business logic directly inside widgets when it grows beyond simple UI state.
+- Do not put business logic directly inside components when it grows beyond simple UI state.
 - Handle loading, empty, error, and success states.
 - API failures must show useful messages.
 - Local storage must not store sensitive tokens insecurely if a safer option exists.
-- Android release builds must include required permissions such as INTERNET when API calls are used.
 
 ## Testing Rules
 
@@ -69,10 +68,10 @@ Before considering a task complete:
   - Run unit tests if available.
   - Run integration tests if the change touches database/security/API behavior.
   - Check authentication and authorization flows.
-- Mobile:
-  - Run flutter analyze.
+- Frontend:
+  - Run TypeScript/build checks if available.
   - Run tests if available.
-  - Check Android release-specific configuration when networking is involved.
+  - Check API configuration and authentication flows when networking is involved.
 
 If commands cannot be run, state that clearly and explain what should be run manually.
 

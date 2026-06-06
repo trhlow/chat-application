@@ -1,10 +1,10 @@
 spring:
   data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat_test}
     redis:
       repositories:
         enabled: false
+  mongodb:
+    uri: ${SPRING_MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/hlow_chat_test}}
 
 app:
   jwt:

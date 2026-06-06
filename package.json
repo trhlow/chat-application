@@ -7,7 +7,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
-    "dev:web": "pnpm --filter @inchat/web dev",
+    "dev:web": "pnpm --dir frontend dev",
     "dev:api": "cd backend/api && ./mvnw spring-boot:run",
     "build:api": "cd backend/api && ./mvnw -q -DskipTests package",
     "test:api": "cd backend/api && ./mvnw -q test"

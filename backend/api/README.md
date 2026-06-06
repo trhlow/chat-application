@@ -129,25 +129,27 @@ in-chat/
 <a id="quick-start"></a>
 ## Quick Start
 
-### Backend + MongoDB With Docker
+### Full Stack With Docker
 
-Run from this backend directory:
+Run from the repository root:
 
 ```bash
-docker compose -f docker/docker-compose.yml up --build
+docker compose up --build
 ```
 
 This starts:
 
 | Service | URL |
 |---------|-----|
+| Frontend | http://localhost:5173 |
 | Backend API | http://localhost:8080 |
 | MongoDB | mongodb://localhost:27017/hlow_chat |
+| Redis | localhost:6379 |
 
 Stop the stack:
 
 ```bash
-docker compose -f docker/docker-compose.yml down
+docker compose down
 ```
 
 ---
@@ -166,7 +168,7 @@ docker compose -f docker/docker-compose.yml down
 Start MongoDB first:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d mongodb
+docker compose up -d mongodb redis
 ```
 
 Run Spring Boot:
@@ -191,7 +193,7 @@ Backend configuration is loaded from `src/main/resources/application.yml`, profi
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SERVER_PORT` | `8080` | Backend HTTP port |
-| `SPRING_DATA_MONGODB_URI` | `mongodb://localhost:27017/hlow_chat` | MongoDB connection URI |
+| `SPRING_MONGODB_URI` | `mongodb://localhost:27017/hlow_chat` | MongoDB connection URI |
 | `APP_JWT_SECRET` | dev fallback secret | JWT signing secret |
 | `APP_JWT_ACCESS_EXPIRATION_MS` | `900000` | Access token TTL |
 | `APP_JWT_REFRESH_EXPIRATION_MS` | `604800000` | Refresh token TTL |
@@ -203,7 +205,7 @@ Example:
 
 ```env
 SERVER_PORT=8080
-SPRING_DATA_MONGODB_URI=mongodb://localhost:27017/hlow_chat
+SPRING_MONGODB_URI=mongodb://localhost:27017/hlow_chat
 APP_JWT_SECRET=change-this-to-a-strong-secret-with-at-least-32-chars
 APP_JWT_ACCESS_EXPIRATION_MS=900000
 APP_JWT_REFRESH_EXPIRATION_MS=604800000
@@ -324,10 +326,10 @@ The `Friendship` and `FriendRequest` documents use canonical pairs (`userIdA`, `
 Run from the repository root, replacing the URI with the production MongoDB connection string:
 
 ```bash
-mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/000_backfill_friend_pairs.js
-mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/001_check_friend_duplicates.js
-mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/002_cleanup_friend_duplicates.js
-mongosh "$SPRING_DATA_MONGODB_URI" backend/api/scripts/mongodb/003_create_friend_indexes.js
+mongosh "$SPRING_MONGODB_URI" backend/api/scripts/mongodb/000_backfill_friend_pairs.js
+mongosh "$SPRING_MONGODB_URI" backend/api/scripts/mongodb/001_check_friend_duplicates.js
+mongosh "$SPRING_MONGODB_URI" backend/api/scripts/mongodb/002_cleanup_friend_duplicates.js
+mongosh "$SPRING_MONGODB_URI" backend/api/scripts/mongodb/003_create_friend_indexes.js
 ```
 
 Required order:
@@ -338,7 +340,7 @@ Required order:
 4. If duplicates exist, review `002_cleanup_friend_duplicates.js` dry-run output.
 5. Re-run cleanup only with explicit opt-in:
    ```bash
-   mongosh "$SPRING_DATA_MONGODB_URI" --eval "var RUN_CLEANUP=true" backend/api/scripts/mongodb/002_cleanup_friend_duplicates.js
+   mongosh "$SPRING_MONGODB_URI" --eval "var RUN_CLEANUP=true" backend/api/scripts/mongodb/002_cleanup_friend_duplicates.js
    ```
 6. Re-run duplicate check until it reports zero duplicate groups.
 7. Run `003_create_friend_indexes.js`.

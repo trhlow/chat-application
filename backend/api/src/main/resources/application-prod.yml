@@ -2,9 +2,8 @@ server:
   port: ${SERVER_PORT:8080}
 
 spring:
-  data:
-    mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI}
+  mongodb:
+    uri: ${SPRING_MONGODB_URI:${SPRING_DATA_MONGODB_URI}}
     redis:
       host: ${SPRING_DATA_REDIS_HOST}
       port: ${SPRING_DATA_REDIS_PORT:6379}

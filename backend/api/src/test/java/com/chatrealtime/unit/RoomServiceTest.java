@@ -92,6 +92,29 @@ class RoomServiceTest {
     }
 
     @Test
+    void createRoom_whenDirectRaceSecondLookupFindsRoom_shouldReturnExistingWithoutSave() {
+        CreateRoomRequest request = new CreateRoomRequest(null, "direct", List.of("u2"));
+        Room lateDiscovered = Room.builder()
+                .id("r-existing")
+                .type("direct")
+                .memberIds(List.of("u1", "u2"))
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(userRepository.existsById("u1")).thenReturn(true);
+        when(userRepository.existsById("u2")).thenReturn(true);
+        when(roomRepository.findByTypeAndMemberIdsContaining("direct", "u2"))
+                .thenReturn(List.of())
+                .thenReturn(List.of(lateDiscovered));
+        when(roomMapper.toResponse(lateDiscovered, 0L)).thenReturn(toResponse(lateDiscovered, 0L));
+
+        RoomResponse response = roomService.createRoom(request);
+
+        verify(roomRepository, never()).save(any(Room.class));
+        assertThat(response.id()).isEqualTo("r-existing");
+    }
+
+    @Test
     void createRoom_ShouldCreateGroupWithOwnerAdminAndNotifyMembers() {
         CreateRoomRequest request = new CreateRoomRequest("Project A", "group", List.of("u2", "u3"));
         User currentUser = User.builder().id("u1").username("alice").displayName("Alice").build();

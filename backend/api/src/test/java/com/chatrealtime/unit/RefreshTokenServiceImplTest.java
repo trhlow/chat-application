@@ -16,12 +16,14 @@ import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.dao.QueryTimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -59,6 +61,44 @@ class RefreshTokenServiceImplTest {
         verify(refreshTokenRepository).save(newTokenCaptor.capture());
         assertThat(newTokenCaptor.getValue().getUserId()).isEqualTo("user-a");
         assertThat(newTokenCaptor.getValue().getTokenHash()).isNotBlank();
+    }
+
+    @Test
+    void rotateRefreshToken_whenSaveTransientFailure_retriesAndSucceeds() {
+        when(jwtProperties.refreshExpirationMs()).thenReturn(604800000L);
+        RefreshToken revokedDoc = RefreshToken.builder()
+                .id("rt1")
+                .userId("user-a")
+                .tokenHash("hashed-old")
+                .build();
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(RefreshToken.class)))
+                .thenReturn(revokedDoc);
+        when(refreshTokenRepository.save(any(RefreshToken.class)))
+                .thenThrow(new QueryTimeoutException("timeout"))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        RefreshRotationResult result = refreshTokenService.rotateRefreshToken("presented-raw-token");
+
+        assertThat(result.userId()).isEqualTo("user-a");
+        verify(refreshTokenRepository, times(2)).save(any(RefreshToken.class));
+    }
+
+    @Test
+    void rotateRefreshToken_whenSaveTransientFailureExhaustsRetries_throws() {
+        when(jwtProperties.refreshExpirationMs()).thenReturn(604800000L);
+        RefreshToken revokedDoc = RefreshToken.builder()
+                .id("rt1")
+                .userId("user-a")
+                .tokenHash("hashed-old")
+                .build();
+        when(mongoTemplate.findAndModify(any(Query.class), any(Update.class), any(FindAndModifyOptions.class), eq(RefreshToken.class)))
+                .thenReturn(revokedDoc);
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenThrow(new QueryTimeoutException("timeout"));
+
+        assertThatThrownBy(() -> refreshTokenService.rotateRefreshToken("presented-raw-token"))
+                .isInstanceOf(QueryTimeoutException.class);
+
+        verify(refreshTokenRepository, times(3)).save(any(RefreshToken.class));
     }
 
     @Test

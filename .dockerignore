@@ -1,0 +1,13 @@
+.git
+.github
+.agents
+.cursor
+node_modules
+**/node_modules
+**/dist
+**/build
+**/target
+**/.idea
+**/*.iml
+backend/api/uploads
+*.log

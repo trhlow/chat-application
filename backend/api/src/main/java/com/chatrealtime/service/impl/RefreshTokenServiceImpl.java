@@ -8,6 +8,8 @@ import com.chatrealtime.domain.RefreshToken;
 import com.chatrealtime.repository.RefreshTokenRepository;
 import com.chatrealtime.security.JwtProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -26,8 +28,11 @@ import java.util.Base64;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class RefreshTokenServiceImpl implements RefreshTokenService {
     private static final int TOKEN_BYTE_LENGTH = 64;
+    private static final int NEW_TOKEN_SAVE_MAX_ATTEMPTS = 3;
+    private static final long NEW_TOKEN_SAVE_INITIAL_BACKOFF_MS = 25L;
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final MongoTemplate mongoTemplate;
@@ -100,9 +105,50 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
                 .createdAt(now)
                 .expiresAt(now.plusMillis(jwtProperties.refreshExpirationMs()))
                 .build();
-        refreshTokenRepository.save(newRefreshToken);
+        persistNewRefreshTokenWithRetries(newRefreshToken);
 
         return new RefreshRotationResult(newRawToken, revoked.getUserId());
+    }
+
+    private void persistNewRefreshTokenWithRetries(RefreshToken newRefreshToken) {
+        long backoffMs = NEW_TOKEN_SAVE_INITIAL_BACKOFF_MS;
+        TransientDataAccessException lastTransient = null;
+        for (int attempt = 1; attempt <= NEW_TOKEN_SAVE_MAX_ATTEMPTS; attempt++) {
+            try {
+                refreshTokenRepository.save(newRefreshToken);
+                return;
+            } catch (TransientDataAccessException exception) {
+                lastTransient = exception;
+                log.warn(
+                        "Transient failure persisting rotated refresh token for user {} (attempt {}/{}): {}",
+                        newRefreshToken.getUserId(),
+                        attempt,
+                        NEW_TOKEN_SAVE_MAX_ATTEMPTS,
+                        exception.getMessage()
+                );
+                if (attempt < NEW_TOKEN_SAVE_MAX_ATTEMPTS) {
+                    sleepQuietly(backoffMs);
+                    backoffMs *= 2;
+                }
+            }
+        }
+        if (lastTransient != null) {
+            log.error(
+                    "Could not persist new refresh token after revoking previous token for user {}; client must sign in again",
+                    newRefreshToken.getUserId(),
+                    lastTransient
+            );
+            throw lastTransient;
+        }
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while persisting refresh token", exception);
+        }
     }
 
     @Override

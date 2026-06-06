@@ -1,16 +1,34 @@
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 node_modules/
 .next/
 dist/
 build/
+out/
 coverage/
 .turbo/
 .gradle/
 
 target/
+*.class
+*.pyc
+*.o
+*.exe
+*.dll
+*.app
+*.so
 *.log
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.pem
+*.key
+*.crt
+*.p12
 
 .env
 .env.*
@@ -18,6 +36,13 @@ target/
 
 .idea/
 .vscode/
+.history/
+.agents/
+.agent/
+.cursor/
+.github/
+.codex/
+**/.codex/
 
 # Local runtime uploads (message attachments, avatars on disk)
 uploads/

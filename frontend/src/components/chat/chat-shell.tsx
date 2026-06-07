@@ -825,9 +825,14 @@ export const ChatWindowBody = ({
     const node = scrollRef.current;
     if (!node || node.scrollTop > 48 || !pageState?.hasMore || pageState.loadingOlder) return;
     const previousHeight = node.scrollHeight;
+    const previousTop = node.scrollTop;
     void fetchOlderMessages(roomId).then(() => {
       window.requestAnimationFrame(() => {
-        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight - previousHeight;
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop =
+            scrollRef.current.scrollHeight - previousHeight + previousTop;
+        }
+        markVisibleMessages(roomId);
       });
     });
   };

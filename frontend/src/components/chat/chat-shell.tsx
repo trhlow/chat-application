@@ -12,6 +12,7 @@ import {
   SendHorizontal,
   SunMedium,
   UserPlus,
+  UserRound,
   UsersRound,
   X,
 } from "lucide-react";
@@ -274,6 +275,7 @@ export const NavUser = ({ user, onProfile }: { user: AuthUser; onProfile: () => 
 
 export const AppSidebar = ({ user }: { user: AuthUser }) => {
   const { theme, toggleTheme } = useTheme();
+  const signout = useAuthStore((state) => state.signout);
   const rooms = useChatStore((state) => state.rooms);
   const usersById = useChatStore((state) => state.usersById);
   const selectedRoomId = useChatStore((state) => state.selectedRoomId);
@@ -294,91 +296,115 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
 
   const directRooms = filteredRooms.filter(isDirectRoom);
   const groupRooms = filteredRooms.filter((room) => !isDirectRoom(room));
+  const tabTitle = tab === "chats" ? "Tin nhắn" : tab === "friends" ? "Bạn bè" : "Hồ sơ";
 
   return (
-    <aside className="flex h-full min-h-0 flex-col border-r border-border bg-card">
-      <div className="space-y-4 border-b border-border px-4 pb-4 pt-5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-              <MessageCircleMore className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-base font-bold">InChat</p>
-              <p className="truncate text-xs text-muted-foreground">Trò chuyện theo thời gian thực</p>
-            </div>
-          </div>
-          <div className="flex gap-1">
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setModal("friend")} aria-label="Add friend" title="Add friend">
-              <UserPlus className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-lg" onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
-              {theme === "dark" ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
-            </Button>
-          </div>
+    <aside className="grid h-full min-h-0 grid-cols-[68px_minmax(0,1fr)] border-r border-border bg-card">
+      <nav className="flex min-h-0 flex-col items-center bg-primary py-4 text-primary-foreground">
+        <button
+          className="mb-5 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-primary"
+          onClick={() => setTab("profile")}
+          aria-label="Mở hồ sơ"
+          title="Hồ sơ"
+        >
+          <UserAvatar name={user.fullName} src={user.avatarUrl} size="sm" />
+        </button>
+
+        <div className="flex w-full flex-col items-center gap-1 px-2">
+          {(["chats", "friends", "profile"] as SidebarTab[]).map((item) => {
+            const Icon = item === "chats" ? MessageCircleMore : item === "friends" ? UsersRound : UserRound;
+            const label = item === "chats" ? "Tin nhắn" : item === "friends" ? "Bạn bè" : "Hồ sơ";
+            return (
+              <button
+                key={item}
+                className={cn(
+                  "relative grid h-12 w-12 place-items-center rounded-xl transition hover:bg-white/15",
+                  tab === item && "bg-[#0759c7] shadow-inner",
+                )}
+                onClick={() => setTab(item)}
+                aria-label={label}
+                title={label}
+              >
+                <Icon className="h-5 w-5" strokeWidth={2} />
+                {item === "friends" && incomingRequests.length > 0 ? (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-primary" />
+                ) : null}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
-          {(["chats", "friends", "profile"] as SidebarTab[]).map((item) => (
-            <button
-              key={item}
-              className={cn("rounded-lg px-2 py-2 text-xs font-semibold transition", tab === item ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-              onClick={() => setTab(item)}
-            >
-              {item === "chats" ? "Tin nhắn" : item === "friends" ? "Bạn bè" : "Hồ sơ"}
-            </button>
-          ))}
+        <div className="mt-auto flex flex-col gap-1 px-2">
+          <button className="grid h-12 w-12 place-items-center rounded-xl transition hover:bg-white/15" onClick={toggleTheme} aria-label="Đổi giao diện" title="Đổi giao diện">
+            {theme === "dark" ? <SunMedium className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
+          </button>
+          <button className="grid h-12 w-12 place-items-center rounded-xl transition hover:bg-white/15" onClick={() => void signout()} aria-label="Đăng xuất" title="Đăng xuất">
+            <LogOut className="h-5 w-5" />
+          </button>
         </div>
+      </nav>
 
-        {tab === "chats" ? (
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
-              placeholder="Tìm cuộc trò chuyện"
+      <div className="flex min-h-0 flex-col bg-card">
+        <header className="border-b border-border px-4 pb-4 pt-5">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">InChat</p>
+              <h1 className="text-lg font-bold tracking-tight">{tabTitle}</h1>
+            </div>
+            {tab === "friends" ? (
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setModal("friend")} aria-label="Thêm bạn" title="Thêm bạn">
+                <UserPlus className="h-4 w-4" />
+              </Button>
+            ) : tab === "chats" ? (
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setModal("group")} aria-label="Tạo nhóm" title="Tạo nhóm">
+                <Plus className="h-4 w-4" />
+              </Button>
+            ) : null}
+          </div>
+
+          {tab === "chats" ? (
+            <label className="relative mt-4 block">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                className="h-10 w-full rounded-lg border-0 bg-muted pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20"
+                placeholder="Tìm kiếm"
+              />
+            </label>
+          ) : null}
+        </header>
+
+        <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
+          {tab === "chats" && (
+            isLoadingRooms ? <ListSkeleton /> : (
+              <>
+                <ChatListSection title="Trò chuyện" count={directRooms.length}>
+                  {directRooms.map((room) => (
+                    <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
+                  ))}
+                </ChatListSection>
+                {groupRooms.length > 0 ? (
+                  <ChatListSection title="Nhóm" count={groupRooms.length}>
+                    {groupRooms.map((room) => (
+                      <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
+                    ))}
+                  </ChatListSection>
+                ) : null}
+              </>
+            )
+          )}
+          {tab === "friends" && (
+            <FriendsPanel
+              loading={isLoadingFriends}
+              friends={friends}
+              incomingCount={incomingRequests.length}
+              onAddFriend={() => setModal("friend")}
+              onRequests={() => setModal("requests")}
             />
-          </label>
-        ) : null}
-      </div>
-
-      <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
-        {tab === "chats" && (
-          isLoadingRooms ? <ListSkeleton /> : (
-            <>
-              <div className="flex justify-end">
-                <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setModal("group")}>
-                  <Plus className="h-4 w-4" /> Nhóm mới
-                </Button>
-              </div>
-              <ChatListSection title="Tin nhắn trực tiếp" count={directRooms.length}>
-                {directRooms.map((room) => (
-                  <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
-                ))}
-              </ChatListSection>
-              <ChatListSection title="Nhóm" count={groupRooms.length}>
-                {groupRooms.map((room) => (
-                  <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
-                ))}
-              </ChatListSection>
-            </>
-          )
-        )}
-        {tab === "friends" && (
-          <FriendsPanel
-            loading={isLoadingFriends}
-            friends={friends}
-            incomingCount={incomingRequests.length}
-            onAddFriend={() => setModal("friend")}
-            onRequests={() => setModal("requests")}
-          />
-        )}
-        {tab === "profile" && <ProfilePanel />}
-      </div>
-
-      <div className="border-t border-border p-3">
-        <NavUser user={user} onProfile={() => setTab("profile")} />
+          )}
+          {tab === "profile" && <ProfilePanel />}
+        </div>
       </div>
 
       {modal === "friend" ? <AddFriendModal onClose={() => setModal(null)} /> : null}

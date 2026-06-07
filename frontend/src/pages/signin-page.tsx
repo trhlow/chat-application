@@ -4,12 +4,11 @@ import { SigninForm } from "@/components/signin-form";
 export const SignInPage = () => (
   <AuthShell
     mode="signin"
-    title="Chào mừng quay lại"
-    description="Đăng nhập để tiếp tục các cuộc trò chuyện của bạn."
+    title="Đăng nhập với mật khẩu"
+    description="Đăng nhập InChat để kết nối với bạn bè"
     footer={
       <>
-        Khi tiếp tục, bạn đồng ý với <span className="font-medium text-foreground">Điều khoản dịch vụ</span> và{" "}
-        <span className="font-medium text-foreground">Chính sách bảo mật</span>.
+        Tiếp tục đồng nghĩa với việc bạn chấp nhận điều khoản sử dụng InChat.
       </>
     }
   >

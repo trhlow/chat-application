@@ -1,8 +1,11 @@
 import {
-  Bell,
   Camera,
   Check,
+  ChevronRight,
+  CircleHelp,
+  Database,
   ExternalLink,
+  Globe2,
   Loader2,
   LogOut,
   MessageCircleMore,
@@ -11,6 +14,7 @@ import {
   Search,
   SendHorizontal,
   Settings,
+  SlidersHorizontal,
   SunMedium,
   UserPlus,
   UserRound,
@@ -38,6 +42,8 @@ import type { AuthUser } from "@/types/auth";
 import type { ChatMessage, ChatRoom, ChatUser, FriendRequest, FriendUser } from "@/types/chat";
 
 type SidebarTab = "chats" | "friends" | "profile";
+type AppView = "chats" | "friends";
+type FriendsSection = "list" | "groups" | "requests" | "groupRequests";
 
 const apiOrigin = API_URL.replace(/\/api\/?$/, "");
 
@@ -274,7 +280,19 @@ export const NavUser = ({ user, onProfile }: { user: AuthUser; onProfile: () => 
   );
 };
 
-export const AppSidebar = ({ user }: { user: AuthUser }) => {
+export const AppSidebar = ({
+  user,
+  activeView,
+  onViewChange,
+  friendsSection,
+  onFriendsSectionChange,
+}: {
+  user: AuthUser;
+  activeView: AppView;
+  onViewChange: (view: AppView) => void;
+  friendsSection: FriendsSection;
+  onFriendsSectionChange: (section: FriendsSection) => void;
+}) => {
   const { theme, toggleTheme } = useTheme();
   const signout = useAuthStore((state) => state.signout);
   const rooms = useChatStore((state) => state.rooms);
@@ -282,13 +300,12 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
   const selectedRoomId = useChatStore((state) => state.selectedRoomId);
   const setSelectedRoomId = useChatStore((state) => state.setSelectedRoomId);
   const isLoadingRooms = useChatStore((state) => state.isLoadingRooms);
-  const friends = useChatStore((state) => state.friends);
   const incomingRequests = useChatStore((state) => state.incomingFriendRequests);
-  const isLoadingFriends = useChatStore((state) => state.isLoadingFriends);
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<SidebarTab>("chats");
+  const [tab, setTab] = useState<SidebarTab>(activeView);
   const [modal, setModal] = useState<"friend" | "requests" | "group" | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
   const filteredRooms = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -297,6 +314,10 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
   }, [query, rooms, user, usersById]);
 
   const tabTitle = tab === "chats" ? "Tin nhắn" : tab === "friends" ? "Bạn bè" : "Hồ sơ";
+
+  useEffect(() => {
+    if (tab !== "profile") setTab(activeView);
+  }, [activeView, tab]);
 
   return (
     <aside className="relative grid h-full min-h-0 grid-cols-[72px_minmax(0,1fr)] border-r border-border bg-card">
@@ -312,7 +333,7 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
         </button>
 
         <div className="flex w-full flex-col items-center gap-1 px-2">
-          {(["chats", "friends"] as SidebarTab[]).map((item) => {
+          {(["chats", "friends"] as AppView[]).map((item) => {
             const Icon = item === "chats" ? MessageCircleMore : UsersRound;
             const label = item === "chats" ? "Tin nhắn" : "Bạn bè";
             return (
@@ -324,7 +345,9 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
                 )}
                 onClick={() => {
                   setTab(item);
+                  onViewChange(item);
                   setAccountMenuOpen(false);
+                  setSettingsMenuOpen(false);
                 }}
                 aria-label={label}
                 title={label}
@@ -344,10 +367,10 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
           <button
             className={cn(
               "grid h-14 w-14 place-items-center rounded-xl transition hover:bg-white/15",
-              tab === "profile" && "bg-[#0759c7] shadow-inner",
+              settingsMenuOpen && "bg-[#0759c7] shadow-inner",
             )}
             onClick={() => {
-              setTab("profile");
+              setSettingsMenuOpen((current) => !current);
               setAccountMenuOpen(false);
             }}
             aria-label="Cài đặt"
@@ -394,6 +417,35 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
               <LogOut className="h-4 w-4" /> Đăng xuất
             </button>
           </div>
+        </section>
+      ) : null}
+
+      {settingsMenuOpen ? (
+        <section className="absolute bottom-4 left-[82px] z-40 w-[290px] rounded-xl border border-border bg-card p-2 text-card-foreground shadow-[0_18px_50px_rgba(15,23,42,0.22)]">
+          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => { setTab("profile"); setSettingsMenuOpen(false); }}>
+            <UserRound className="h-5 w-5" /> Thông tin tài khoản
+          </button>
+          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => { toggleTheme(); setSettingsMenuOpen(false); }}>
+            <Settings className="h-5 w-5" /> Cài đặt
+          </button>
+          <div className="my-1 border-t border-border" />
+          {[
+            { icon: Database, label: "Dữ liệu" },
+            { icon: Globe2, label: "Ngôn ngữ" },
+            { icon: CircleHelp, label: "Hỗ trợ" },
+          ].map(({ icon: Icon, label }) => (
+            <button key={label} className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted">
+              <span className="flex items-center gap-3"><Icon className="h-5 w-5" /> {label}</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          ))}
+          <div className="my-1 border-t border-border" />
+          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400" onClick={() => void signout()}>
+            <LogOut className="h-5 w-5" /> Đăng xuất
+          </button>
+          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => setSettingsMenuOpen(false)}>
+            <X className="h-5 w-5" /> Thoát
+          </button>
         </section>
       ) : null}
 
@@ -451,12 +503,10 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
             )
           )}
           {tab === "friends" && (
-            <FriendsPanel
-              loading={isLoadingFriends}
-              friends={friends}
+            <FriendsNavigation
+              active={friendsSection}
               incomingCount={incomingRequests.length}
-              onAddFriend={() => setModal("friend")}
-              onRequests={() => setModal("requests")}
+              onChange={onFriendsSectionChange}
             />
           )}
           {tab === "profile" && <ProfilePanel />}
@@ -470,39 +520,155 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
   );
 };
 
-const FriendsPanel = ({
-  loading,
-  friends,
+const FriendsNavigation = ({
+  active,
   incomingCount,
-  onAddFriend,
-  onRequests,
+  onChange,
 }: {
-  loading: boolean;
-  friends: { id: string; friend: FriendUser }[];
+  active: FriendsSection;
   incomingCount: number;
-  onAddFriend: () => void;
-  onRequests: () => void;
+  onChange: (section: FriendsSection) => void;
 }) => {
-  const createDirectRoom = useChatStore((state) => state.createDirectRoom);
-  if (loading) return <ListSkeleton />;
+  const items: { id: FriendsSection; label: string; icon: typeof UsersRound; count?: number }[] = [
+    { id: "list", label: "Danh sách bạn bè", icon: UserRound },
+    { id: "groups", label: "Danh sách nhóm", icon: UsersRound },
+    { id: "requests", label: "Lời mời kết bạn", icon: UserPlus, count: incomingCount },
+    { id: "groupRequests", label: "Lời mời vào nhóm", icon: UsersRound },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" className="rounded-lg" onClick={onAddFriend}><UserPlus className="h-4 w-4" /> Thêm bạn</Button>
-        <Button variant="outline" className="rounded-lg" onClick={onRequests}><Bell className="h-4 w-4" /> Lời mời {incomingCount ? `(${incomingCount})` : ""}</Button>
-      </div>
-      <ChatListSection title="Bạn bè" count={friends.length}>
-        {friends.length === 0 ? <EmptyText text="Bạn chưa có người bạn nào." /> : friends.map(({ id, friend }) => (
-          <button key={id} className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition hover:bg-muted" onClick={() => void createDirectRoom(friend.id)}>
-            <UserAvatar name={getFriendName(friend)} src={friend.avatarEndpoint ?? friend.avatar} />
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">{getFriendName(friend)}</span>
-              <span className="block truncate text-xs text-muted-foreground">@{friend.username}</span>
-            </span>
-          </button>
-        ))}
-      </ChatListSection>
+    <div className="-mx-1 space-y-2">
+      {items.map(({ id, label, icon: Icon, count }) => (
+        <button
+          key={id}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-lg px-4 py-4 text-left text-sm transition hover:bg-muted",
+            active === id && "bg-accent font-semibold text-accent-foreground",
+          )}
+          onClick={() => onChange(id)}
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{label}</span>
+          {count ? <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">{count}</span> : null}
+        </button>
+      ))}
     </div>
+  );
+};
+
+export const FriendsWorkspace = ({
+  section,
+  onOpenChat,
+}: {
+  section: FriendsSection;
+  onOpenChat: () => void;
+}) => {
+  const friends = useChatStore((state) => state.friends);
+  const rooms = useChatStore((state) => state.rooms);
+  const incoming = useChatStore((state) => state.incomingFriendRequests);
+  const outgoing = useChatStore((state) => state.outgoingFriendRequests);
+  const isLoading = useChatStore((state) => state.isLoadingFriends);
+  const isMutating = useChatStore((state) => state.isMutating);
+  const createDirectRoom = useChatStore((state) => state.createDirectRoom);
+  const acceptFriendRequest = useChatStore((state) => state.acceptFriendRequest);
+  const rejectFriendRequest = useChatStore((state) => state.rejectFriendRequest);
+  const [query, setQuery] = useState("");
+  const [firstMessages, setFirstMessages] = useState<Record<string, string>>({});
+
+  const filteredFriends = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return [...friends]
+      .filter(({ friend }) => !normalized || getFriendName(friend).toLowerCase().includes(normalized))
+      .sort((a, b) => getFriendName(a.friend).localeCompare(getFriendName(b.friend), "vi"));
+  }, [friends, query]);
+
+  const title =
+    section === "list" ? "Danh sách bạn bè" :
+    section === "groups" ? "Danh sách nhóm" :
+    section === "requests" ? "Lời mời kết bạn" : "Lời mời vào nhóm";
+
+  return (
+    <section className="flex h-full min-h-0 flex-col bg-muted/60">
+      <header className="flex h-[78px] items-center gap-3 border-b border-border bg-card px-6">
+        {section === "list" ? <UserRound className="h-6 w-6" /> : <UsersRound className="h-6 w-6" />}
+        <h1 className="text-lg font-bold">{title}</h1>
+      </header>
+
+      <div className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <div className="border-b border-border bg-muted/70 px-5 py-5 text-sm font-bold">
+          {section === "list" ? `Bạn bè (${friends.length})` : title}
+        </div>
+
+        <div className="m-5 rounded-xl border border-border bg-card p-5">
+          {section === "list" ? (
+            <>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+                <label className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input value={query} onChange={(event) => setQuery(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring/20" placeholder="Tìm bạn" />
+                </label>
+                <div className="flex h-10 items-center gap-2 rounded-lg border border-input px-3 text-sm">
+                  <SlidersHorizontal className="h-4 w-4" /> Tên (A-Z)
+                </div>
+              </div>
+              <div className="mt-6">
+                {isLoading ? <ListSkeleton /> : filteredFriends.length === 0 ? <EmptyText text="Không tìm thấy bạn bè." /> : (
+                  <div className="divide-y divide-border">
+                    {filteredFriends.map(({ id, friend }) => (
+                      <button
+                        key={id}
+                        className="flex w-full items-center gap-4 px-2 py-4 text-left transition hover:bg-muted"
+                        onClick={() => void createDirectRoom(friend.id).then((room) => { if (room) onOpenChat(); })}
+                      >
+                        <UserAvatar name={getFriendName(friend)} src={friend.avatarEndpoint ?? friend.avatar} size="lg" />
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{getFriendName(friend)}</p>
+                          <p className="truncate text-xs text-muted-foreground">@{friend.username}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : section === "groups" ? (
+            <div className="space-y-2">
+              {rooms.filter((room) => !isDirectRoom(room)).length === 0 ? <EmptyText text="Bạn chưa tham gia nhóm nào." /> : rooms.filter((room) => !isDirectRoom(room)).map((room) => (
+                <div key={room.id} className="flex items-center gap-4 border-b border-border px-2 py-4 last:border-0">
+                  <UserAvatar name={room.name || "Nhóm"} src={room.avatarEndpoint ?? room.avatar} size="lg" />
+                  <div><p className="font-semibold">{room.name || "Nhóm chat"}</p><p className="text-xs text-muted-foreground">{room.memberIds.length} thành viên</p></div>
+                </div>
+              ))}
+            </div>
+          ) : section === "requests" ? (
+            <div className="grid gap-6 xl:grid-cols-2">
+              <div className="space-y-3">
+                <h2 className="font-bold">Đã nhận ({incoming.length})</h2>
+                {incoming.length === 0 ? <EmptyText text="Không có lời mời mới." /> : incoming.map((request) => (
+                  <RequestCard
+                    key={request.id}
+                    request={request}
+                    value={firstMessages[request.id] ?? ""}
+                    onChange={(value) => setFirstMessages((current) => ({ ...current, [request.id]: value }))}
+                    onAccept={() => void acceptFriendRequest(request.id, firstMessages[request.id])}
+                    onReject={() => void rejectFriendRequest(request.id)}
+                    disabled={isMutating}
+                  />
+                ))}
+              </div>
+              <div className="space-y-3">
+                <h2 className="font-bold">Đã gửi ({outgoing.length})</h2>
+                {outgoing.length === 0 ? <EmptyText text="Bạn chưa gửi lời mời nào." /> : outgoing.map((request) => (
+                  <div key={request.id} className="rounded-lg border border-border p-3"><SimpleUserRow user={request.receiver} suffix="Đang chờ" /></div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <EmptyText text="Hiện chưa có lời mời vào nhóm." />
+          )}
+        </div>
+      </div>
+    </section>
   );
 };
 

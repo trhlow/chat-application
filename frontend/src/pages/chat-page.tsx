@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-import { AppSidebar, ChatWindowLayout } from "@/components/chat/chat-shell";
+import { AppSidebar, ChatWindowLayout, FriendsWorkspace } from "@/components/chat/chat-shell";
 import { useAuthStore } from "@/store/auth-store";
 import { useChatStore } from "@/store/chat-store";
 
 export const ChatPage = () => {
+  const [activeView, setActiveView] = useState<"chats" | "friends">("chats");
+  const [friendsSection, setFriendsSection] = useState<"list" | "groups" | "requests" | "groupRequests">("list");
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const fetchConversations = useChatStore((state) => state.fetchConversations);
@@ -39,13 +41,29 @@ export const ChatPage = () => {
     <main className="h-[100dvh] overflow-hidden bg-background text-foreground">
       <div className="grid h-full grid-cols-1 md:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="hidden min-h-0 md:block">
-          <AppSidebar user={user} />
+          <AppSidebar
+            user={user}
+            activeView={activeView}
+            onViewChange={setActiveView}
+            friendsSection={friendsSection}
+            onFriendsSectionChange={setFriendsSection}
+          />
         </div>
         <div className="grid min-h-0 grid-rows-[minmax(240px,40dvh)_minmax(0,1fr)] md:block">
           <div className="min-h-0 border-b border-border md:hidden">
-            <AppSidebar user={user} />
+            <AppSidebar
+              user={user}
+              activeView={activeView}
+              onViewChange={setActiveView}
+              friendsSection={friendsSection}
+              onFriendsSectionChange={setFriendsSection}
+            />
           </div>
-          <ChatWindowLayout user={user} />
+          {activeView === "friends" ? (
+            <FriendsWorkspace section={friendsSection} onOpenChat={() => setActiveView("chats")} />
+          ) : (
+            <ChatWindowLayout user={user} />
+          )}
         </div>
       </div>
     </main>

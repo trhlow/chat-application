@@ -11,7 +11,7 @@ export const ThemeToggle = () => {
     <Button
       variant="outline"
       size="icon"
-      className="rounded-full bg-background/70 backdrop-blur"
+      className="rounded-lg bg-card/80 shadow-sm backdrop-blur"
       onClick={toggleTheme}
       aria-label="Toggle theme"
     >

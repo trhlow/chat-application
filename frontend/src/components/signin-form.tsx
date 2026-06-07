@@ -17,23 +17,18 @@ export const SigninForm = () => {
   const navigate = useNavigate();
   const signin = useAuthStore((state) => state.signin);
   const [submitError, setSubmitError] = useState<string | null>(null);
-
   const form = useForm<SignInFormValues>({
     resolver: zodResolver(signInSchema),
-    defaultValues: {
-      emailOrUsername: "",
-      password: "",
-    },
+    defaultValues: { emailOrUsername: "", password: "" },
   });
 
   const onSubmit = async (values: SignInFormValues) => {
     setSubmitError(null);
-
     try {
       await signin(values);
       navigate("/app", { replace: true });
     } catch (error) {
-      setSubmitError(getErrorMessage(error, "Unable to sign in right now."));
+      setSubmitError(getErrorMessage(error, "Không thể đăng nhập lúc này."));
     }
   };
 
@@ -46,9 +41,8 @@ export const SigninForm = () => {
       >
         <Input
           id="emailOrUsername"
-          placeholder="moji"
+          placeholder="Tên đăng nhập hoặc email"
           autoComplete="username"
-          className="h-11 rounded-[14px] border-slate-200 bg-white px-4 text-[15px] shadow-none focus:border-[#7b2ff7] focus:ring-[#7b2ff7]/15"
           {...form.register("emailOrUsername")}
         />
       </FormField>
@@ -63,29 +57,24 @@ export const SigninForm = () => {
           type="password"
           autoComplete="current-password"
           placeholder="Nhập mật khẩu của bạn"
-          className="h-11 rounded-[14px] border-slate-200 bg-white px-4 text-[15px] shadow-none focus:border-[#7b2ff7] focus:ring-[#7b2ff7]/15"
           {...form.register("password")}
         />
       </FormField>
 
       {submitError ? (
-        <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
           {submitError}
         </div>
       ) : null}
 
-      <Button
-        type="submit"
-        className="mt-2 h-11 w-full rounded-full bg-[linear-gradient(90deg,#7b2ff7_0%,#8d32ff_100%)] text-sm font-semibold text-white shadow-[0_16px_26px_rgba(123,47,247,0.32)] hover:translate-y-0 hover:brightness-105"
-        disabled={form.formState.isSubmitting}
-      >
+      <Button type="submit" className="mt-2 h-11 w-full" disabled={form.formState.isSubmitting}>
         {form.formState.isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
         <ArrowRight className="h-4 w-4" />
       </Button>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-muted-foreground">
         Chưa có tài khoản?{" "}
-        <Link className="font-semibold text-slate-700 hover:text-[#7b2ff7]" to="/signup">
+        <Link className="font-semibold text-primary hover:underline" to="/signup">
           Đăng ký
         </Link>
       </p>

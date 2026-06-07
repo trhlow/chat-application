@@ -4,14 +4,12 @@ import { SignupForm } from "@/components/signup-form";
 export const SignUpPage = () => (
   <AuthShell
     mode="signup"
-    title="Tạo tài khoản InChat"
-    description="Chào mừng bạn! Hãy đăng ký để bắt đầu"
+    title="Tạo tài khoản"
+    description="Tham gia InChat và bắt đầu trò chuyện với bạn bè."
     footer={
       <>
-        Bằng cách tiếp tục, bạn đồng ý với{" "}
-        <span className="font-medium text-slate-600">Điều khoản dịch vụ</span> và{" "}
-        <span className="font-medium text-slate-600">Chính sách bảo mật</span> của
-        chúng tôi.
+        Khi tiếp tục, bạn đồng ý với <span className="font-medium text-foreground">Điều khoản dịch vụ</span> và{" "}
+        <span className="font-medium text-foreground">Chính sách bảo mật</span>.
       </>
     }
   >

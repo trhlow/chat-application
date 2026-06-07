@@ -192,7 +192,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       });
     } catch (_error) {
-      set({ error: "Khong the tai danh sach cuoc tro chuyen." });
+      set({ error: "Không thể tải danh sách cuộc trò chuyện." });
     } finally {
       set({ isLoadingRooms: false });
     }
@@ -218,7 +218,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
       get().markVisibleMessages(roomId);
     } catch (_error) {
-      set({ error: "Khong the tai tin nhan." });
+      set({ error: "Không thể tải tin nhắn." });
     } finally {
       set({ isLoadingMessages: false });
     }
@@ -257,7 +257,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
     } catch (_error) {
       set((state) => ({
-        error: "Khong the tai them tin nhan cu.",
+        error: "Không thể tải thêm tin nhắn cũ.",
         messagePagesByRoomId: {
           ...state.messagePagesByRoomId,
           [roomId]: { ...pageState, loadingOlder: false },
@@ -307,7 +307,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       get().setSelectedRoomId(room.id);
       return room;
     } catch (_error) {
-      set({ error: "Khong the tao cuoc tro chuyen truc tiep." });
+      set({ error: "Không thể tạo cuộc trò chuyện trực tiếp." });
       return null;
     } finally {
       set({ isMutating: false });
@@ -326,7 +326,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       get().setSelectedRoomId(room.id);
       return room;
     } catch (_error) {
-      set({ error: "Khong the tao nhom moi. Nhom can toi thieu 3 thanh vien." });
+      set({ error: "Không thể tạo nhóm mới. Nhóm cần tối thiểu 3 thành viên." });
       return null;
     } finally {
       set({ isMutating: false });
@@ -346,7 +346,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         outgoingFriendRequests: outgoing.data,
       });
     } catch (_error) {
-      set({ error: "Khong the tai danh sach ban be." });
+      set({ error: "Không thể tải danh sách bạn bè." });
     } finally {
       set({ isLoadingFriends: false });
     }
@@ -359,7 +359,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         outgoingFriendRequests: [response.data, ...state.outgoingFriendRequests],
       }));
     } catch (_error) {
-      set({ error: "Khong the gui loi moi ket ban." });
+      set({ error: "Không thể gửi lời mời kết bạn." });
     } finally {
       set({ isMutating: false });
     }
@@ -387,7 +387,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       get().setSelectedRoomId(room.id);
       await Promise.all([get().fetchFriends(), get().fetchConversations()]);
     } catch (_error) {
-      set({ error: "Khong the chap nhan loi moi ket ban." });
+      set({ error: "Không thể chấp nhận lời mời kết bạn." });
     } finally {
       set({ isMutating: false });
     }
@@ -400,7 +400,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         incomingFriendRequests: state.incomingFriendRequests.filter((item) => item.id !== requestId),
       }));
     } catch (_error) {
-      set({ error: "Khong the tu choi loi moi ket ban." });
+      set({ error: "Không thể từ chối lời mời kết bạn." });
     } finally {
       set({ isMutating: false });
     }
@@ -427,7 +427,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           .forEach((message) => state.markMessageStatus(message, "delivered"));
       });
     } catch (_error) {
-      set({ error: "Khong the tai ho so." });
+      set({ error: "Không thể tải hồ sơ." });
     } finally {
       set({ isLoadingProfile: false });
     }
@@ -445,7 +445,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ profile: response.data });
       useAuthStore.getState().updateUser(mapProfileToAuthUser(response.data));
     } catch (_error) {
-      set({ error: "Khong the cap nhat ho so." });
+      set({ error: "Không thể cập nhật hồ sơ." });
     } finally {
       set({ isMutating: false });
     }
@@ -457,7 +457,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ profile: response.data });
       useAuthStore.getState().updateUser(mapProfileToAuthUser(response.data));
     } catch (_error) {
-      set({ error: "Khong the upload avatar." });
+      set({ error: "Không thể tải ảnh đại diện lên." });
     } finally {
       set({ isMutating: false });
     }

@@ -36,12 +36,12 @@ export const ChatPage = () => {
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-background text-foreground">
-      <div className="grid h-full grid-cols-1 md:grid-cols-[340px_minmax(0,1fr)]">
+    <main className="h-[100dvh] overflow-hidden bg-background text-foreground">
+      <div className="grid h-full grid-cols-1 md:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="hidden min-h-0 md:block">
           <AppSidebar user={user} />
         </div>
-        <div className="grid min-h-0 grid-rows-[minmax(260px,42vh)_minmax(0,1fr)] md:block">
+        <div className="grid min-h-0 grid-rows-[minmax(240px,40dvh)_minmax(0,1fr)] md:block">
           <div className="min-h-0 border-b border-border md:hidden">
             <AppSidebar user={user} />
           </div>

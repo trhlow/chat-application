@@ -126,7 +126,7 @@ export const UserAvatar = ({
 }) => (
   <div
     className={cn(
-      "relative grid shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-secondary font-semibold text-secondary-foreground",
+      "relative grid shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-secondary font-semibold text-secondary-foreground",
       size === "sm" && "h-9 w-9 text-xs",
       size === "md" && "h-11 w-11 text-sm",
       size === "lg" && "h-12 w-12 text-base",
@@ -220,8 +220,8 @@ const ChatCard = ({
   return (
     <button
       className={cn(
-        "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border p-3 text-left transition",
-        active ? "border-primary/45 bg-primary/10 shadow-soft" : "border-transparent hover:border-border hover:bg-muted/70",
+        "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition",
+        active ? "border-primary/20 bg-accent text-accent-foreground" : "border-transparent hover:bg-muted/80",
       )}
       onClick={onSelect}
     >
@@ -232,7 +232,7 @@ const ChatCard = ({
           <span className="truncate text-sm font-semibold">{name}</span>
         </span>
         <span className="mt-1 block truncate text-xs text-muted-foreground">
-          {room.lastMessagePreview || "Chua co tin nhan"}
+          {room.lastMessagePreview || "Chưa có tin nhắn"}
         </span>
       </span>
       <span className="flex flex-col items-end gap-2">
@@ -257,7 +257,7 @@ export const NavUser = ({ user, onProfile }: { user: AuthUser; onProfile: () => 
   const signout = useAuthStore((state) => state.signout);
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+    <div className="flex items-center gap-3 rounded-xl bg-muted/70 p-2.5">
       <button className="contents" onClick={onProfile} aria-label="Open profile">
         <UserAvatar name={user.fullName} src={user.avatarUrl} online={user.isOnline} />
       </button>
@@ -296,16 +296,16 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
   const groupRooms = filteredRooms.filter((room) => !isDirectRoom(room));
 
   return (
-    <aside className="flex h-full min-h-0 flex-col border-r border-border bg-card/85">
-      <div className="space-y-4 border-b border-border p-4">
+    <aside className="flex h-full min-h-0 flex-col border-r border-border bg-card">
+      <div className="space-y-4 border-b border-border px-4 pb-4 pt-5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
               <MessageCircleMore className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-base font-bold">InChat</p>
-              <p className="truncate text-xs text-muted-foreground">Realtime workspace</p>
+              <p className="truncate text-xs text-muted-foreground">Trò chuyện theo thời gian thực</p>
             </div>
           </div>
           <div className="flex gap-1">
@@ -318,14 +318,14 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background p-1">
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
           {(["chats", "friends", "profile"] as SidebarTab[]).map((item) => (
             <button
               key={item}
-              className={cn("rounded-md px-2 py-2 text-xs font-semibold capitalize transition", tab === item ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted")}
+              className={cn("rounded-lg px-2 py-2 text-xs font-semibold transition", tab === item ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
               onClick={() => setTab(item)}
             >
-              {item}
+              {item === "chats" ? "Tin nhắn" : item === "friends" ? "Bạn bè" : "Hồ sơ"}
             </button>
           ))}
         </div>
@@ -336,28 +336,28 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-              placeholder="Search chats"
+              className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+              placeholder="Tìm cuộc trò chuyện"
             />
           </label>
         ) : null}
       </div>
 
-      <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto p-3">
+      <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {tab === "chats" && (
           isLoadingRooms ? <ListSkeleton /> : (
             <>
               <div className="flex justify-end">
                 <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setModal("group")}>
-                  <Plus className="mr-2 h-4 w-4" /> New group
+                  <Plus className="h-4 w-4" /> Nhóm mới
                 </Button>
               </div>
-              <ChatListSection title="Direct messages" count={directRooms.length}>
+              <ChatListSection title="Tin nhắn trực tiếp" count={directRooms.length}>
                 {directRooms.map((room) => (
                   <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
                 ))}
               </ChatListSection>
-              <ChatListSection title="Groups" count={groupRooms.length}>
+              <ChatListSection title="Nhóm" count={groupRooms.length}>
                 {groupRooms.map((room) => (
                   <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
                 ))}
@@ -406,11 +406,11 @@ const FriendsPanel = ({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" className="rounded-lg" onClick={onAddFriend}><UserPlus className="mr-2 h-4 w-4" /> Add</Button>
-        <Button variant="outline" className="rounded-lg" onClick={onRequests}><Bell className="mr-2 h-4 w-4" /> Requests {incomingCount ? `(${incomingCount})` : ""}</Button>
+        <Button variant="outline" className="rounded-lg" onClick={onAddFriend}><UserPlus className="h-4 w-4" /> Thêm bạn</Button>
+        <Button variant="outline" className="rounded-lg" onClick={onRequests}><Bell className="h-4 w-4" /> Lời mời {incomingCount ? `(${incomingCount})` : ""}</Button>
       </div>
-      <ChatListSection title="Friends" count={friends.length}>
-        {friends.length === 0 ? <EmptyText text="Chua co ban be nao." /> : friends.map(({ id, friend }) => (
+      <ChatListSection title="Bạn bè" count={friends.length}>
+        {friends.length === 0 ? <EmptyText text="Bạn chưa có người bạn nào." /> : friends.map(({ id, friend }) => (
           <button key={id} className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left transition hover:bg-muted" onClick={() => void createDirectRoom(friend.id)}>
             <UserAvatar name={getFriendName(friend)} src={friend.avatarEndpoint ?? friend.avatar} />
             <span className="min-w-0">
@@ -464,15 +464,15 @@ const ProfilePanel = () => {
       <TextInput label="Display name" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
       <TextInput label="Phone" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
       <label className="block space-y-1.5">
-        <span className="text-xs font-semibold text-muted-foreground">Bio</span>
+        <span className="text-xs font-semibold text-muted-foreground">Giới thiệu</span>
         <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={4} className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />
       </label>
       <select value={form.themePreference} onChange={(event) => setForm((current) => ({ ...current, themePreference: event.target.value }))} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none">
-        <option value="system">System</option>
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
+        <option value="system">Theo hệ thống</option>
+        <option value="light">Sáng</option>
+        <option value="dark">Tối</option>
       </select>
-      <Button type="submit" className="w-full rounded-lg" disabled={isMutating}>{isMutating ? "Saving..." : "Save profile"}</Button>
+      <Button type="submit" className="w-full rounded-lg" disabled={isMutating}>{isMutating ? "Đang lưu..." : "Lưu hồ sơ"}</Button>
     </form>
   );
 };
@@ -509,9 +509,9 @@ const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
   }, [currentUser?.id, query]);
 
   return (
-    <Modal title="Add friend" onClose={onClose}>
+    <Modal title="Thêm bạn" onClose={onClose}>
       <div className="space-y-3">
-        <TextInput label="Search user" value={query} onChange={setQuery} />
+        <TextInput label="Tìm người dùng" value={query} onChange={setQuery} />
         {loading ? <ListSkeleton /> : results.map((user) => (
           <div key={user.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
             <UserAvatar name={user.displayName || user.username} src={user.avatarEndpoint ?? user.avatar} />
@@ -519,7 +519,7 @@ const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
               <p className="truncate text-sm font-semibold">{user.displayName || user.username}</p>
               <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
             </div>
-            <Button size="sm" className="rounded-lg" disabled={isMutating} onClick={() => void sendFriendRequest(user.id)}>Send</Button>
+            <Button size="sm" className="rounded-lg" disabled={isMutating} onClick={() => void sendFriendRequest(user.id)}>Gửi lời mời</Button>
           </div>
         ))}
       </div>
@@ -536,10 +536,10 @@ const FriendRequestsModal = ({ onClose }: { onClose: () => void }) => {
   const [firstMessages, setFirstMessages] = useState<Record<string, string>>({});
 
   return (
-    <Modal title="Friend requests" onClose={onClose}>
+    <Modal title="Lời mời kết bạn" onClose={onClose}>
       <div className="space-y-5">
-        <ChatListSection title="Incoming" count={incoming.length}>
-          {incoming.length === 0 ? <EmptyText text="Khong co loi moi moi." /> : incoming.map((request) => (
+        <ChatListSection title="Đã nhận" count={incoming.length}>
+          {incoming.length === 0 ? <EmptyText text="Không có lời mời mới." /> : incoming.map((request) => (
             <RequestCard
               key={request.id}
               request={request}
@@ -551,9 +551,9 @@ const FriendRequestsModal = ({ onClose }: { onClose: () => void }) => {
             />
           ))}
         </ChatListSection>
-        <ChatListSection title="Outgoing" count={outgoing.length}>
-          {outgoing.length === 0 ? <EmptyText text="Chua gui loi moi nao." /> : outgoing.map((request) => (
-            <SimpleUserRow key={request.id} user={request.receiver} suffix="Pending" />
+        <ChatListSection title="Đã gửi" count={outgoing.length}>
+          {outgoing.length === 0 ? <EmptyText text="Bạn chưa gửi lời mời nào." /> : outgoing.map((request) => (
+            <SimpleUserRow key={request.id} user={request.receiver} suffix="Đang chờ" />
           ))}
         </ChatListSection>
       </div>
@@ -578,10 +578,10 @@ const RequestCard = ({
 }) => (
   <div className="space-y-3 rounded-lg border border-border p-3">
     <SimpleUserRow user={request.requester} suffix={formatRelativeTime(request.createdAt)} />
-    <input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none" placeholder="Tin nhan dau tien sau khi dong y" />
+    <input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none" placeholder="Tin nhắn đầu tiên sau khi đồng ý" />
     <div className="flex justify-end gap-2">
-      <Button variant="outline" size="sm" className="rounded-lg" disabled={disabled} onClick={onReject}><X className="mr-2 h-4 w-4" /> Reject</Button>
-      <Button size="sm" className="rounded-lg" disabled={disabled} onClick={onAccept}><Check className="mr-2 h-4 w-4" /> Accept</Button>
+      <Button variant="outline" size="sm" className="rounded-lg" disabled={disabled} onClick={onReject}><X className="h-4 w-4" /> Từ chối</Button>
+      <Button size="sm" className="rounded-lg" disabled={disabled} onClick={onAccept}><Check className="h-4 w-4" /> Đồng ý</Button>
     </div>
   </div>
 );
@@ -600,10 +600,10 @@ const CreateGroupModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <Modal title="New group" onClose={onClose}>
+    <Modal title="Tạo nhóm mới" onClose={onClose}>
       <form className="space-y-4" onSubmit={submit}>
-        <TextInput label="Group name" value={name} onChange={setName} />
-        <ChatListSection title="Members" count={selectedIds.length}>
+        <TextInput label="Tên nhóm" value={name} onChange={setName} />
+        <ChatListSection title="Thành viên" count={selectedIds.length}>
           {friends.map(({ friend }) => (
             <label key={friend.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted">
               <input
@@ -619,7 +619,7 @@ const CreateGroupModal = ({ onClose }: { onClose: () => void }) => {
             </label>
           ))}
         </ChatListSection>
-        <Button type="submit" className="w-full rounded-lg" disabled={isMutating || !name.trim() || selectedIds.length < 2}>Create group</Button>
+        <Button type="submit" className="w-full rounded-lg" disabled={isMutating || !name.trim() || selectedIds.length < 2}>Tạo nhóm</Button>
       </form>
     </Modal>
   );
@@ -647,6 +647,7 @@ export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
   const messagesByRoomId = useChatStore((state) => state.messagesByRoomId);
   const messagePagesByRoomId = useChatStore((state) => state.messagePagesByRoomId);
   const isLoadingMessages = useChatStore((state) => state.isLoadingMessages);
+  const error = useChatStore((state) => state.error);
 
   const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? null;
   const messages = selectedRoomId ? messagesByRoomId[selectedRoomId] ?? [] : [];
@@ -657,6 +658,11 @@ export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
   return (
     <section className="flex h-full min-h-0 flex-col bg-background">
       <ChatWindowHeader room={selectedRoom} user={user} usersById={usersById} />
+      {error ? (
+        <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-center text-xs text-red-600 dark:text-red-300">
+          {error}
+        </div>
+      ) : null}
       <ChatWindowBody roomId={selectedRoomId} messages={messages} currentUser={user} usersById={usersById} loading={isLoadingMessages} pageState={pageState} />
       <MessageInput />
     </section>
@@ -669,8 +675,8 @@ const WelcomeScreen = () => (
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-accent text-accent-foreground">
         <MessageCircleMore className="h-7 w-7" />
       </div>
-      <h1 className="mt-5 text-2xl font-bold tracking-tight">Chon mot cuoc tro chuyen</h1>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">Tin nhan, trang thai online va so unread se cap nhat realtime khi ban mo chat.</p>
+      <h1 className="mt-5 text-2xl font-bold tracking-tight">Chọn một cuộc trò chuyện</h1>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">Tin nhắn và trạng thái trực tuyến sẽ được cập nhật theo thời gian thực.</p>
     </div>
   </section>
 );
@@ -750,7 +756,7 @@ export const ChatWindowBody = ({
       {loading ? (
         <MessageSkeleton />
       ) : messages.length === 0 ? (
-        <EmptyText text="Chua co tin nhan nao. Hay gui loi chao dau tien." />
+        <EmptyText text="Chưa có tin nhắn nào. Hãy gửi lời chào đầu tiên." />
       ) : (
         <div className="space-y-3">
           {messages.map((message) => (
@@ -776,11 +782,11 @@ export const MessageItem = ({ message, mine, sender, currentUserId }: { message:
   const receipt = getReceiptLabel(message, currentUserId);
 
   return (
-    <div className={cn("flex gap-2", mine && "justify-end")}>
+    <div className={cn("mx-auto flex max-w-4xl gap-2", mine && "justify-end")}>
       {!mine ? <UserAvatar name={senderName} src={sender?.avatarEndpoint ?? sender?.avatar} size="sm" /> : null}
       <div className={cn("max-w-[78%]", mine && "text-right")}>
         {!mine ? <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">{senderName}</p> : null}
-        <div className={cn("rounded-lg px-4 py-2 text-sm leading-6 shadow-sm", mine ? "bg-primary text-primary-foreground" : "border border-border bg-card text-card-foreground")}>
+        <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-sm", mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-card-foreground")}>
           {message.content}
         </div>
         <p className="mt-1 px-1 text-xs text-muted-foreground">
@@ -818,8 +824,8 @@ export const MessageInput = () => {
   };
 
   return (
-    <form onSubmit={submit} className="border-t border-border bg-card/80 p-3 backdrop-blur">
-      <div className="flex items-end gap-2 rounded-lg border border-input bg-background p-2">
+    <form onSubmit={submit} className="border-t border-border bg-card/90 p-3 backdrop-blur">
+      <div className="mx-auto flex max-w-4xl items-end gap-2 rounded-2xl border border-input bg-background p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10">
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -831,7 +837,7 @@ export const MessageInput = () => {
           }}
           rows={1}
           className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 outline-none"
-          placeholder="Nhap tin nhan..."
+          placeholder="Nhập tin nhắn..."
         />
         <Button type="submit" size="icon" className="h-10 w-10 rounded-lg" disabled={isSending || !value.trim()} aria-label="Send message" title="Send">
           <SendHorizontal className="h-5 w-5" />

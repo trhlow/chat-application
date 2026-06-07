@@ -17,7 +17,7 @@ export const FormField = ({
   description,
   children,
 }: FormFieldProps) => (
-  <div className="space-y-2.5">
+  <div className="space-y-2">
     <Label htmlFor={id}>{label}</Label>
     {children}
     {error ? (

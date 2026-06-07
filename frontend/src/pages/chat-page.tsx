@@ -37,7 +37,7 @@ export const ChatPage = () => {
 
   return (
     <main className="h-[100dvh] overflow-hidden bg-background text-foreground">
-      <div className="grid h-full grid-cols-1 md:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid h-full grid-cols-1 md:grid-cols-[380px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="hidden min-h-0 md:block">
           <AppSidebar user={user} />
         </div>

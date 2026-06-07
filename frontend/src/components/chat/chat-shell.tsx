@@ -2,7 +2,7 @@ import {
   Bell,
   Camera,
   Check,
-  Hash,
+  ExternalLink,
   Loader2,
   LogOut,
   MessageCircleMore,
@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   SendHorizontal,
+  Settings,
   SunMedium,
   UserPlus,
   UserRound,
@@ -127,7 +128,7 @@ export const UserAvatar = ({
 }) => (
   <div
     className={cn(
-      "relative grid shrink-0 place-items-center overflow-hidden rounded-xl border border-border bg-secondary font-semibold text-secondary-foreground",
+      "relative grid shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-secondary font-semibold text-secondary-foreground",
       size === "sm" && "h-9 w-9 text-xs",
       size === "md" && "h-11 w-11 text-sm",
       size === "lg" && "h-12 w-12 text-base",
@@ -221,15 +222,15 @@ const ChatCard = ({
   return (
     <button
       className={cn(
-        "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition",
-        active ? "border-primary/20 bg-accent text-accent-foreground" : "border-transparent hover:bg-muted/80",
+        "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-left transition",
+        active ? "bg-accent text-accent-foreground" : "hover:bg-muted/80",
       )}
       onClick={onSelect}
     >
       <UserAvatar name={name} src={getRoomAvatar(room, currentUser, usersById)} online={online} />
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-2">
-          {group ? <UsersRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <Hash className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+          {group ? <UsersRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : null}
           <span className="truncate text-sm font-semibold">{name}</span>
         </span>
         <span className="mt-1 block truncate text-xs text-muted-foreground">
@@ -287,6 +288,7 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<SidebarTab>("chats");
   const [modal, setModal] = useState<"friend" | "requests" | "group" | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   const filteredRooms = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -294,55 +296,106 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
     return rooms.filter((room) => getRoomName(room, user, usersById).toLowerCase().includes(normalizedQuery));
   }, [query, rooms, user, usersById]);
 
-  const directRooms = filteredRooms.filter(isDirectRoom);
-  const groupRooms = filteredRooms.filter((room) => !isDirectRoom(room));
   const tabTitle = tab === "chats" ? "Tin nhắn" : tab === "friends" ? "Bạn bè" : "Hồ sơ";
 
   return (
-    <aside className="grid h-full min-h-0 grid-cols-[68px_minmax(0,1fr)] border-r border-border bg-card">
-      <nav className="flex min-h-0 flex-col items-center bg-primary py-4 text-primary-foreground">
+    <aside className="relative grid h-full min-h-0 grid-cols-[72px_minmax(0,1fr)] border-r border-border bg-card">
+      <nav className="flex min-h-0 flex-col items-center bg-primary py-5 text-primary-foreground">
         <button
-          className="mb-5 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-primary"
-          onClick={() => setTab("profile")}
-          aria-label="Mở hồ sơ"
-          title="Hồ sơ"
+          className="mb-6 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-primary transition hover:scale-[1.03]"
+          onClick={() => setAccountMenuOpen((current) => !current)}
+          aria-label="Mở menu tài khoản"
+          aria-expanded={accountMenuOpen}
+          title="Tài khoản"
         >
-          <UserAvatar name={user.fullName} src={user.avatarUrl} size="sm" />
+          <UserAvatar name={user.fullName} src={user.avatarUrl} size="md" />
         </button>
 
         <div className="flex w-full flex-col items-center gap-1 px-2">
-          {(["chats", "friends", "profile"] as SidebarTab[]).map((item) => {
-            const Icon = item === "chats" ? MessageCircleMore : item === "friends" ? UsersRound : UserRound;
-            const label = item === "chats" ? "Tin nhắn" : item === "friends" ? "Bạn bè" : "Hồ sơ";
+          {(["chats", "friends"] as SidebarTab[]).map((item) => {
+            const Icon = item === "chats" ? MessageCircleMore : UsersRound;
+            const label = item === "chats" ? "Tin nhắn" : "Bạn bè";
             return (
               <button
                 key={item}
                 className={cn(
-                  "relative grid h-12 w-12 place-items-center rounded-xl transition hover:bg-white/15",
+                  "relative grid h-14 w-14 place-items-center rounded-xl transition hover:bg-white/15",
                   tab === item && "bg-[#0759c7] shadow-inner",
                 )}
-                onClick={() => setTab(item)}
+                onClick={() => {
+                  setTab(item);
+                  setAccountMenuOpen(false);
+                }}
                 aria-label={label}
                 title={label}
               >
-                <Icon className="h-5 w-5" strokeWidth={2} />
+                <Icon className="h-6 w-6" strokeWidth={2} />
                 {item === "friends" && incomingRequests.length > 0 ? (
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-primary" />
+                  <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-red-500 px-1 py-0.5 text-[10px] font-bold text-white ring-2 ring-primary">
+                    {incomingRequests.length > 9 ? "9+" : incomingRequests.length}
+                  </span>
                 ) : null}
               </button>
             );
           })}
         </div>
 
-        <div className="mt-auto flex flex-col gap-1 px-2">
-          <button className="grid h-12 w-12 place-items-center rounded-xl transition hover:bg-white/15" onClick={toggleTheme} aria-label="Đổi giao diện" title="Đổi giao diện">
-            {theme === "dark" ? <SunMedium className="h-5 w-5" /> : <MoonStar className="h-5 w-5" />}
-          </button>
-          <button className="grid h-12 w-12 place-items-center rounded-xl transition hover:bg-white/15" onClick={() => void signout()} aria-label="Đăng xuất" title="Đăng xuất">
-            <LogOut className="h-5 w-5" />
+        <div className="mt-auto px-2">
+          <button
+            className={cn(
+              "grid h-14 w-14 place-items-center rounded-xl transition hover:bg-white/15",
+              tab === "profile" && "bg-[#0759c7] shadow-inner",
+            )}
+            onClick={() => {
+              setTab("profile");
+              setAccountMenuOpen(false);
+            }}
+            aria-label="Cài đặt"
+            title="Cài đặt"
+          >
+            <Settings className="h-6 w-6" />
           </button>
         </div>
       </nav>
+
+      {accountMenuOpen ? (
+        <section className="absolute left-[82px] top-7 z-40 w-[320px] overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-[0_18px_50px_rgba(15,23,42,0.22)]">
+          <div className="border-b border-border px-5 py-4">
+            <p className="truncate text-lg font-bold">{user.fullName}</p>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">@{user.username}</p>
+          </div>
+          <div className="p-2">
+            <button
+              className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted"
+              onClick={() => {
+                setTab("profile");
+                setAccountMenuOpen(false);
+              }}
+            >
+              <span className="flex items-center gap-3"><UserRound className="h-4 w-4" /> Hồ sơ của bạn</span>
+              <ExternalLink className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted"
+              onClick={() => {
+                toggleTheme();
+                setAccountMenuOpen(false);
+              }}
+            >
+              {theme === "dark" ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+              {theme === "dark" ? "Chuyển sang giao diện sáng" : "Chuyển sang giao diện tối"}
+            </button>
+          </div>
+          <div className="border-t border-border p-2">
+            <button
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400"
+              onClick={() => void signout()}
+            >
+              <LogOut className="h-4 w-4" /> Đăng xuất
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <div className="flex min-h-0 flex-col bg-card">
         <header className="border-b border-border px-4 pb-4 pt-5">
@@ -378,20 +431,23 @@ export const AppSidebar = ({ user }: { user: AuthUser }) => {
         <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
           {tab === "chats" && (
             isLoadingRooms ? <ListSkeleton /> : (
-              <>
-                <ChatListSection title="Trò chuyện" count={directRooms.length}>
-                  {directRooms.map((room) => (
-                    <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
-                  ))}
-                </ChatListSection>
-                {groupRooms.length > 0 ? (
-                  <ChatListSection title="Nhóm" count={groupRooms.length}>
-                    {groupRooms.map((room) => (
-                      <ChatCard key={room.id} room={room} active={room.id === selectedRoomId} currentUser={user} usersById={usersById} onSelect={() => setSelectedRoomId(room.id)} />
-                    ))}
-                  </ChatListSection>
-                ) : null}
-              </>
+              <div className="-mx-3">
+                {filteredRooms.length === 0 ? (
+                  <div className="px-3"><EmptyText text="Không tìm thấy cuộc trò chuyện." /></div>
+                ) : filteredRooms.map((room) => (
+                  <ChatCard
+                    key={room.id}
+                    room={room}
+                    active={room.id === selectedRoomId}
+                    currentUser={user}
+                    usersById={usersById}
+                    onSelect={() => {
+                      setSelectedRoomId(room.id);
+                      setAccountMenuOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
             )
           )}
           {tab === "friends" && (

@@ -13,8 +13,41 @@ public record MessageResponse(
         String status,
         Set<String> deliveredToUserIds,
         Set<String> readByUserIds,
-        List<MessageAttachmentResponse> attachments
+        List<MessageAttachmentResponse> attachments,
+        String type,
+        String replyToMessageId,
+        String replyPreview,
+        boolean recalled,
+        LocalDateTime recalledAt
 ) {
+    public MessageResponse(
+            String id,
+            String roomId,
+            String senderId,
+            String content,
+            LocalDateTime timestamp,
+            String status,
+            Set<String> deliveredToUserIds,
+            Set<String> readByUserIds,
+            List<MessageAttachmentResponse> attachments
+    ) {
+        this(
+                id,
+                roomId,
+                senderId,
+                content,
+                timestamp,
+                status,
+                deliveredToUserIds,
+                readByUserIds,
+                attachments,
+                "TEXT",
+                null,
+                null,
+                false,
+                null
+        );
+    }
 }
 
 

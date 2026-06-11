@@ -10,6 +10,7 @@ import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Set;
 
 @Data
@@ -29,10 +30,21 @@ public class Message {
     private String roomId;
     private String senderId;
     private String content;
+    @Builder.Default
+    private String type = "TEXT";
+    private String replyToMessageId;
     private LocalDateTime timestamp;
     private String status;
-    private Set<String> deliveredToUserIds;
-    private Set<String> readByUserIds;
+    @Builder.Default
+    private Set<String> deliveredToUserIds = new HashSet<>();
+    @Builder.Default
+    private Set<String> readByUserIds = new HashSet<>();
+    @Builder.Default
+    private boolean recalled = false;
+    private LocalDateTime recalledAt;
+    @Builder.Default
+    private Set<String> deletedForUserIds = new HashSet<>();
+    private LocalDateTime updatedAt;
 }
 
 

@@ -1,6 +1,7 @@
 package com.chatrealtime.controller;
 
 import com.chatrealtime.dto.request.RealtimeMessageRequest;
+import com.chatrealtime.dto.request.TypingIndicatorRequest;
 import com.chatrealtime.dto.request.UpdateMessageStatusRequest;
 import com.chatrealtime.dto.response.MessageResponse;
 import com.chatrealtime.security.AuthUserPrincipal;
@@ -24,7 +25,21 @@ public class RealtimeController {
             Principal principal,
             @Valid RealtimeMessageRequest request
     ) {
-        return messageService.createRealtimeMessage(requireAuthPrincipal(principal), roomId, request.content());
+        AuthUserPrincipal authPrincipal = requireAuthPrincipal(principal);
+        if ((request.type() == null || request.type().isBlank())
+                && (request.replyToMessageId() == null || request.replyToMessageId().isBlank())) {
+            return messageService.createRealtimeMessage(authPrincipal, roomId, request.content());
+        }
+        return messageService.createRealtimeMessage(authPrincipal, roomId, request.content(), request.type(), request.replyToMessageId());
+    }
+
+    @MessageMapping("/rooms/{roomId}/typing")
+    public void publishTypingIndicator(
+            @DestinationVariable String roomId,
+            Principal principal,
+            @Valid TypingIndicatorRequest request
+    ) {
+        messageService.publishTypingIndicator(requireAuthPrincipal(principal), roomId, request.typing());
     }
 
     @MessageMapping("/messages/{messageId}/status")

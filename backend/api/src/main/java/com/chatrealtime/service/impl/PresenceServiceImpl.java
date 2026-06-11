@@ -46,6 +46,28 @@ public class PresenceServiceImpl implements PresenceService {
     }
 
     @Override
+    public void markSessionOnline(String userId, String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            markOnline(userId);
+            return;
+        }
+        if (presenceStateStore.registerSession(userId, sessionId)) {
+            markOnline(userId);
+        }
+    }
+
+    @Override
+    public void markSessionOffline(String userId, String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            markOffline(userId);
+            return;
+        }
+        if (presenceStateStore.unregisterSession(userId, sessionId)) {
+            markOffline(userId);
+        }
+    }
+
+    @Override
     public boolean isUserOnline(String userId) {
         return presenceStateStore.isOnline(userId);
     }

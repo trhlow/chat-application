@@ -5,5 +5,9 @@ public interface PresenceStateStore {
 
     void markOffline(String userId);
 
+    boolean registerSession(String userId, String sessionId);
+
+    boolean unregisterSession(String userId, String sessionId);
+
     boolean isOnline(String userId);
 }

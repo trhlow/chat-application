@@ -11,9 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -58,6 +60,17 @@ public class MessageController {
             @Valid @RequestBody UpdateMessageStatusRequest request
     ) {
         return messageService.updateMessageStatus(messageId, request.status());
+    }
+
+    @PutMapping("/{messageId}/recall")
+    public MessageResponse recallMessage(@PathVariable String messageId) {
+        return messageService.recallMessage(messageId);
+    }
+
+    @DeleteMapping("/{messageId}/me")
+    public ResponseEntity<Void> deleteMessageForMe(@PathVariable String messageId) {
+        messageService.deleteMessageForCurrentUser(messageId);
+        return ResponseEntity.noContent().build();
     }
 
     /**

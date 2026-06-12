@@ -21,9 +21,25 @@ public interface MessageService {
 
     MessageResponse createRealtimeMessage(AuthUserPrincipal principal, String roomId, String content);
 
+    MessageResponse createRealtimeMessage(
+            AuthUserPrincipal principal,
+            String roomId,
+            String content,
+            String type,
+            String replyToMessageId
+    );
+
     MessageResponse updateMessageStatus(String messageId, String status);
 
     MessageResponse updateRealtimeMessageStatus(AuthUserPrincipal principal, String messageId, String status);
+
+    MessageResponse recallMessage(String messageId);
+
+    void deleteMessageForCurrentUser(String messageId);
+
+    MessagePageResponse searchMessages(String roomId, String keyword, int page, int size);
+
+    void publishTypingIndicator(AuthUserPrincipal principal, String roomId, boolean typing);
 
     /**
      * Marks up to {@code app.messages.mark-read-max-batches} batches (each up to 500 messages) as seen.
@@ -32,6 +48,8 @@ public interface MessageService {
     void markRoomAsRead(String roomId);
 
     List<RoomUnreadCountResponse> getUnreadCounts();
+
+    RoomUnreadCountResponse getUnreadCount(String roomId);
 
     Map<String, Long> getUnreadCountMap(Collection<String> roomIds);
 }

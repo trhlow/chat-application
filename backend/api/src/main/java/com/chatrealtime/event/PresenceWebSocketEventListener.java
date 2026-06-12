@@ -20,7 +20,7 @@ public class PresenceWebSocketEventListener {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         AuthUserPrincipal principal = extractPrincipal(accessor);
         if (principal != null) {
-            presenceService.markOnline(principal.getId());
+            presenceService.markSessionOnline(principal.getId(), accessor.getSessionId());
         }
     }
 
@@ -29,7 +29,7 @@ public class PresenceWebSocketEventListener {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         AuthUserPrincipal principal = extractPrincipal(accessor);
         if (principal != null) {
-            presenceService.markOffline(principal.getId());
+            presenceService.markSessionOffline(principal.getId(), accessor.getSessionId());
         }
     }
 

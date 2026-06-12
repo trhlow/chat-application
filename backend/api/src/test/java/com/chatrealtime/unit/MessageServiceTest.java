@@ -6,6 +6,7 @@ import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
 import com.chatrealtime.dto.request.CreateMessageRequest;
+import com.chatrealtime.dto.response.MessagePageResponse;
 import com.chatrealtime.dto.response.MessageResponse;
 import com.chatrealtime.dto.response.RoomUnreadCountResponse;
 import com.chatrealtime.exception.BadRequestException;
@@ -32,6 +33,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
@@ -313,6 +315,228 @@ class MessageServiceTest {
                 eq("r1")
         );
         assertThat(response.id()).isEqualTo("m1");
+    }
+
+    @Test
+    void createMessage_WithReplyInSameRoom_ShouldPersistReplyReference() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Room room = Room.builder().id("r1").memberIds(List.of("u1", "u2")).build();
+        Message repliedMessage = Message.builder()
+                .id("m0")
+                .roomId("r1")
+                .senderId("u2")
+                .content("original")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .build();
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+        when(messageRepository.findById("m0")).thenReturn(Optional.of(repliedMessage));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> {
+            Message message = invocation.getArgument(0);
+            message.setId("m1");
+            return message;
+        });
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(userRepository.findAllById(List.of("u1", "u2"))).thenReturn(List.of());
+        when(messageMapper.toResponse(any(Message.class), any(), eq(repliedMessage))).thenAnswer(invocation -> {
+            Message saved = invocation.getArgument(0);
+            return new MessageResponse(
+                    saved.getId(),
+                    saved.getRoomId(),
+                    saved.getSenderId(),
+                    saved.getContent(),
+                    saved.getTimestamp(),
+                    saved.getStatus(),
+                    saved.getDeliveredToUserIds(),
+                    saved.getReadByUserIds(),
+                    List.of(),
+                    saved.getType(),
+                    saved.getReplyToMessageId(),
+                    "original",
+                    saved.isRecalled(),
+                    saved.getRecalledAt()
+            );
+        });
+
+        MessageResponse response = messageService.createMessage(new CreateMessageRequest("r1", "reply", "TEXT", "m0"));
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository).save(captor.capture());
+        assertThat(captor.getValue().getReplyToMessageId()).isEqualTo("m0");
+        assertThat(response.replyPreview()).isEqualTo("original");
+    }
+
+    @Test
+    void createMessage_WithReplyInDifferentRoom_ShouldReject() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Room room = Room.builder().id("r1").memberIds(List.of("u1", "u2")).build();
+        Message repliedMessage = Message.builder()
+                .id("m0")
+                .roomId("r2")
+                .senderId("u2")
+                .content("original")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .build();
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+        when(messageRepository.findById("m0")).thenReturn(Optional.of(repliedMessage));
+
+        assertThatThrownBy(() -> messageService.createMessage(new CreateMessageRequest("r1", "reply", "TEXT", "m0")))
+                .isInstanceOf(BadRequestException.class);
+        verify(messageRepository, never()).save(any(Message.class));
+    }
+
+    @Test
+    void recallMessage_WhenSender_ShouldMarkRecalledAndBroadcastMaskedResponse() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Message message = Message.builder()
+                .id("m1")
+                .roomId("r1")
+                .senderId("u1")
+                .content("secret")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .build();
+        when(messageRepository.findById("m1")).thenReturn(Optional.of(message));
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+        when(messageRepository.save(any(Message.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageAttachmentRepository.findByMessageId("m1")).thenReturn(List.of());
+        when(messageMapper.toResponse(any(Message.class), any())).thenAnswer(invocation -> {
+            Message saved = invocation.getArgument(0);
+            return new MessageResponse(
+                    saved.getId(),
+                    saved.getRoomId(),
+                    saved.getSenderId(),
+                    "Tin nh\u1EAFn \u0111\u00E3 \u0111\u01B0\u1EE3c thu h\u1ED3i",
+                    saved.getTimestamp(),
+                    saved.getStatus(),
+                    saved.getDeliveredToUserIds(),
+                    saved.getReadByUserIds(),
+                    List.of(),
+                    saved.getType(),
+                    saved.getReplyToMessageId(),
+                    null,
+                    saved.isRecalled(),
+                    saved.getRecalledAt()
+            );
+        });
+
+        MessageResponse response = messageService.recallMessage("m1");
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository).save(captor.capture());
+        assertThat(captor.getValue().isRecalled()).isTrue();
+        assertThat(captor.getValue().getRecalledAt()).isNotNull();
+        assertThat(response.content()).isEqualTo("Tin nh\u1EAFn \u0111\u00E3 \u0111\u01B0\u1EE3c thu h\u1ED3i");
+        verify(messagingTemplate).convertAndSend("/topic/rooms/r1/messages", response);
+    }
+
+    @Test
+    void recallMessage_WhenNotSender_ShouldReject() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
+        Message message = Message.builder()
+                .id("m1")
+                .roomId("r1")
+                .senderId("u1")
+                .content("secret")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .build();
+        when(messageRepository.findById("m1")).thenReturn(Optional.of(message));
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+
+        assertThatThrownBy(() -> messageService.recallMessage("m1"))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(messageRepository, never()).save(any(Message.class));
+    }
+
+    @Test
+    void deleteMessageForCurrentUser_ShouldOnlyHideMessageForThatUser() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
+        Message message = Message.builder()
+                .id("m1")
+                .roomId("r1")
+                .senderId("u1")
+                .content("hello")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .deletedForUserIds(Set.of("u3"))
+                .build();
+        when(messageRepository.findById("m1")).thenReturn(Optional.of(message));
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2", "u3")).build()));
+
+        messageService.deleteMessageForCurrentUser("m1");
+
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        verify(messageRepository).save(captor.capture());
+        assertThat(captor.getValue().getDeletedForUserIds()).containsExactlyInAnyOrder("u2", "u3");
+    }
+
+    @Test
+    void searchMessages_ShouldReturnTextMatchesAndApplyPrivacyFilters() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
+        Room room = Room.builder().id("r1").memberIds(List.of("u1", "u2")).build();
+        Message message = Message.builder()
+                .id("m1")
+                .roomId("r1")
+                .senderId("u1")
+                .content("hello keyword")
+                .type("TEXT")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .build();
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+        when(mongoTemplate.find(any(Query.class), eq(Message.class))).thenReturn(List.of(message));
+        when(messageAttachmentRepository.findByMessageIdIn(List.of("m1"))).thenReturn(List.of());
+        when(messageMapper.toResponse(eq(message), any(), org.mockito.ArgumentMatchers.isNull())).thenReturn(new MessageResponse(
+                "m1",
+                "r1",
+                "u1",
+                "hello keyword",
+                message.getTimestamp(),
+                "sent",
+                Set.of(),
+                Set.of(),
+                List.of()
+        ));
+
+        MessagePageResponse response = messageService.searchMessages("r1", " keyword ", 0, 20);
+
+        ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+        verify(mongoTemplate).find(queryCaptor.capture(), eq(Message.class));
+        String queryJson = queryCaptor.getValue().getQueryObject().toJson();
+        assertThat(queryJson).contains("recalled");
+        assertThat(queryJson).contains("deletedForUserIds");
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).id()).isEqualTo("m1");
+    }
+
+    @Test
+    void publishTypingIndicator_WhenMember_ShouldBroadcastTypingEvent() {
+        AuthUserPrincipal principal = new AuthUserPrincipal("u1", "alice", "pw", 0);
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+
+        messageService.publishTypingIndicator(principal, "r1", true);
+
+        ArgumentCaptor<com.chatrealtime.dto.response.TypingIndicatorResponse> captor =
+                ArgumentCaptor.forClass(com.chatrealtime.dto.response.TypingIndicatorResponse.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/rooms/r1/typing"), captor.capture());
+        assertThat(captor.getValue().roomId()).isEqualTo("r1");
+        assertThat(captor.getValue().userId()).isEqualTo("u1");
+        assertThat(captor.getValue().typing()).isTrue();
+    }
+
+    @Test
+    void publishTypingIndicator_WhenNotMember_ShouldReject() {
+        AuthUserPrincipal principal = new AuthUserPrincipal("u1", "alice", "pw", 0);
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u2")).build()));
+
+        assertThatThrownBy(() -> messageService.publishTypingIndicator(principal, "r1", true))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(messagingTemplate, never()).convertAndSend(
+                eq("/topic/rooms/r1/typing"),
+                any(com.chatrealtime.dto.response.TypingIndicatorResponse.class)
+        );
     }
 
     @Test

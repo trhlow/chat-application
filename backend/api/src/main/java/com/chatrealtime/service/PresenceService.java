@@ -5,5 +5,9 @@ public interface PresenceService {
 
     void markOffline(String userId);
 
+    void markSessionOnline(String userId, String sessionId);
+
+    void markSessionOffline(String userId, String sessionId);
+
     boolean isUserOnline(String userId);
 }

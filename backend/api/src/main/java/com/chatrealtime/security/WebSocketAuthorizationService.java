@@ -15,10 +15,12 @@ import java.util.regex.Pattern;
 public class WebSocketAuthorizationService {
     private static final Pattern ROOM_MESSAGE_SEND_DESTINATION =
             Pattern.compile("^/app/rooms/(?<roomId>[^/]+)/messages$");
+    private static final Pattern ROOM_TYPING_SEND_DESTINATION =
+            Pattern.compile("^/app/rooms/(?<roomId>[^/]+)/typing$");
     private static final Pattern MESSAGE_STATUS_SEND_DESTINATION =
             Pattern.compile("^/app/messages/(?<messageId>[^/]+)/status$");
     private static final Pattern ROOM_TOPIC_SUBSCRIPTION =
-            Pattern.compile("^/topic/rooms/(?<roomId>[^/]+)/(messages|status)$");
+            Pattern.compile("^/topic/rooms/(?<roomId>[^/]+)/(messages|status|typing)$");
 
     private final RoomRepository roomRepository;
     private final MessageRepository messageRepository;
@@ -37,6 +39,12 @@ public class WebSocketAuthorizationService {
         Matcher roomMessageMatcher = ROOM_MESSAGE_SEND_DESTINATION.matcher(destination);
         if (roomMessageMatcher.matches()) {
             requireRoomMembership(principal.getId(), roomMessageMatcher.group("roomId"));
+            return;
+        }
+
+        Matcher roomTypingMatcher = ROOM_TYPING_SEND_DESTINATION.matcher(destination);
+        if (roomTypingMatcher.matches()) {
+            requireRoomMembership(principal.getId(), roomTypingMatcher.group("roomId"));
             return;
         }
 

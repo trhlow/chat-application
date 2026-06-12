@@ -12,23 +12,38 @@ import org.springframework.context.annotation.Profile;
 @RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "app.redis", name = "enabled", havingValue = "true")
 public class RedisPresenceStateStore implements PresenceStateStore {
-    private static final String ONLINE_VALUE = "online";
-
     private final StringRedisTemplate stringRedisTemplate;
     private final AppRedisProperties redisProperties;
 
     @Override
     public void markOnline(String userId) {
-        stringRedisTemplate.opsForValue().set(
-                key(userId),
-                ONLINE_VALUE,
-                redisProperties.presenceTtl()
-        );
     }
 
     @Override
     public void markOffline(String userId) {
         stringRedisTemplate.delete(key(userId));
+    }
+
+    @Override
+    public boolean registerSession(String userId, String sessionId) {
+        String key = key(userId);
+        Boolean hadSessions = stringRedisTemplate.hasKey(key);
+        stringRedisTemplate.opsForSet().add(key, sessionId);
+        stringRedisTemplate.expire(key, redisProperties.presenceTtl());
+        return !Boolean.TRUE.equals(hadSessions);
+    }
+
+    @Override
+    public boolean unregisterSession(String userId, String sessionId) {
+        String key = key(userId);
+        stringRedisTemplate.opsForSet().remove(key, sessionId);
+        Long remainingSessions = stringRedisTemplate.opsForSet().size(key);
+        if (remainingSessions == null || remainingSessions <= 0) {
+            stringRedisTemplate.delete(key);
+            return true;
+        }
+        stringRedisTemplate.expire(key, redisProperties.presenceTtl());
+        return false;
     }
 
     @Override

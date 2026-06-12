@@ -9,6 +9,7 @@ import com.chatrealtime.dto.request.CreateMessageRequest;
 import com.chatrealtime.dto.response.MessagePageResponse;
 import com.chatrealtime.dto.response.MessageResponse;
 import com.chatrealtime.dto.response.RoomUnreadCountResponse;
+import com.chatrealtime.dto.response.TypingIndicatorResponse;
 import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.exception.MessageNotFoundException;
 import com.chatrealtime.exception.RoomNotFoundException;
@@ -29,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -51,6 +53,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Collection;
 import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Service
 @Transactional
@@ -65,6 +68,12 @@ public class MessageServiceImpl implements MessageService {
     private static final int MAX_CONTENT_LENGTH = 4000;
     private static final int MAX_PREVIEW_LENGTH = 120;
     private static final Set<String> ALLOWED_STATUS = Set.of("sent", "delivered", "seen");
+    private static final Set<String> ALLOWED_MESSAGE_TYPES = Set.of("TEXT", "IMAGE", "FILE", "SYSTEM");
+    private static final String TYPE_TEXT = "TEXT";
+    private static final String TYPE_IMAGE = "IMAGE";
+    private static final String TYPE_FILE = "FILE";
+    private static final boolean ENFORCE_RECALL_TIME_LIMIT = false;
+    private static final int RECALL_TIME_LIMIT_MINUTES = 5;
 
     private final MessageRepository messageRepository;
     private final MessageAttachmentRepository messageAttachmentRepository;
@@ -94,16 +103,14 @@ public class MessageServiceImpl implements MessageService {
                 PageRequest.of(0, safeLimit)
         );
 
-        List<Message> messages = new ArrayList<>(messagePage.getContent());
-        markMessagesAsDelivered(messages, principal.getId(), room);
-        Collections.reverse(messages);
-        Map<String, List<MessageAttachment>> attachmentsByMessageId = getAttachmentsByMessageId(messages);
-        List<MessageResponse> items = messages.stream()
-                .map(message -> messageMapper.toResponse(
-                        message,
-                        attachmentsByMessageId.getOrDefault(message.getId(), List.of())
-                ))
+        List<Message> messages = messagePage.getContent()
+                .stream()
+                .filter(message -> !isDeletedForUser(message, principal.getId()))
                 .toList();
+        markMessagesAsDelivered(messages, principal.getId(), room);
+        messages = new ArrayList<>(messages);
+        Collections.reverse(messages);
+        List<MessageResponse> items = mapMessagesForUser(messages, principal.getId());
         LocalDateTime nextBefore = items.isEmpty() ? null : items.get(0).timestamp().truncatedTo(ChronoUnit.MILLIS);
         return new MessagePageResponse(items, nextBefore, messagePage.hasNext());
     }
@@ -127,10 +134,12 @@ public class MessageServiceImpl implements MessageService {
                     .roomId(roomId)
                     .senderId(principal.getId())
                     .content(normalizedContent == null ? "" : normalizedContent)
+                    .type(resolveAttachmentMessageType(storedAttachment.fileType()))
                     .timestamp(LocalDateTime.now())
                     .status("sent")
                     .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
                     .readByUserIds(new HashSet<>(Set.of(principal.getId())))
+                    .updatedAt(LocalDateTime.now())
                     .build();
 
             Message savedMessage = messageRepository.save(message);
@@ -169,6 +178,17 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    public MessageResponse createRealtimeMessage(
+            AuthUserPrincipal principal,
+            String roomId,
+            String content,
+            String type,
+            String replyToMessageId
+    ) {
+        return createMessage(principal, new CreateMessageRequest(roomId, content, type, replyToMessageId));
+    }
+
+    @Override
     public MessageResponse updateMessageStatus(String messageId, String status) {
         return updateMessageStatus(authContextService.requireCurrentUser(), messageId, status);
     }
@@ -176,6 +196,93 @@ public class MessageServiceImpl implements MessageService {
     @Override
     public MessageResponse updateRealtimeMessageStatus(AuthUserPrincipal principal, String messageId, String status) {
         return updateMessageStatus(principal, messageId, status);
+    }
+
+    @Override
+    public MessageResponse recallMessage(String messageId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new MessageNotFoundException("Message not found"));
+        Room room = ensureRoomExists(message.getRoomId());
+        ensureMembership(room, principal.getId());
+        if (!principal.getId().equals(message.getSenderId())) {
+            throw new AccessDeniedException("Forbidden");
+        }
+        ensureRecallWindowAllows(message);
+        if (!message.isRecalled()) {
+            LocalDateTime now = LocalDateTime.now();
+            message.setRecalled(true);
+            message.setRecalledAt(now);
+            message.setUpdatedAt(now);
+            message = messageRepository.save(message);
+        }
+
+        MessageResponse response = toResponseForUser(message, principal.getId());
+        messagingTemplate.convertAndSend("/topic/rooms/" + message.getRoomId() + "/messages", response);
+        return response;
+    }
+
+    @Override
+    public void deleteMessageForCurrentUser(String messageId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new MessageNotFoundException("Message not found"));
+        Room room = ensureRoomExists(message.getRoomId());
+        ensureMembership(room, principal.getId());
+
+        Set<String> deletedForUserIds = message.getDeletedForUserIds() == null
+                ? new HashSet<>()
+                : new HashSet<>(message.getDeletedForUserIds());
+        if (deletedForUserIds.add(principal.getId())) {
+            message.setDeletedForUserIds(deletedForUserIds);
+            message.setUpdatedAt(LocalDateTime.now());
+            messageRepository.save(message);
+        }
+    }
+
+    @Override
+    public MessagePageResponse searchMessages(String roomId, String keyword, int page, int size) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = ensureRoomExists(roomId);
+        ensureMembership(room, principal.getId());
+
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
+        int safePage = Math.max(page, 0);
+        int safeSize = sanitizeLimit(size);
+        Criteria textTypeCriteria = new Criteria().orOperator(
+                Criteria.where("type").exists(false),
+                Criteria.where("type").is(null),
+                Criteria.where("type").is(TYPE_TEXT),
+                Criteria.where("type").is(TYPE_TEXT.toLowerCase(Locale.ROOT))
+        );
+        Criteria criteria = new Criteria().andOperator(
+                Criteria.where("roomId").is(roomId),
+                Criteria.where("content").regex(Pattern.compile(Pattern.quote(normalizedKeyword), Pattern.CASE_INSENSITIVE)),
+                Criteria.where("recalled").ne(true),
+                Criteria.where("deletedForUserIds").ne(principal.getId()),
+                textTypeCriteria
+        );
+        Query query = Query.query(criteria)
+                .with(Sort.by(Sort.Direction.DESC, "timestamp"))
+                .skip((long) safePage * safeSize)
+                .limit(safeSize + 1);
+
+        List<Message> matches = mongoTemplate.find(query, Message.class);
+        boolean hasMore = matches.size() > safeSize;
+        if (hasMore) {
+            matches = matches.subList(0, safeSize);
+        }
+        return new MessagePageResponse(mapMessagesForUser(matches, principal.getId()), null, hasMore);
+    }
+
+    @Override
+    public void publishTypingIndicator(AuthUserPrincipal principal, String roomId, boolean typing) {
+        Room room = ensureRoomExists(roomId);
+        ensureMembership(room, principal.getId());
+        messagingTemplate.convertAndSend(
+                "/topic/rooms/" + roomId + "/typing",
+                new TypingIndicatorResponse(roomId, principal.getId(), principal.getUsername(), typing, Instant.now())
+        );
     }
 
     @Override
@@ -212,6 +319,12 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    public RoomUnreadCountResponse getUnreadCount(String roomId) {
+        long count = getUnreadCountMap(List.of(roomId)).getOrDefault(roomId, 0L);
+        return new RoomUnreadCountResponse(roomId, count);
+    }
+
+    @Override
     public Map<String, Long> getUnreadCountMap(Collection<String> roomIds) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         if (roomIds == null || roomIds.isEmpty()) {
@@ -223,7 +336,8 @@ public class MessageServiceImpl implements MessageService {
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(Criteria.where("roomId").in(roomIds)
                         .and("senderId").ne(principal.getId())
-                        .and("readByUserIds").ne(principal.getId())),
+                        .and("readByUserIds").ne(principal.getId())
+                        .and("deletedForUserIds").ne(principal.getId())),
                 Aggregation.group("roomId").count().as("unreadCount")
         );
 
@@ -246,6 +360,60 @@ public class MessageServiceImpl implements MessageService {
                 .collect(Collectors.groupingBy(MessageAttachment::getMessageId));
     }
 
+    private List<MessageResponse> mapMessagesForUser(List<Message> messages, String userId) {
+        Map<String, List<MessageAttachment>> attachmentsByMessageId = getAttachmentsByMessageId(messages);
+        Map<String, Message> replyMessagesById = getReplyMessagesById(messages);
+        return messages.stream()
+                .map(message -> messageMapper.toResponse(
+                        message,
+                        attachmentsByMessageId.getOrDefault(message.getId(), List.of()),
+                        visibleReplyMessage(getReplyMessage(replyMessagesById, message.getReplyToMessageId()), userId)
+                ))
+                .toList();
+    }
+
+    private Message getReplyMessage(Map<String, Message> replyMessagesById, String replyToMessageId) {
+        if (replyToMessageId == null || replyToMessageId.isBlank()) {
+            return null;
+        }
+        return replyMessagesById.get(replyToMessageId);
+    }
+
+    private MessageResponse toResponseForUser(Message message, String userId) {
+        Message replyToMessage = null;
+        if (message.getReplyToMessageId() != null && !message.getReplyToMessageId().isBlank()) {
+            replyToMessage = messageRepository.findById(message.getReplyToMessageId())
+                    .map(reply -> visibleReplyMessage(reply, userId))
+                    .orElse(null);
+        }
+        List<MessageAttachment> attachments = messageAttachmentRepository.findByMessageId(message.getId());
+        if (replyToMessage == null) {
+            return messageMapper.toResponse(message, attachments);
+        }
+        return messageMapper.toResponse(message, attachments, replyToMessage);
+    }
+
+    private Map<String, Message> getReplyMessagesById(List<Message> messages) {
+        List<String> replyMessageIds = messages.stream()
+                .map(Message::getReplyToMessageId)
+                .filter(replyToMessageId -> replyToMessageId != null && !replyToMessageId.isBlank())
+                .distinct()
+                .toList();
+        if (replyMessageIds.isEmpty()) {
+            return Map.of();
+        }
+        return messageRepository.findAllById(replyMessageIds)
+                .stream()
+                .collect(Collectors.toMap(Message::getId, message -> message, (left, right) -> left));
+    }
+
+    private Message visibleReplyMessage(Message replyToMessage, String userId) {
+        if (replyToMessage == null || isDeletedForUser(replyToMessage, userId)) {
+            return null;
+        }
+        return replyToMessage;
+    }
+
     private String normalizeOptionalContent(String content) {
         if (content == null || content.isBlank()) {
             return null;
@@ -255,6 +423,72 @@ public class MessageServiceImpl implements MessageService {
             throw new BadRequestException("content must be at most 4000 characters");
         }
         return normalized;
+    }
+
+    private String normalizeRequiredContent(String content) {
+        String normalized = normalizeOptionalContent(content);
+        if (normalized == null) {
+            throw new BadRequestException("content is required");
+        }
+        return normalized;
+    }
+
+    private String normalizeMessageType(String type) {
+        if (type == null || type.isBlank()) {
+            return TYPE_TEXT;
+        }
+        String normalized = type.trim().toUpperCase(Locale.ROOT);
+        if (!ALLOWED_MESSAGE_TYPES.contains(normalized)) {
+            throw new BadRequestException("type must be one of TEXT, IMAGE, FILE, SYSTEM");
+        }
+        return normalized;
+    }
+
+    private String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new BadRequestException("keyword is required");
+        }
+        return keyword.trim();
+    }
+
+    private String normalizeReplyToMessageId(String replyToMessageId) {
+        if (replyToMessageId == null || replyToMessageId.isBlank()) {
+            return null;
+        }
+        return replyToMessageId.trim();
+    }
+
+    private Message resolveReplyToMessage(String replyToMessageId, String roomId) {
+        String normalizedReplyToMessageId = normalizeReplyToMessageId(replyToMessageId);
+        if (normalizedReplyToMessageId == null) {
+            return null;
+        }
+        Message replyToMessage = messageRepository.findById(normalizedReplyToMessageId)
+                .orElseThrow(() -> new MessageNotFoundException("Reply message not found"));
+        if (!roomId.equals(replyToMessage.getRoomId())) {
+            throw new BadRequestException("replyToMessageId must belong to the same room");
+        }
+        return replyToMessage;
+    }
+
+    private boolean isDeletedForUser(Message message, String userId) {
+        return message.getDeletedForUserIds() != null && message.getDeletedForUserIds().contains(userId);
+    }
+
+    private String resolveAttachmentMessageType(String attachmentType) {
+        if ("image".equalsIgnoreCase(attachmentType)) {
+            return TYPE_IMAGE;
+        }
+        return TYPE_FILE;
+    }
+
+    private void ensureRecallWindowAllows(Message message) {
+        if (!ENFORCE_RECALL_TIME_LIMIT || message.getTimestamp() == null) {
+            return;
+        }
+        if (message.getTimestamp().isBefore(LocalDateTime.now().minusMinutes(RECALL_TIME_LIMIT_MINUTES))) {
+            throw new BadRequestException("Message recall time limit has expired");
+        }
     }
 
     private Room ensureRoomExists(String roomId) {
@@ -402,7 +636,8 @@ public class MessageServiceImpl implements MessageService {
     private List<Message> findUnreadMessages(String roomId, String actorUserId, int limit) {
         Criteria criteria = Criteria.where("roomId").is(roomId)
                 .and("senderId").ne(actorUserId)
-                .and("readByUserIds").ne(actorUserId);
+                .and("readByUserIds").ne(actorUserId)
+                .and("deletedForUserIds").ne(actorUserId);
 
         return mongoTemplate.find(Query.query(criteria).limit(limit), Message.class);
     }
@@ -458,21 +693,33 @@ public class MessageServiceImpl implements MessageService {
     private MessageResponse createMessage(AuthUserPrincipal principal, CreateMessageRequest request) {
         Room room = ensureRoomExists(request.roomId());
         ensureMembership(room, principal.getId());
+        String normalizedContent = normalizeRequiredContent(request.content());
+        String normalizedType = normalizeMessageType(request.type());
+        Message replyToMessage = resolveReplyToMessage(request.replyToMessageId(), request.roomId());
+        if (!TYPE_TEXT.equals(normalizedType)) {
+            throw new BadRequestException("Only TEXT messages can be created without an attachment");
+        }
+        LocalDateTime now = LocalDateTime.now();
 
         Message message = Message.builder()
                 .roomId(request.roomId())
                 .senderId(principal.getId())
-                .content(request.content().trim())
-                .timestamp(LocalDateTime.now())
+                .content(normalizedContent)
+                .type(normalizedType)
+                .replyToMessageId(replyToMessage == null ? null : replyToMessage.getId())
+                .timestamp(now)
                 .status("sent")
                 .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
                 .readByUserIds(new HashSet<>(Set.of(principal.getId())))
+                .updatedAt(now)
                 .build();
 
         Message savedMessage = messageRepository.save(message);
         updateRoomLastMessage(room, message.getContent(), null);
         notifyOfflineRecipients(room, principal.getId(), savedMessage.getContent(), savedMessage.getId());
-        MessageResponse response = messageMapper.toResponse(savedMessage, List.of());
+        MessageResponse response = replyToMessage == null
+                ? messageMapper.toResponse(savedMessage, List.of())
+                : messageMapper.toResponse(savedMessage, List.of(), replyToMessage);
         messagingTemplate.convertAndSend("/topic/rooms/" + request.roomId() + "/messages", response);
         return response;
     }
@@ -492,7 +739,7 @@ public class MessageServiceImpl implements MessageService {
         applyStatusFromReceipts(message, room);
 
         Message saved = messageRepository.save(message);
-        MessageResponse response = messageMapper.toResponse(saved, messageAttachmentRepository.findByMessageId(saved.getId()));
+        MessageResponse response = toResponseForUser(saved, principal.getId());
         messagingTemplate.convertAndSend("/topic/rooms/" + message.getRoomId() + "/status", response);
         return response;
     }

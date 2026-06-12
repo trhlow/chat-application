@@ -1,0 +1,33 @@
+# Backend ZaloChat Audit
+
+Baseline: `.\mvnw.cmd test` in `api` passed with 118 tests, 0 failures, 0 errors.
+
+Stack: Java 21, Spring Boot 4, Spring Security, Spring WebSocket/STOMP, Spring Data MongoDB, Redis optional, Maven.
+
+| Module | Da co chua | Du nghiep vu chua | File/code lien quan | Van de phat hien | Viec can lam |
+| ------ | ---------- | ----------------- | ------------------- | ---------------- | ------------ |
+| Auth register/login/logout | DONE | PARTIAL | `AuthController`, `AuthServiceImpl`, `JwtTokenService`, `RefreshTokenServiceImpl`, `AuthCookieProperties` | Password da hash, JWT co expire, logout revoke refresh token. Da bo sung refresh cookie HttpOnly/Secure/SameSite va giu JSON token de tuong thich nguoc. | Phase 2: session/device listing. |
+| Refresh token/session | PARTIAL | PARTIAL | `RefreshToken`, `RefreshTokenRepository`, `RefreshTokenServiceImpl`, `AuthCookieProperties` | Co hash, rotation atomic, revoke all, cookie mode va CORS credentials. Chua co session/device metadata. | Phase 2: session/device listing. |
+| User profile/avatar/presence | PARTIAL | PARTIAL | `UserController`, `UserServiceImpl`, `PresenceServiceImpl`, `DefaultAvatarStorageService` | Co me/profile/avatar/online/lastSeen. Chua co doi mat khau, statusMessage rieng, forgot password. | MVP: giu profile/avatar/presence. Phase 2: change password/session UI support. |
+| Friend request/friendship | DONE | PARTIAL | `FriendController`, `FriendServiceImpl`, `FriendRequest`, `Friendship`, `UserBlock` | Co send/accept/reject/cancel/remove/list, chong self/duplicate/da la ban, da chan friend request khi bi block. | Phase 2: loc search/profile/status sau block sau hon. |
+| User block | DONE | PARTIAL | `UserBlock`, `UserBlockRepository`, `FriendController`, `FriendServiceImpl` | Da co `user_blocks`, API block/unblock/list va enforce friend/direct message. | Phase 2: audit log va loc presence/search nang cao. |
+| Conversation/room core | PARTIAL | PARTIAL | `Room`, `RoomController`, `RoomServiceImpl`, `RoomRepository` | Dang dung `Room` thay conversation. Co direct/group/list/detail. Chua co conversation member entity, joinedAt/leftAt, pin/mute/hide/lastRead per member. | MVP: giu Room model, them idempotent direct creation hardening. Phase 2: member state model. |
+| Message text | DONE | DONE | `MessageController`, `RealtimeController`, `MessageServiceImpl`, `Message` | Co text REST/STOMP, membership check, pagination, da co `clientMessageId` idempotency cho REST/STOMP. | Phase 2: forward/reaction/mention/pin. |
+| Message attachment | DONE | PARTIAL | `MessageController`, `MessageAttachmentController`, `MessageAttachmentDownloadService`, `DefaultMessageAttachmentStorageService` | Co multipart, metadata, MIME/size, private download auth. Chua co malware/virus scan, uploaderId trong attachment entity. | MVP: giu MIME/size/private. Phase 2: antivirus adapter va uploaderId migration. |
+| Recall/delete for me | DONE | PARTIAL | `MessageServiceImpl`, `MessageMapper` | Co recall sender-only, soft delete per user, recalled content hidden. Recall time limit disabled. | MVP: giu. Phase 2: config recall window. |
+| Message receipt/unread | PARTIAL | PARTIAL | `Message.deliveredToUserIds`, `Message.readByUserIds`, `MessageServiceImpl` | Co delivered/read sets va unread count. Chua co `message_receipts` collection, lastReadMessageId/lastReadAt member state. | MVP: giu existing sets. Phase 2: receipt/member-state normalization. |
+| Reply | DONE | PARTIAL | `replyToMessageId`, `MessageMapper`, `MessageServiceImpl` | Co reply preview va recalled preview. | Sau core: tiep tuc test bao phu. |
+| Forward | MISSING | MISSING | none | Chua co `forwardedFromMessageId`, API forward. | Phase 2 sau idempotency/message core. |
+| Reaction | MISSING | MISSING | none | Chua co reaction model/API. | Phase 2. |
+| Realtime/STOMP | DONE | PARTIAL | `WebSocketConfig`, `WebSocketAuthChannelInterceptor`, `WebSocketAuthorizationService`, `RealtimeController` | Co token verify, room destination auth, message, typing, status, presence, notification queue. Chua co event names theo schema `message:new`, group events rieng biet. | MVP: giu STOMP hien tai, them event coverage khi bo sung group/block. |
+| Group create/basic management | DONE | PARTIAL | `RoomController`, `RoomServiceImpl`, `Room`, `RoomMemberResponse` | Co create group, name/avatar, add/remove member, leave, delete, admins/ownerId, transfer owner, promote/demote admin, member list. System messages chua day du cho moi hanh dong. | Phase 2: audit/system message day du va member-state model. |
+| Group invite approval | DONE | PARTIAL | `GroupJoinRequest`, `GroupJoinRequestRepository`, `RoomController`, `RoomServiceImpl` | Member co the tao pending join request; admin approve/reject moi add member. Chua co invite link token/expiry. | Phase 2: invite link, ban list. |
+| Group settings/permissions | DONE | PARTIAL | `GroupSettings`, `UpdateGroupSettingsRequest`, `RoomServiceImpl`, `MessageServiceImpl` | Co sendMessagePermission, editGroupInfoPermission, inviteMemberPermission, allowNewMemberReadHistory va enforce send ADMIN_ONLY. Chua enforce history filtering theo joinedAt vi chua co member-state model. | Phase 2: member-state migration. |
+| Invite link/join request | MISSING | MISSING | none | Chua co invite links/token. | Phase 2. |
+| Mention | MISSING | MISSING | none | Chua co mention parse/store/notify. | Phase 2. |
+| Pin message | MISSING | MISSING | none | Chua co pinned_messages. | Phase 2. |
+| Poll/reminder/task | OUT_OF_SCOPE | MISSING | none | Chua co nen tang. | Phase 2/3, khong implement khi MVP chat chua on dinh. |
+| Notification | PARTIAL | PARTIAL | `NotificationController`, `NotificationServiceImpl`, `NotificationRealtimeEventBus` | Co CRUD read/unread, realtime user queue, friend/group-added/offline-message. Chua co mention/group-invite/poll/task. | MVP: them group invite/member event notification. |
+| Search | PARTIAL | PARTIAL | `UserServiceImpl`, `MessageServiceImpl` | Co search user va message trong room co auth. Chua co search conversation/file/link. | MVP: giu message/user. Phase 2: conversation/file/link search. |
+| Security/validation | PARTIAL | PARTIAL | `SecurityConfig`, `GlobalExceptionHandler`, DTO validations, services | Auth required mac dinh, service ownership checks kha tot. CSRF disabled vi stateless JWT. CORS credentials false, token body exposure, block missing. | MVP: cookie refresh token + block checks + idempotency. |
+| Audit log | MISSING | MISSING | none | Chua log hanh dong nhom/thu hoi/block. | Phase 2, sau khi action model on dinh. |

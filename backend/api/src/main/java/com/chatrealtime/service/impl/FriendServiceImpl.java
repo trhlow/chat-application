@@ -4,8 +4,10 @@ import com.chatrealtime.domain.FriendRequest;
 import com.chatrealtime.domain.FriendRequestStatus;
 import com.chatrealtime.domain.Friendship;
 import com.chatrealtime.domain.User;
+import com.chatrealtime.domain.UserBlock;
 import com.chatrealtime.dto.request.CreateFriendRequestRequest;
 import com.chatrealtime.dto.response.FriendRequestResponse;
+import com.chatrealtime.dto.response.FriendUserResponse;
 import com.chatrealtime.dto.response.FriendshipResponse;
 import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.exception.ConflictException;
@@ -15,6 +17,7 @@ import com.chatrealtime.exception.UserNotFoundException;
 import com.chatrealtime.mapper.FriendMapper;
 import com.chatrealtime.repository.FriendRequestRepository;
 import com.chatrealtime.repository.FriendshipRepository;
+import com.chatrealtime.repository.UserBlockRepository;
 import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
@@ -42,6 +45,7 @@ public class FriendServiceImpl implements FriendService {
     private final FriendRequestRepository friendRequestRepository;
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
     private final FriendMapper friendMapper;
     private final AuthContextService authContextService;
     private final NotificationService notificationService;
@@ -55,6 +59,7 @@ public class FriendServiceImpl implements FriendService {
         if (requester.getId().equals(receiver.getId())) {
             throw new BadRequestException("Cannot send a friend request to yourself");
         }
+        ensureNoBlockBetween(requester.getId(), receiver.getId());
 
         UserIdPair.Ordered pair = UserIdPair.order(requester.getId(), receiver.getId());
         if (friendshipRepository.existsByUserIdAAndUserIdB(pair.userIdA(), pair.userIdB())) {
@@ -129,6 +134,7 @@ public class FriendServiceImpl implements FriendService {
         }
 
         User requester = getUser(friendRequest.getRequesterId());
+        ensureNoBlockBetween(requester.getId(), currentUser.getId());
         UserIdPair.Ordered pair = UserIdPair.order(friendRequest.getRequesterId(), friendRequest.getReceiverId());
         if (!friendshipRepository.existsByUserIdAAndUserIdB(pair.userIdA(), pair.userIdB())) {
             try {
@@ -227,6 +233,55 @@ public class FriendServiceImpl implements FriendService {
         friendshipRepository.delete(friendship);
     }
 
+    @Override
+    public FriendUserResponse blockUser(String userId) {
+        User currentUser = getCurrentUser();
+        User blockedUser = getUser(userId);
+        if (currentUser.getId().equals(blockedUser.getId())) {
+            throw new BadRequestException("Cannot block yourself");
+        }
+
+        if (!userBlockRepository.existsByBlockerIdAndBlockedId(currentUser.getId(), blockedUser.getId())) {
+            try {
+                userBlockRepository.save(UserBlock.builder()
+                        .blockerId(currentUser.getId())
+                        .blockedId(blockedUser.getId())
+                        .createdAt(Instant.now())
+                        .build());
+            } catch (DuplicateKeyException ignored) {
+                // Concurrent request created the same block.
+            }
+        }
+
+        removeFriendIfExists(currentUser.getId(), blockedUser.getId());
+        return friendMapper.toFriendUserResponse(blockedUser);
+    }
+
+    @Override
+    public void unblockUser(String userId) {
+        User currentUser = getCurrentUser();
+        getUser(userId);
+        userBlockRepository.findByBlockerIdAndBlockedId(currentUser.getId(), userId)
+                .ifPresent(userBlockRepository::delete);
+    }
+
+    @Override
+    public List<FriendUserResponse> getBlockedUsers() {
+        User currentUser = getCurrentUser();
+        List<String> blockedIds = userBlockRepository.findByBlockerIdOrderByCreatedAtDesc(currentUser.getId())
+                .stream()
+                .map(UserBlock::getBlockedId)
+                .toList();
+        Map<String, User> usersById = userRepository.findAllById(blockedIds)
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+        return blockedIds.stream()
+                .map(usersById::get)
+                .filter(java.util.Objects::nonNull)
+                .map(friendMapper::toFriendUserResponse)
+                .toList();
+    }
+
     private FriendRequest getPendingRequest(String requestId) {
         FriendRequest friendRequest = friendRequestRepository.findById(requestId)
                 .orElseThrow(() -> new FriendRequestNotFoundException("Friend request not found"));
@@ -271,5 +326,17 @@ public class FriendServiceImpl implements FriendService {
             throw new UserNotFoundException("Friend user not found");
         }
         return friend;
+    }
+
+    private void ensureNoBlockBetween(String userIdA, String userIdB) {
+        if (userBlockRepository.existsBetweenUsers(userIdA, userIdB)) {
+            throw new BadRequestException("Users cannot interact because one user has blocked the other");
+        }
+    }
+
+    private void removeFriendIfExists(String userIdA, String userIdB) {
+        UserIdPair.Ordered pair = UserIdPair.order(userIdA, userIdB);
+        friendshipRepository.findByUserIdAAndUserIdB(pair.userIdA(), pair.userIdB())
+                .ifPresent(friendshipRepository::delete);
     }
 }

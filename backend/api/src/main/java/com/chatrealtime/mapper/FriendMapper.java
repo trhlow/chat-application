@@ -4,6 +4,7 @@ import com.chatrealtime.domain.FriendRequest;
 import com.chatrealtime.domain.Friendship;
 import com.chatrealtime.domain.User;
 import com.chatrealtime.dto.response.FriendRequestResponse;
+import com.chatrealtime.dto.response.FriendUserResponse;
 import com.chatrealtime.dto.response.FriendshipResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -34,5 +35,9 @@ public class FriendMapper {
                 userMapper.toFriendUserResponse(friend),
                 friendship.getCreatedAt()
         );
+    }
+
+    public FriendUserResponse toFriendUserResponse(User user) {
+        return userMapper.toFriendUserResponse(user);
     }
 }

@@ -16,4 +16,6 @@ public interface AuthService {
     void logout(LogoutRequest request);
 
     void logoutAll();
+
+    long refreshTokenTtlMs();
 }

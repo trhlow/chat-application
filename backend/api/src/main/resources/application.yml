@@ -77,6 +77,12 @@ app:
     secret: ${APP_JWT_SECRET}
     access-expiration-ms: ${APP_JWT_ACCESS_EXPIRATION_MS:900000}
     refresh-expiration-ms: ${APP_JWT_REFRESH_EXPIRATION_MS:604800000}
+  auth:
+    refresh-cookie:
+      name: ${APP_AUTH_REFRESH_COOKIE_NAME:refreshToken}
+      path: ${APP_AUTH_REFRESH_COOKIE_PATH:/api/auth}
+      same-site: ${APP_AUTH_REFRESH_COOKIE_SAME_SITE:Strict}
+      secure: ${APP_AUTH_REFRESH_COOKIE_SECURE:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000}
   messages:

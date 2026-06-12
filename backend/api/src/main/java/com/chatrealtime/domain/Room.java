@@ -28,6 +28,7 @@ public class Room {
     @Indexed
     private List<String> memberIds;
     private List<String> admins;
+    private GroupSettings settings;
 
     private String createdBy;
     private String ownerId;

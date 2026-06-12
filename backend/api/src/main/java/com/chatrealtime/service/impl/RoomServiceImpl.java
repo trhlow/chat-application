@@ -2,10 +2,17 @@ package com.chatrealtime.service.impl;
 
 import com.chatrealtime.service.RoomService;
 
+import com.chatrealtime.domain.GroupSettings;
+import com.chatrealtime.domain.GroupJoinRequest;
+import com.chatrealtime.domain.GroupJoinRequestStatus;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.dto.request.CreateRoomRequest;
 import com.chatrealtime.dto.request.AddRoomMembersRequest;
+import com.chatrealtime.dto.request.CreateGroupJoinRequest;
+import com.chatrealtime.dto.request.UpdateGroupSettingsRequest;
 import com.chatrealtime.dto.request.UpdateRoomNameRequest;
+import com.chatrealtime.dto.response.GroupJoinRequestResponse;
+import com.chatrealtime.dto.response.RoomMemberResponse;
 import com.chatrealtime.dto.response.RoomResponse;
 import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.exception.RoomNotFoundException;
@@ -15,6 +22,7 @@ import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
 import com.chatrealtime.repository.MessageAttachmentRepository;
 import com.chatrealtime.repository.MessageRepository;
+import com.chatrealtime.repository.GroupJoinRequestRepository;
 import com.chatrealtime.repository.RoomRepository;
 import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
@@ -51,12 +59,15 @@ public class RoomServiceImpl implements RoomService {
     private static final String ROOM_TYPE_DIRECT = "direct";
     private static final String ROOM_TYPE_GROUP = "group";
     private static final String NOTIFICATION_GROUP_ADDED = "group_member_added";
+    private static final String NOTIFICATION_GROUP_INVITE_REQUEST = "group_invite_request";
+    private static final String NOTIFICATION_GROUP_INVITE_APPROVED = "group_invite_approved";
     private static final int ROOM_DELETE_MESSAGE_BATCH_SIZE = 500;
 
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final MessageRepository messageRepository;
     private final MessageAttachmentRepository messageAttachmentRepository;
+    private final GroupJoinRequestRepository groupJoinRequestRepository;
     private final RoomMapper roomMapper;
     private final AuthContextService authContextService;
     private final MessageService messageService;
@@ -115,6 +126,7 @@ public class RoomServiceImpl implements RoomService {
                 .avatarProvider(null)
                 .memberIds(List.copyOf(uniqueMemberIds))
                 .admins(List.of(principal.getId()))
+                .settings(GroupSettings.defaults())
                 .createdBy(principal.getId())
                 .ownerId(principal.getId())
                 .lastMessageAt(null)
@@ -193,6 +205,165 @@ public class RoomServiceImpl implements RoomService {
         Room savedRoom = roomRepository.save(room);
         long unreadCount = messageService.getUnreadCountMap(List.of(savedRoom.getId())).getOrDefault(savedRoom.getId(), 0L);
         return roomMapper.toResponse(savedRoom, unreadCount);
+    }
+
+    @Override
+    public List<RoomMemberResponse> getMembers(String roomId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        Map<String, User> usersById = userRepository.findAllById(room.getMemberIds())
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, user -> user));
+        return room.getMemberIds().stream()
+                .map(memberId -> toRoomMemberResponse(room, usersById.get(memberId)))
+                .toList();
+    }
+
+    @Override
+    public RoomResponse promoteAdmin(String roomId, String memberId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureOwner(room, principal.getId());
+
+        String normalizedMemberId = requireExistingMember(room, memberId);
+        room.setAdmins(mergePreservingOrder(safeAdmins(room), List.of(normalizedMemberId)));
+        room.setUpdatedAt(Instant.now());
+        Room savedRoom = roomRepository.save(room);
+        return roomMapper.toResponse(savedRoom, unreadCount(savedRoom));
+    }
+
+    @Override
+    public RoomResponse demoteAdmin(String roomId, String memberId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureOwner(room, principal.getId());
+
+        String normalizedMemberId = requireExistingMember(room, memberId);
+        if (normalizedMemberId.equals(room.getOwnerId())) {
+            throw new BadRequestException("Owner cannot be demoted");
+        }
+        room.setAdmins(safeAdmins(room).stream()
+                .filter(adminId -> !adminId.equals(normalizedMemberId))
+                .toList());
+        room.setUpdatedAt(Instant.now());
+        Room savedRoom = roomRepository.save(room);
+        return roomMapper.toResponse(savedRoom, unreadCount(savedRoom));
+    }
+
+    @Override
+    public RoomResponse transferOwner(String roomId, String memberId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureOwner(room, principal.getId());
+
+        String newOwnerId = requireExistingMember(room, memberId);
+        room.setOwnerId(newOwnerId);
+        room.setAdmins(mergePreservingOrder(safeAdmins(room), List.of(newOwnerId)));
+        room.setUpdatedAt(Instant.now());
+        Room savedRoom = roomRepository.save(room);
+        return roomMapper.toResponse(savedRoom, unreadCount(savedRoom));
+    }
+
+    @Override
+    public RoomResponse updateGroupSettings(String roomId, UpdateGroupSettingsRequest request) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureOwner(room, principal.getId());
+
+        GroupSettings settings = groupSettings(room);
+        if (request.sendMessagePermission() != null) {
+            settings.setSendMessagePermission(normalizePermission(request.sendMessagePermission(), "sendMessagePermission"));
+        }
+        if (request.editGroupInfoPermission() != null) {
+            settings.setEditGroupInfoPermission(normalizePermission(request.editGroupInfoPermission(), "editGroupInfoPermission"));
+        }
+        if (request.inviteMemberPermission() != null) {
+            settings.setInviteMemberPermission(normalizePermission(request.inviteMemberPermission(), "inviteMemberPermission"));
+        }
+        if (request.allowNewMemberReadHistory() != null) {
+            settings.setAllowNewMemberReadHistory(request.allowNewMemberReadHistory());
+        }
+        room.setSettings(settings);
+        room.setUpdatedAt(Instant.now());
+        Room savedRoom = roomRepository.save(room);
+        return roomMapper.toResponse(savedRoom, unreadCount(savedRoom));
+    }
+
+    @Override
+    public GroupJoinRequestResponse requestMemberInvite(String roomId, CreateGroupJoinRequest request) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureCanRequestInvite(room, principal.getId());
+
+        String targetUserId = requireNonBlank(request.targetUserId(), "targetUserId is required");
+        if (room.getMemberIds().contains(targetUserId)) {
+            throw new BadRequestException("User is already a member");
+        }
+        validateMembersExist(Set.of(targetUserId));
+        if (groupJoinRequestRepository.existsByRoomIdAndTargetUserIdAndStatus(
+                room.getId(),
+                targetUserId,
+                GroupJoinRequestStatus.PENDING
+        )) {
+            throw new BadRequestException("A pending group join request already exists");
+        }
+
+        GroupJoinRequest savedRequest = groupJoinRequestRepository.save(GroupJoinRequest.builder()
+                .roomId(room.getId())
+                .requesterId(principal.getId())
+                .targetUserId(targetUserId)
+                .status(GroupJoinRequestStatus.PENDING)
+                .createdAt(Instant.now())
+                .build());
+
+        notifyAdminsOfInviteRequest(room, principal.getId(), targetUserId, savedRequest.getId());
+        return toGroupJoinRequestResponse(savedRequest);
+    }
+
+    @Override
+    public List<GroupJoinRequestResponse> getPendingJoinRequests(String roomId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureAdmin(room, principal.getId());
+        return groupJoinRequestRepository.findByRoomIdAndStatusOrderByCreatedAtDesc(room.getId(), GroupJoinRequestStatus.PENDING)
+                .stream()
+                .map(this::toGroupJoinRequestResponse)
+                .toList();
+    }
+
+    @Override
+    public RoomResponse approveJoinRequest(String roomId, String requestId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureAdmin(room, principal.getId());
+        GroupJoinRequest joinRequest = requirePendingJoinRequest(room.getId(), requestId);
+        if (room.getMemberIds().contains(joinRequest.getTargetUserId())) {
+            markJoinRequest(joinRequest, GroupJoinRequestStatus.APPROVED, principal.getId());
+            return roomMapper.toResponse(room, unreadCount(room));
+        }
+
+        room.setMemberIds(mergePreservingOrder(room.getMemberIds(), List.of(joinRequest.getTargetUserId())));
+        room.setUpdatedAt(Instant.now());
+        Room savedRoom = roomRepository.save(room);
+        markJoinRequest(joinRequest, GroupJoinRequestStatus.APPROVED, principal.getId());
+        notifyAddedMembers(savedRoom, List.of(joinRequest.getTargetUserId()));
+        notificationService.createSystemNotification(
+                joinRequest.getTargetUserId(),
+                NOTIFICATION_GROUP_INVITE_APPROVED,
+                "Group invite approved",
+                "You were added to group " + (savedRoom.getName() == null ? "group" : savedRoom.getName()),
+                savedRoom.getId()
+        );
+        return roomMapper.toResponse(savedRoom, unreadCount(savedRoom));
+    }
+
+    @Override
+    public GroupJoinRequestResponse rejectJoinRequest(String roomId, String requestId) {
+        AuthUserPrincipal principal = authContextService.requireCurrentUser();
+        Room room = requireGroupRoomForMember(roomId, principal.getId());
+        ensureAdmin(room, principal.getId());
+        GroupJoinRequest joinRequest = requirePendingJoinRequest(room.getId(), requestId);
+        return toGroupJoinRequestResponse(markJoinRequest(joinRequest, GroupJoinRequestStatus.REJECTED, principal.getId()));
     }
 
     @Override
@@ -298,6 +469,19 @@ public class RoomServiceImpl implements RoomService {
     private void ensureAdmin(Room room, String userId) {
         if (!safeAdmins(room).contains(userId)) {
             throw new AccessDeniedException("Forbidden");
+        }
+    }
+
+    private void ensureOwner(Room room, String userId) {
+        if (!userId.equals(room.getOwnerId())) {
+            throw new AccessDeniedException("Forbidden");
+        }
+    }
+
+    private void ensureCanRequestInvite(Room room, String userId) {
+        GroupSettings settings = groupSettings(room);
+        if (GroupSettings.PERMISSION_ADMIN_ONLY.equals(settings.getInviteMemberPermission())) {
+            ensureAdmin(room, userId);
         }
     }
 
@@ -422,6 +606,110 @@ public class RoomServiceImpl implements RoomService {
 
     private List<String> safeAdmins(Room room) {
         return room.getAdmins() == null ? List.of() : room.getAdmins();
+    }
+
+    private GroupSettings groupSettings(Room room) {
+        if (room.getSettings() == null) {
+            room.setSettings(GroupSettings.defaults());
+        }
+        return room.getSettings();
+    }
+
+    private String normalizePermission(String permission, String fieldName) {
+        if (permission == null || permission.isBlank()) {
+            throw new BadRequestException(fieldName + " is required");
+        }
+        String normalized = permission.trim().toUpperCase(Locale.ROOT);
+        if (!GroupSettings.PERMISSION_ALL.equals(normalized)
+                && !GroupSettings.PERMISSION_ADMIN_ONLY.equals(normalized)) {
+            throw new BadRequestException(fieldName + " must be ALL or ADMIN_ONLY");
+        }
+        return normalized;
+    }
+
+    private String requireExistingMember(Room room, String memberId) {
+        String normalizedMemberId = requireNonBlank(memberId, "memberId is required");
+        if (room.getMemberIds() == null || !room.getMemberIds().contains(normalizedMemberId)) {
+            throw new BadRequestException("Member is not in this room");
+        }
+        return normalizedMemberId;
+    }
+
+    private long unreadCount(Room room) {
+        return messageService.getUnreadCountMap(List.of(room.getId())).getOrDefault(room.getId(), 0L);
+    }
+
+    private RoomMemberResponse toRoomMemberResponse(Room room, User user) {
+        if (user == null) {
+            throw new UserNotFoundException("Room member not found");
+        }
+        String role = user.getId().equals(room.getOwnerId())
+                ? "OWNER"
+                : safeAdmins(room).contains(user.getId()) ? "ADMIN" : "MEMBER";
+        String avatarEndpoint = user.getAvatar() == null || user.getAvatar().isBlank()
+                ? null
+                : "/api/users/" + user.getId() + "/avatar";
+        return new RoomMemberResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getDisplayName(),
+                avatarEndpoint,
+                avatarEndpoint,
+                role
+        );
+    }
+
+    private GroupJoinRequest requirePendingJoinRequest(String roomId, String requestId) {
+        GroupJoinRequest joinRequest = groupJoinRequestRepository.findByIdAndRoomId(
+                        requireNonBlank(requestId, "requestId is required"),
+                        roomId
+                )
+                .orElseThrow(() -> new BadRequestException("Group join request not found"));
+        if (joinRequest.getStatus() != GroupJoinRequestStatus.PENDING) {
+            throw new BadRequestException("Group join request is not pending");
+        }
+        return joinRequest;
+    }
+
+    private GroupJoinRequest markJoinRequest(
+            GroupJoinRequest joinRequest,
+            GroupJoinRequestStatus status,
+            String respondedBy
+    ) {
+        joinRequest.setStatus(status);
+        joinRequest.setRespondedBy(respondedBy);
+        joinRequest.setRespondedAt(Instant.now());
+        return groupJoinRequestRepository.save(joinRequest);
+    }
+
+    private GroupJoinRequestResponse toGroupJoinRequestResponse(GroupJoinRequest request) {
+        return new GroupJoinRequestResponse(
+                request.getId(),
+                request.getRoomId(),
+                request.getRequesterId(),
+                request.getTargetUserId(),
+                request.getStatus(),
+                request.getCreatedAt(),
+                request.getRespondedAt(),
+                request.getRespondedBy()
+        );
+    }
+
+    private void notifyAdminsOfInviteRequest(Room room, String requesterId, String targetUserId, String requestId) {
+        User requester = userRepository.findById(requesterId).orElse(null);
+        User target = userRepository.findById(targetUserId).orElse(null);
+        String requesterName = requester == null ? "A member" : displayName(requester);
+        String targetName = target == null ? "a user" : displayName(target);
+        String roomName = room.getName() == null ? "group" : room.getName();
+        safeAdmins(room).stream()
+                .filter(adminId -> !adminId.equals(requesterId))
+                .forEach(adminId -> notificationService.createSystemNotification(
+                        adminId,
+                        NOTIFICATION_GROUP_INVITE_REQUEST,
+                        "Group invite needs approval",
+                        requesterName + " invited " + targetName + " to " + roomName,
+                        requestId
+                ));
     }
 
     private String requireNonBlank(String value, String message) {

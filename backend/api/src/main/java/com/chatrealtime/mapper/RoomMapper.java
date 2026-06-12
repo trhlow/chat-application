@@ -1,6 +1,8 @@
 package com.chatrealtime.mapper;
 
+import com.chatrealtime.domain.GroupSettings;
 import com.chatrealtime.domain.Room;
+import com.chatrealtime.dto.response.GroupSettingsResponse;
 import com.chatrealtime.dto.response.RoomResponse;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +28,8 @@ public class RoomMapper {
                 room.getLastMessageAt(),
                 room.getLastMessagePreview(),
                 room.getCreatedAt(),
-                room.getUpdatedAt()
+                room.getUpdatedAt(),
+                toSettingsResponse(room.getSettings())
         );
     }
 
@@ -34,6 +37,16 @@ public class RoomMapper {
         return room.getAvatar() == null || room.getAvatar().isBlank()
                 ? null
                 : "/api/rooms/" + room.getId() + "/avatar";
+    }
+
+    private GroupSettingsResponse toSettingsResponse(GroupSettings settings) {
+        GroupSettings safeSettings = settings == null ? GroupSettings.defaults() : settings;
+        return new GroupSettingsResponse(
+                safeSettings.getSendMessagePermission(),
+                safeSettings.getEditGroupInfoPermission(),
+                safeSettings.getInviteMemberPermission(),
+                safeSettings.isAllowNewMemberReadHistory()
+        );
     }
 }
 

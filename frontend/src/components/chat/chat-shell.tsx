@@ -161,7 +161,7 @@ export const StatusBadge = ({ online, compact }: { online: boolean; compact?: bo
   </span>
 );
 
-const UnreadBadge = ({ count }: { count: number }) =>
+export const UnreadCountBadge = ({ count }: { count: number }) =>
   count > 0 ? (
     <span className="grid min-w-6 place-items-center rounded-full bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
       {count > 99 ? "99+" : count}
@@ -172,7 +172,7 @@ const SkeletonLine = ({ className }: { className?: string }) => (
   <div className={cn("animate-pulse rounded-md bg-muted", className)} />
 );
 
-const ListSkeleton = () => (
+export const ConversationSkeleton = () => (
   <div className="space-y-2">
     {Array.from({ length: 6 }).map((_, index) => (
       <div key={index} className="grid grid-cols-[auto_1fr] gap-3 rounded-lg border border-border p-3">
@@ -208,7 +208,7 @@ const Modal = ({
   </div>
 );
 
-const ChatCard = ({
+export const ChatCard = ({
   room,
   active,
   currentUser,
@@ -245,7 +245,7 @@ const ChatCard = ({
       </span>
       <span className="flex flex-col items-end gap-2">
         <span className="text-xs text-muted-foreground">{formatRelativeTime(room.lastMessageAt)}</span>
-        <UnreadBadge count={room.unreadCount} />
+        <UnreadCountBadge count={room.unreadCount} />
       </span>
     </button>
   );
@@ -482,7 +482,7 @@ export const AppSidebar = ({
 
         <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
           {tab === "chats" && (
-            isLoadingRooms ? <ListSkeleton /> : (
+            isLoadingRooms ? <ConversationSkeleton /> : (
               <div className="-mx-3">
                 {filteredRooms.length === 0 ? (
                   <div className="px-3"><EmptyText text="Không tìm thấy cuộc trò chuyện." /></div>
@@ -509,13 +509,13 @@ export const AppSidebar = ({
               onChange={onFriendsSectionChange}
             />
           )}
-          {tab === "profile" && <ProfilePanel />}
+          {tab === "profile" && <ProfileCard />}
         </div>
       </div>
 
       {modal === "friend" ? <AddFriendModal onClose={() => setModal(null)} /> : null}
-      {modal === "requests" ? <FriendRequestsModal onClose={() => setModal(null)} /> : null}
-      {modal === "group" ? <CreateGroupModal onClose={() => setModal(null)} /> : null}
+      {modal === "requests" ? <FriendRequestDialog onClose={() => setModal(null)} /> : null}
+      {modal === "group" ? <NewGroupChatModal onClose={() => setModal(null)} /> : null}
     </aside>
   );
 };
@@ -612,7 +612,7 @@ export const FriendsWorkspace = ({
                 </div>
               </div>
               <div className="mt-6">
-                {isLoading ? <ListSkeleton /> : filteredFriends.length === 0 ? <EmptyText text="Không tìm thấy bạn bè." /> : (
+                {isLoading ? <ConversationSkeleton /> : filteredFriends.length === 0 ? <EmptyText text="Không tìm thấy bạn bè." /> : (
                   <div className="divide-y divide-border">
                     {filteredFriends.map(({ id, friend }) => (
                       <button
@@ -645,7 +645,7 @@ export const FriendsWorkspace = ({
               <div className="space-y-3">
                 <h2 className="font-bold">Đã nhận ({incoming.length})</h2>
                 {incoming.length === 0 ? <EmptyText text="Không có lời mời mới." /> : incoming.map((request) => (
-                  <RequestCard
+                  <FriendRequestItem
                     key={request.id}
                     request={request}
                     value={firstMessages[request.id] ?? ""}
@@ -672,7 +672,7 @@ export const FriendsWorkspace = ({
   );
 };
 
-const ProfilePanel = () => {
+export const ProfileCard = () => {
   const profile = useChatStore((state) => state.profile);
   const isLoadingProfile = useChatStore((state) => state.isLoadingProfile);
   const isMutating = useChatStore((state) => state.isMutating);
@@ -692,7 +692,7 @@ const ProfilePanel = () => {
     }
   }, [profile]);
 
-  if (isLoadingProfile || !profile) return <ListSkeleton />;
+  if (isLoadingProfile || !profile) return <ConversationSkeleton />;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -738,7 +738,7 @@ const TextInput = ({ label, value, onChange }: { label: string; value: string; o
   </label>
 );
 
-const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
+export const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
   const currentUser = useAuthStore((state) => state.user);
   const sendFriendRequest = useChatStore((state) => state.sendFriendRequest);
   const isMutating = useChatStore((state) => state.isMutating);
@@ -760,7 +760,7 @@ const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
     <Modal title="Thêm bạn" onClose={onClose}>
       <div className="space-y-3">
         <TextInput label="Tìm người dùng" value={query} onChange={setQuery} />
-        {loading ? <ListSkeleton /> : results.map((user) => (
+        {loading ? <ConversationSkeleton /> : results.map((user) => (
           <div key={user.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
             <UserAvatar name={user.displayName || user.username} src={user.avatarEndpoint ?? user.avatar} />
             <div className="min-w-0 flex-1">
@@ -775,7 +775,7 @@ const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const FriendRequestsModal = ({ onClose }: { onClose: () => void }) => {
+export const FriendRequestDialog = ({ onClose }: { onClose: () => void }) => {
   const incoming = useChatStore((state) => state.incomingFriendRequests);
   const outgoing = useChatStore((state) => state.outgoingFriendRequests);
   const acceptFriendRequest = useChatStore((state) => state.acceptFriendRequest);
@@ -788,7 +788,7 @@ const FriendRequestsModal = ({ onClose }: { onClose: () => void }) => {
       <div className="space-y-5">
         <ChatListSection title="Đã nhận" count={incoming.length}>
           {incoming.length === 0 ? <EmptyText text="Không có lời mời mới." /> : incoming.map((request) => (
-            <RequestCard
+            <FriendRequestItem
               key={request.id}
               request={request}
               value={firstMessages[request.id] ?? ""}
@@ -809,7 +809,7 @@ const FriendRequestsModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-const RequestCard = ({
+export const FriendRequestItem = ({
   request,
   value,
   onChange,
@@ -834,7 +834,7 @@ const RequestCard = ({
   </div>
 );
 
-const CreateGroupModal = ({ onClose }: { onClose: () => void }) => {
+export const NewGroupChatModal = ({ onClose }: { onClose: () => void }) => {
   const friends = useChatStore((state) => state.friends);
   const createGroupRoom = useChatStore((state) => state.createGroupRoom);
   const isMutating = useChatStore((state) => state.isMutating);
@@ -901,7 +901,7 @@ export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
   const messages = selectedRoomId ? messagesByRoomId[selectedRoomId] ?? [] : [];
   const pageState = selectedRoomId ? messagePagesByRoomId[selectedRoomId] : undefined;
 
-  if (!selectedRoom || !selectedRoomId) return <WelcomeScreen />;
+  if (!selectedRoom || !selectedRoomId) return <ChatWelcomeScreen />;
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-background">
@@ -917,7 +917,7 @@ export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
   );
 };
 
-const WelcomeScreen = () => (
+export const ChatWelcomeScreen = () => (
   <section className="grid h-full place-items-center bg-background p-6">
     <div className="max-w-md text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-accent text-accent-foreground">
@@ -1007,7 +1007,7 @@ export const ChatWindowBody = ({
     <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5">
       {pageState?.loadingOlder ? <p className="mb-3 flex items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading older messages</p> : null}
       {loading ? (
-        <MessageSkeleton />
+        <ChatWindowSkeleton />
       ) : messages.length === 0 ? (
         <EmptyText text="Chưa có tin nhắn nào. Hãy gửi lời chào đầu tiên." />
       ) : (
@@ -1022,7 +1022,7 @@ export const ChatWindowBody = ({
   );
 };
 
-const MessageSkeleton = () => (
+export const ChatWindowSkeleton = () => (
   <div className="space-y-3">
     <SkeletonLine className="h-12 w-2/3" />
     <SkeletonLine className="ml-auto h-12 w-1/2" />

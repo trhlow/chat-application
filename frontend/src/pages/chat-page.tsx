@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { AppSidebar, ChatWindowLayout, FriendsWorkspace } from "@/components/chat/chat-shell";
+import { ChatWindowLayout } from "@/components/chat/ChatWindowLayout";
+import { AppSidebar, FriendsWorkspace } from "@/components/sidebar/app-sidebar";
 import { useAuthStore } from "@/store/auth-store";
 import { useChatStore } from "@/store/chat-store";
 

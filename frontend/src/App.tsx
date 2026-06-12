@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 import { Navigate, Route, Routes } from "react-router-dom";
 
-import { ProtectedRoute } from "@/components/protected-route";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PublicRoute } from "@/components/public-route";
 import { SignInPage } from "@/pages/signin-page";
 import { SignUpPage } from "@/pages/signup-page";

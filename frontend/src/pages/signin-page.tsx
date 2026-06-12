@@ -1,5 +1,5 @@
 import { AuthShell } from "@/components/auth-shell";
-import { SigninForm } from "@/components/signin-form";
+import { SigninForm } from "@/components/auth/signin-form";
 
 export const SignInPage = () => (
   <AuthShell

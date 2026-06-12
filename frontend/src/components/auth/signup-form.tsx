@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getErrorMessage } from "@/lib/errors";
 import { signUpSchema } from "@/schemas/auth";
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore } from "@/stores/useAuthStore";
 import type { SignUpFormValues } from "@/types/auth";
 
 export const SignupForm = () => {

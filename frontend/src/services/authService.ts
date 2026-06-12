@@ -5,7 +5,7 @@ import type {
   SignUpRequestPayload,
 } from "@/types/auth";
 
-import { apiClient, authClient } from "./http";
+import { apiClient, authClient } from "@/lib/axios";
 
 export const authApi = {
   signup: (payload: SignUpRequestPayload) =>

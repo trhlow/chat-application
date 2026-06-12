@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 
 import { ChatWindowLayout } from "@/components/chat/ChatWindowLayout";
 import { AppSidebar, FriendsWorkspace } from "@/components/sidebar/app-sidebar";
-import { useAuthStore } from "@/store/auth-store";
-import { useChatStore } from "@/store/chat-store";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useChatStore } from "@/stores/useChatStore";
 
-export const ChatPage = () => {
+export const ChatAppPage = () => {
   const [activeView, setActiveView] = useState<"chats" | "friends">("chats");
   const [friendsSection, setFriendsSection] = useState<"list" | "groups" | "requests" | "groupRequests">("list");
   const user = useAuthStore((state) => state.user);

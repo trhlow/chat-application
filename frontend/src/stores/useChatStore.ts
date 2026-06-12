@@ -1,12 +1,14 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 
-import { chatApi } from "@/lib/chat-client";
+import { chatApi } from "@/services/chatService";
 import {
   ChatRealtimeClient,
   parsePresenceEvent,
   parseRealtimeMessage,
 } from "@/lib/realtime-client";
-import { useAuthStore } from "@/store/auth-store";
+import { sendWithSingleFallback } from "@/lib/message-sender";
+import { useAuthStore } from "@/stores/useAuthStore";
 import type {
   ChatMessage,
   ChatRoom,
@@ -41,8 +43,6 @@ interface ChatState {
   isMutating: boolean;
   error: string | null;
   realtimeConnected: boolean;
-  activeUnsubscribe: (() => void) | null;
-  activeStatusUnsubscribe: (() => void) | null;
   setSelectedRoomId: (roomId: string | null) => void;
   fetchConversations: () => Promise<void>;
   fetchMessages: (roomId: string) => Promise<void>;
@@ -74,6 +74,59 @@ interface ChatState {
 
 const realtimeClient = new ChatRealtimeClient();
 const statusUpdatesInFlight = new Set<string>();
+const roomSubscriptions = new Map<string, () => void>();
+let presenceUnsubscribe: (() => void) | null = null;
+let connectionUnsubscribe: (() => void) | null = null;
+
+const clearRealtimeSubscriptions = () => {
+  roomSubscriptions.forEach((unsubscribe) => unsubscribe());
+  roomSubscriptions.clear();
+  presenceUnsubscribe?.();
+  presenceUnsubscribe = null;
+  connectionUnsubscribe?.();
+  connectionUnsubscribe = null;
+};
+
+const syncRoomSubscriptions = (roomIds: string[]) => {
+  const expectedRoomIds = new Set(roomIds);
+
+  roomSubscriptions.forEach((unsubscribe, roomId) => {
+    if (!expectedRoomIds.has(roomId)) {
+      unsubscribe();
+      roomSubscriptions.delete(roomId);
+    }
+  });
+
+  expectedRoomIds.forEach((roomId) => {
+    if (roomSubscriptions.has(roomId)) {
+      return;
+    }
+
+    const unsubscribeMessage = realtimeClient.subscribe(
+      `/topic/rooms/${roomId}/messages`,
+      (payload) => {
+        const message = parseRealtimeMessage(payload);
+        if (message) {
+          useChatStore.getState().handleIncomingMessage(message);
+        }
+      },
+    );
+    const unsubscribeStatus = realtimeClient.subscribe(
+      `/topic/rooms/${roomId}/status`,
+      (payload) => {
+        const message = parseRealtimeMessage(payload);
+        if (message) {
+          useChatStore.getState().handleMessageStatus(message);
+        }
+      },
+    );
+
+    roomSubscriptions.set(roomId, () => {
+      unsubscribeMessage();
+      unsubscribeStatus();
+    });
+  });
+};
 
 const sortRooms = (rooms: ChatRoom[]) =>
   [...rooms].sort((a, b) => {
@@ -92,6 +145,20 @@ const uniqueMessages = (messages: ChatMessage[]) => {
 
 const mergeRooms = (rooms: ChatRoom[], room: ChatRoom) =>
   sortRooms([room, ...rooms.filter((item) => item.id !== room.id)]);
+
+export const getNextUnreadCount = ({
+  currentCount,
+  isSelected,
+  alreadyKnown,
+}: {
+  currentCount: number;
+  isSelected: boolean;
+  alreadyKnown: boolean;
+}) => {
+  if (isSelected) return 0;
+  if (alreadyKnown) return currentCount;
+  return currentCount + 1;
+};
 
 const getProfileAvatar = (profile: UserProfile) =>
   profile.avatarEndpoint ?? profile.avatar;
@@ -123,36 +190,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isMutating: false,
   error: null,
   realtimeConnected: false,
-  activeUnsubscribe: null,
-  activeStatusUnsubscribe: null,
   setSelectedRoomId: (roomId) => {
-    const previousUnsubscribe = get().activeUnsubscribe;
-    const previousStatusUnsubscribe = get().activeStatusUnsubscribe;
-    previousUnsubscribe?.();
-    previousStatusUnsubscribe?.();
-
-    const messageUnsubscribe = roomId
-      ? realtimeClient.subscribe(`/topic/rooms/${roomId}/messages`, (payload) => {
-          const message = parseRealtimeMessage(payload);
-          if (message) {
-            get().handleIncomingMessage(message);
-          }
-        })
-      : null;
-    const statusUnsubscribe = roomId
-      ? realtimeClient.subscribe(`/topic/rooms/${roomId}/status`, (payload) => {
-          const message = parseRealtimeMessage(payload);
-          if (message) {
-            get().handleMessageStatus(message);
-          }
-        })
-      : null;
-
-    set({
-      selectedRoomId: roomId,
-      activeUnsubscribe: messageUnsubscribe,
-      activeStatusUnsubscribe: statusUnsubscribe,
-    });
+    set({ selectedRoomId: roomId });
 
     if (roomId) {
       void get().fetchMessages(roomId);
@@ -191,8 +230,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ]),
         ),
       });
+      syncRoomSubscriptions(rooms.map((room) => room.id));
     } catch (_error) {
-      set({ error: "Không thể tải danh sách cuộc trò chuyện." });
+      const message = "Không thể tải danh sách cuộc trò chuyện.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isLoadingRooms: false });
     }
@@ -218,7 +260,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
       get().markVisibleMessages(roomId);
     } catch (_error) {
-      set({ error: "Không thể tải tin nhắn." });
+      const message = "Không thể tải tin nhắn.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isLoadingMessages: false });
     }
@@ -256,13 +300,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
       }));
     } catch (_error) {
+      const message = "Không thể tải thêm tin nhắn cũ.";
       set((state) => ({
-        error: "Không thể tải thêm tin nhắn cũ.",
+        error: message,
         messagePagesByRoomId: {
           ...state.messagePagesByRoomId,
           [roomId]: { ...pageState, loadingOlder: false },
         },
       }));
+      toast.error(message);
     }
   },
   sendMessage: async (content) => {
@@ -276,21 +322,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isSending: true, error: null });
 
     try {
-      const wasSentRealtime = realtimeClient.sendMessage(
-        selectedRoomId,
-        trimmedContent,
-      );
+      const response = await sendWithSingleFallback({
+        sendRealtime: () =>
+          realtimeClient.sendMessage(selectedRoomId, trimmedContent),
+        sendRest: () => chatApi.sendMessage(selectedRoomId, trimmedContent),
+      });
 
-      if (!wasSentRealtime) {
-        const response = await chatApi.sendMessage(
-          selectedRoomId,
-          trimmedContent,
-        );
+      if (response) {
         get().handleIncomingMessage(response.data);
       }
     } catch (_error) {
-      const response = await chatApi.sendMessage(selectedRoomId, trimmedContent);
-      get().handleIncomingMessage(response.data);
+      const message = "Không thể gửi tin nhắn. Vui lòng thử lại.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isSending: false });
     }
@@ -304,10 +348,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
       const room = { ...response.data, avatar: response.data.avatarEndpoint ?? response.data.avatar };
       set((state) => ({ rooms: mergeRooms(state.rooms, room) }));
+      syncRoomSubscriptions([...get().rooms.map((item) => item.id), room.id]);
       get().setSelectedRoomId(room.id);
       return room;
     } catch (_error) {
-      set({ error: "Không thể tạo cuộc trò chuyện trực tiếp." });
+      const message = "Không thể tạo cuộc trò chuyện trực tiếp.";
+      set({ error: message });
+      toast.error(message);
       return null;
     } finally {
       set({ isMutating: false });
@@ -323,10 +370,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
       const room = { ...response.data, avatar: response.data.avatarEndpoint ?? response.data.avatar };
       set((state) => ({ rooms: mergeRooms(state.rooms, room) }));
+      syncRoomSubscriptions([...get().rooms.map((item) => item.id), room.id]);
       get().setSelectedRoomId(room.id);
+      toast.success("Đã tạo nhóm chat.");
       return room;
     } catch (_error) {
-      set({ error: "Không thể tạo nhóm mới. Nhóm cần tối thiểu 3 thành viên." });
+      const message = "Không thể tạo nhóm mới. Nhóm cần tối thiểu 3 thành viên.";
+      set({ error: message });
+      toast.error(message);
       return null;
     } finally {
       set({ isMutating: false });
@@ -358,8 +409,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set((state) => ({
         outgoingFriendRequests: [response.data, ...state.outgoingFriendRequests],
       }));
+      toast.success("Đã gửi lời mời kết bạn.");
     } catch (_error) {
-      set({ error: "Không thể gửi lời mời kết bạn." });
+      const message = "Không thể gửi lời mời kết bạn.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isMutating: false });
     }
@@ -386,8 +440,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }));
       get().setSelectedRoomId(room.id);
       await Promise.all([get().fetchFriends(), get().fetchConversations()]);
+      toast.success("Đã chấp nhận lời mời kết bạn.");
     } catch (_error) {
-      set({ error: "Không thể chấp nhận lời mời kết bạn." });
+      const message = "Không thể chấp nhận lời mời kết bạn.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isMutating: false });
     }
@@ -399,8 +456,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set((state) => ({
         incomingFriendRequests: state.incomingFriendRequests.filter((item) => item.id !== requestId),
       }));
+      toast.success("Đã từ chối lời mời kết bạn.");
     } catch (_error) {
-      set({ error: "Không thể từ chối lời mời kết bạn." });
+      const message = "Không thể từ chối lời mời kết bạn.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isMutating: false });
     }
@@ -444,8 +504,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
       set({ profile: response.data });
       useAuthStore.getState().updateUser(mapProfileToAuthUser(response.data));
+      toast.success("Đã cập nhật hồ sơ.");
     } catch (_error) {
-      set({ error: "Không thể cập nhật hồ sơ." });
+      const message = "Không thể cập nhật hồ sơ.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isMutating: false });
     }
@@ -456,8 +519,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const response = await chatApi.uploadAvatar(file);
       set({ profile: response.data });
       useAuthStore.getState().updateUser(mapProfileToAuthUser(response.data));
+      toast.success("Đã cập nhật ảnh đại diện.");
     } catch (_error) {
-      set({ error: "Không thể tải ảnh đại diện lên." });
+      const message = "Không thể tải ảnh đại diện lên.";
+      set({ error: message });
+      toast.error(message);
     } finally {
       set({ isMutating: false });
     }
@@ -514,26 +580,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
   },
   connectRealtime: (accessToken) => {
-    realtimeClient.connect(accessToken);
-    realtimeClient.subscribe("/topic/presence", (payload) => {
+    clearRealtimeSubscriptions();
+    let connectedOnce = false;
+    connectionUnsubscribe = realtimeClient.onConnectionChange((connected) => {
+      set({ realtimeConnected: connected });
+      if (!connected && connectedOnce) {
+        toast.warning("Mất kết nối realtime. Đang thử kết nối lại...");
+        return;
+      }
+
+      if (!connected) return;
+      if (connectedOnce) {
+        toast.success("Đã kết nối lại realtime.");
+      }
+      connectedOnce = true;
+      syncRoomSubscriptions(get().rooms.map((room) => room.id));
+    });
+    presenceUnsubscribe = realtimeClient.subscribe("/topic/presence", (payload) => {
       const event = parsePresenceEvent(payload);
       if (event) {
         get().handlePresence(event);
       }
     });
-    set({ realtimeConnected: true });
+    syncRoomSubscriptions(get().rooms.map((room) => room.id));
+    realtimeClient.connect(accessToken);
   },
   disconnectRealtime: () => {
+    clearRealtimeSubscriptions();
     realtimeClient.disconnect();
-    set({
-      realtimeConnected: false,
-      activeUnsubscribe: null,
-      activeStatusUnsubscribe: null,
-    });
+    set({ realtimeConnected: false });
   },
   handleIncomingMessage: (message) => {
     set((state) => {
       const roomMessages = state.messagesByRoomId[message.roomId] ?? [];
+      const alreadyKnown = roomMessages.some((item) => item.id === message.id);
       const selectedRoomId = state.selectedRoomId;
       const rooms = state.rooms.map((room) =>
         room.id === message.roomId
@@ -541,8 +621,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
               ...room,
               lastMessageAt: message.timestamp,
               lastMessagePreview: message.content,
-              unreadCount:
-                selectedRoomId === message.roomId ? 0 : room.unreadCount + 1,
+              unreadCount: getNextUnreadCount({
+                currentCount: room.unreadCount,
+                isSelected: selectedRoomId === message.roomId,
+                alreadyKnown,
+              }),
             }
           : room,
       );

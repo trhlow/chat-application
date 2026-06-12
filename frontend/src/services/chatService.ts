@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/http";
+import { apiClient } from "@/lib/axios";
 import type {
   ChatMessage,
   ChatRoom,

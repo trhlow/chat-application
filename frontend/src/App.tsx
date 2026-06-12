@@ -4,10 +4,10 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PublicRoute } from "@/components/public-route";
-import { SignInPage } from "@/pages/signin-page";
-import { SignUpPage } from "@/pages/signup-page";
-import { ChatPage } from "@/pages/chat-page";
-import { useAuthStore } from "@/store/auth-store";
+import { ChatAppPage } from "@/pages/ChatAppPage";
+import { SignInPage } from "@/pages/SignInPage";
+import { SignUpPage } from "@/pages/SignUpPage";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export const App = () => {
   const bootstrap = useAuthStore((state) => state.bootstrap);
@@ -39,7 +39,7 @@ export const App = () => {
         path="/app"
         element={
           <ProtectedRoute>
-            <ChatPage />
+            <ChatAppPage />
           </ProtectedRoute>
         }
       />

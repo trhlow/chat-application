@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react";
 import { Navigate } from "react-router-dom";
 
 import { FullScreenLoader } from "@/components/full-screen-loader";
-import { useAuthStore } from "@/store/auth-store";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 export const PublicRoute = ({ children }: PropsWithChildren) => {
   const isBootstrapping = useAuthStore((state) => state.isBootstrapping);

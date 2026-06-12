@@ -1,8 +1,8 @@
 import { create } from "zustand";
 
-import { authApi } from "@/lib/auth-client";
+import { authApi } from "@/services/authService";
 import { authStorage } from "@/lib/auth-storage";
-import { bindAuthSession } from "@/lib/http";
+import { bindAuthSession } from "@/lib/axios";
 import type {
   AuthUser,
   BackendAuthResponse,
@@ -148,7 +148,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         }
 
-        await get().fetchCurrentUser();
+        try {
+          await get().fetchCurrentUser();
+        } catch (_error) {
+          // The refresh response already contains a usable user snapshot.
+          // Keep the session on transient profile/network failures.
+        }
       } finally {
         set({ isBootstrapping: false });
         bootstrapPromise = null;

@@ -14,6 +14,7 @@ import {
   Search,
   SendHorizontal,
   Settings,
+  Smile,
   SlidersHorizontal,
   SunMedium,
   UserPlus,
@@ -30,14 +31,16 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 
+import { EmojiPicker } from "@/components/chat/EmojiPicker";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { API_URL } from "@/lib/config";
-import { chatApi } from "@/lib/chat-client";
+import { chatApi } from "@/services/chatService";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/store/auth-store";
-import { useChatStore } from "@/store/chat-store";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useChatStore } from "@/stores/useChatStore";
 import type { AuthUser } from "@/types/auth";
 import type { ChatMessage, ChatRoom, ChatUser, FriendRequest, FriendUser } from "@/types/chat";
 
@@ -51,10 +54,16 @@ const resolveMediaUrl = (value?: string | null) => {
   if (!value) {
     return null;
   }
-  if (/^https?:\/\//i.test(value) || value.startsWith("data:")) {
+  if (/^https?:\/\//i.test(value) || value.startsWith("data:image/")) {
     return value;
   }
   return `${apiOrigin}${value.startsWith("/") ? value : `/${value}`}`;
+};
+
+const formatFileSize = (size?: number | null) => {
+  if (!size || size < 1) return null;
+  if (size < 1024 * 1024) return `${Math.ceil(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
 
 const formatRelativeTime = (value?: string | null) => {
@@ -434,7 +443,11 @@ export const AppSidebar = ({
             { icon: Globe2, label: "Ngôn ngữ" },
             { icon: CircleHelp, label: "Hỗ trợ" },
           ].map(({ icon: Icon, label }) => (
-            <button key={label} className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted">
+            <button
+              key={label}
+              className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted"
+              onClick={() => toast.info(`${label} chưa được backend hỗ trợ.`)}
+            >
               <span className="flex items-center gap-3"><Icon className="h-5 w-5" /> {label}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -572,6 +585,7 @@ export const FriendsWorkspace = ({
   const createDirectRoom = useChatStore((state) => state.createDirectRoom);
   const acceptFriendRequest = useChatStore((state) => state.acceptFriendRequest);
   const rejectFriendRequest = useChatStore((state) => state.rejectFriendRequest);
+  const setSelectedRoomId = useChatStore((state) => state.setSelectedRoomId);
   const [query, setQuery] = useState("");
   const [firstMessages, setFirstMessages] = useState<Record<string, string>>({});
 
@@ -634,10 +648,18 @@ export const FriendsWorkspace = ({
           ) : section === "groups" ? (
             <div className="space-y-2">
               {rooms.filter((room) => !isDirectRoom(room)).length === 0 ? <EmptyText text="Bạn chưa tham gia nhóm nào." /> : rooms.filter((room) => !isDirectRoom(room)).map((room) => (
-                <div key={room.id} className="flex items-center gap-4 border-b border-border px-2 py-4 last:border-0">
+                <button
+                  key={room.id}
+                  type="button"
+                  className="flex w-full items-center gap-4 border-b border-border px-2 py-4 text-left transition hover:bg-muted last:border-0"
+                  onClick={() => {
+                    setSelectedRoomId(room.id);
+                    onOpenChat();
+                  }}
+                >
                   <UserAvatar name={room.name || "Nhóm"} src={room.avatarEndpoint ?? room.avatar} size="lg" />
                   <div><p className="font-semibold">{room.name || "Nhóm chat"}</p><p className="text-xs text-muted-foreground">{room.memberIds.length} thành viên</p></div>
-                </div>
+                </button>
               ))}
             </div>
           ) : section === "requests" ? (
@@ -664,7 +686,7 @@ export const FriendsWorkspace = ({
               </div>
             </div>
           ) : (
-            <EmptyText text="Hiện chưa có lời mời vào nhóm." />
+            <EmptyText text="Backend chưa cung cấp API lời mời vào nhóm." />
           )}
         </div>
       </div>
@@ -727,7 +749,15 @@ export const ProfileCard = () => {
 
 const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>, uploadAvatar: (file: File) => Promise<void>) => {
   const file = event.target.files?.[0];
-  if (file) void uploadAvatar(file);
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    toast.error("Chỉ chấp nhận tệp hình ảnh.");
+  } else if (file.size > 5 * 1024 * 1024) {
+    toast.error("Ảnh đại diện không được vượt quá 5 MB.");
+  } else {
+    void uploadAvatar(file);
+  }
   event.target.value = "";
 };
 
@@ -747,13 +777,28 @@ export const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const timer = window.setTimeout(() => {
       setLoading(true);
       void chatApi.searchUsers(query).then((response) => {
-        setResults(response.data.filter((user) => user.id !== currentUser?.id));
-      }).finally(() => setLoading(false));
+        if (active) {
+          setResults(response.data.filter((user) => user.id !== currentUser?.id));
+        }
+      }).catch(() => {
+        if (active) {
+          setResults([]);
+          toast.error("Không thể tìm kiếm người dùng.");
+        }
+      }).finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
     }, 250);
-    return () => window.clearTimeout(timer);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [currentUser?.id, query]);
 
   return (
@@ -1039,8 +1084,28 @@ export const MessageItem = ({ message, mine, sender, currentUserId }: { message:
       {!mine ? <UserAvatar name={senderName} src={sender?.avatarEndpoint ?? sender?.avatar} size="sm" /> : null}
       <div className={cn("max-w-[78%]", mine && "text-right")}>
         {!mine ? <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">{senderName}</p> : null}
-        <div className={cn("rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-sm", mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-card-foreground")}>
-          {message.content}
+        <div className={cn("space-y-2 rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-sm", mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-card-foreground")}>
+          {message.content ? <p className="whitespace-pre-wrap break-words">{message.content}</p> : null}
+          {message.attachments?.map((attachment) => {
+            const url = resolveMediaUrl(attachment.url);
+            if (!url) return null;
+
+            if (attachment.type.toLowerCase().startsWith("image/")) {
+              return (
+                <a key={attachment.id} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg">
+                  <img src={url} alt={attachment.fileName || "Ảnh đính kèm"} className="max-h-72 w-full object-cover" loading="lazy" />
+                </a>
+              );
+            }
+
+            const fileSize = formatFileSize(attachment.size);
+            return (
+              <a key={attachment.id} href={url} target="_blank" rel="noreferrer" className="block rounded-lg border border-current/20 px-3 py-2 underline-offset-4 hover:underline">
+                {attachment.fileName || "Tệp đính kèm"}
+                {fileSize ? ` (${fileSize})` : ""}
+              </a>
+            );
+          })}
         </div>
         <p className="mt-1 px-1 text-xs text-muted-foreground">
           {new Date(message.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
@@ -1063,11 +1128,13 @@ export const MessageInput = () => {
   const sendMessage = useChatStore((state) => state.sendMessage);
   const isSending = useChatStore((state) => state.isSending);
   const [value, setValue] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const sendCurrentValue = () => {
     const content = value.trim();
     if (!content) return;
     setValue("");
+    setEmojiOpen(false);
     void sendMessage(content);
   };
 
@@ -1079,6 +1146,29 @@ export const MessageInput = () => {
   return (
     <form onSubmit={submit} className="border-t border-border bg-card/90 p-3 backdrop-blur">
       <div className="mx-auto flex max-w-4xl items-end gap-2 rounded-2xl border border-input bg-background p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10">
+        <div className="relative">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-lg"
+            aria-label="Chọn emoji"
+            aria-expanded={emojiOpen}
+            onClick={() => setEmojiOpen((current) => !current)}
+          >
+            <Smile className="h-5 w-5" />
+          </Button>
+          {emojiOpen ? (
+            <div className="absolute bottom-12 left-0 z-30 w-80">
+              <EmojiPicker
+                onSelect={(emoji) => {
+                  setValue((current) => `${current}${emoji}`);
+                  setEmojiOpen(false);
+                }}
+              />
+            </div>
+          ) : null}
+        </div>
         <textarea
           value={value}
           onChange={(event) => setValue(event.target.value)}

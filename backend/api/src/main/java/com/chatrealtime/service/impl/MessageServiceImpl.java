@@ -1,6 +1,7 @@
 package com.chatrealtime.service.impl;
 
 import com.chatrealtime.config.AppMessagesProperties;
+import com.chatrealtime.domain.GroupSettings;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
@@ -17,6 +18,7 @@ import com.chatrealtime.mapper.MessageMapper;
 import com.chatrealtime.repository.MessageAttachmentRepository;
 import com.chatrealtime.repository.MessageRepository;
 import com.chatrealtime.repository.RoomRepository;
+import com.chatrealtime.repository.UserBlockRepository;
 import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
@@ -84,6 +86,7 @@ public class MessageServiceImpl implements MessageService {
     private final SimpMessagingTemplate messagingTemplate;
     private final MongoTemplate mongoTemplate;
     private final UserRepository userRepository;
+    private final UserBlockRepository userBlockRepository;
     private final NotificationService notificationService;
     private final PresenceService presenceService;
     private final AppMessagesProperties appMessagesProperties;
@@ -122,11 +125,23 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public MessageResponse createMessageWithAttachment(String roomId, String content, MultipartFile file) {
+        return createMessageWithAttachment(roomId, content, null, file);
+    }
+
+    @Override
+    public MessageResponse createMessageWithAttachment(String roomId, String content, String clientMessageId, MultipartFile file) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = ensureRoomExists(roomId);
         ensureMembership(room, principal.getId());
+        ensureNotBlockedInDirectRoom(room, principal.getId());
+        ensureCanSendInGroup(room, principal.getId());
 
         String normalizedContent = normalizeOptionalContent(content);
+        String normalizedClientMessageId = normalizeClientMessageId(clientMessageId);
+        MessageResponse existing = findExistingClientMessage(roomId, principal.getId(), normalizedClientMessageId);
+        if (existing != null) {
+            return existing;
+        }
         StoredMessageAttachment storedAttachment = messageAttachmentStorageService.store(principal.getId(), file);
 
         try {
@@ -135,6 +150,7 @@ public class MessageServiceImpl implements MessageService {
                     .senderId(principal.getId())
                     .content(normalizedContent == null ? "" : normalizedContent)
                     .type(resolveAttachmentMessageType(storedAttachment.fileType()))
+                    .clientMessageId(normalizedClientMessageId)
                     .timestamp(LocalDateTime.now())
                     .status("sent")
                     .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
@@ -185,7 +201,19 @@ public class MessageServiceImpl implements MessageService {
             String type,
             String replyToMessageId
     ) {
-        return createMessage(principal, new CreateMessageRequest(roomId, content, type, replyToMessageId));
+        return createRealtimeMessage(principal, roomId, content, type, replyToMessageId, null);
+    }
+
+    @Override
+    public MessageResponse createRealtimeMessage(
+            AuthUserPrincipal principal,
+            String roomId,
+            String content,
+            String type,
+            String replyToMessageId,
+            String clientMessageId
+    ) {
+        return createMessage(principal, new CreateMessageRequest(roomId, content, type, replyToMessageId, clientMessageId));
     }
 
     @Override
@@ -458,6 +486,17 @@ public class MessageServiceImpl implements MessageService {
         return replyToMessageId.trim();
     }
 
+    private String normalizeClientMessageId(String clientMessageId) {
+        if (clientMessageId == null || clientMessageId.isBlank()) {
+            return null;
+        }
+        String normalized = clientMessageId.trim();
+        if (normalized.length() > 100) {
+            throw new BadRequestException("clientMessageId must be at most 100 characters");
+        }
+        return normalized;
+    }
+
     private Message resolveReplyToMessage(String replyToMessageId, String roomId) {
         String normalizedReplyToMessageId = normalizeReplyToMessageId(replyToMessageId);
         if (normalizedReplyToMessageId == null) {
@@ -499,6 +538,31 @@ public class MessageServiceImpl implements MessageService {
     private void ensureMembership(Room room, String userId) {
         if (room.getMemberIds() == null || !room.getMemberIds().contains(userId)) {
             throw new AccessDeniedException("Forbidden");
+        }
+    }
+
+    private void ensureNotBlockedInDirectRoom(Room room, String userId) {
+        if (!"direct".equalsIgnoreCase(room.getType()) || room.getMemberIds() == null) {
+            return;
+        }
+        room.getMemberIds().stream()
+                .filter(memberId -> !memberId.equals(userId))
+                .findFirst()
+                .ifPresent(otherUserId -> {
+                    if (userBlockRepository.existsBetweenUsers(userId, otherUserId)) {
+                        throw new AccessDeniedException("Blocked users cannot send direct messages");
+                    }
+                });
+    }
+
+    private void ensureCanSendInGroup(Room room, String userId) {
+        if (!"group".equalsIgnoreCase(room.getType())) {
+            return;
+        }
+        GroupSettings settings = room.getSettings() == null ? GroupSettings.defaults() : room.getSettings();
+        if (GroupSettings.PERMISSION_ADMIN_ONLY.equals(settings.getSendMessagePermission())
+                && (room.getAdmins() == null || !room.getAdmins().contains(userId))) {
+            throw new AccessDeniedException("Only group admins can send messages");
         }
     }
 
@@ -693,9 +757,16 @@ public class MessageServiceImpl implements MessageService {
     private MessageResponse createMessage(AuthUserPrincipal principal, CreateMessageRequest request) {
         Room room = ensureRoomExists(request.roomId());
         ensureMembership(room, principal.getId());
+        ensureNotBlockedInDirectRoom(room, principal.getId());
+        ensureCanSendInGroup(room, principal.getId());
         String normalizedContent = normalizeRequiredContent(request.content());
         String normalizedType = normalizeMessageType(request.type());
         Message replyToMessage = resolveReplyToMessage(request.replyToMessageId(), request.roomId());
+        String normalizedClientMessageId = normalizeClientMessageId(request.clientMessageId());
+        MessageResponse existing = findExistingClientMessage(request.roomId(), principal.getId(), normalizedClientMessageId);
+        if (existing != null) {
+            return existing;
+        }
         if (!TYPE_TEXT.equals(normalizedType)) {
             throw new BadRequestException("Only TEXT messages can be created without an attachment");
         }
@@ -707,6 +778,7 @@ public class MessageServiceImpl implements MessageService {
                 .content(normalizedContent)
                 .type(normalizedType)
                 .replyToMessageId(replyToMessage == null ? null : replyToMessage.getId())
+                .clientMessageId(normalizedClientMessageId)
                 .timestamp(now)
                 .status("sent")
                 .deliveredToUserIds(new HashSet<>(Set.of(principal.getId())))
@@ -722,6 +794,15 @@ public class MessageServiceImpl implements MessageService {
                 : messageMapper.toResponse(savedMessage, List.of(), replyToMessage);
         messagingTemplate.convertAndSend("/topic/rooms/" + request.roomId() + "/messages", response);
         return response;
+    }
+
+    private MessageResponse findExistingClientMessage(String roomId, String senderId, String clientMessageId) {
+        if (clientMessageId == null) {
+            return null;
+        }
+        return messageRepository.findByRoomIdAndSenderIdAndClientMessageId(roomId, senderId, clientMessageId)
+                .map(message -> toResponseForUser(message, senderId))
+                .orElse(null);
     }
 
     private MessageResponse updateMessageStatus(AuthUserPrincipal principal, String messageId, String status) {

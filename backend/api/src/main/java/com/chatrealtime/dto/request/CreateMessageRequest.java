@@ -14,10 +14,17 @@ public record CreateMessageRequest(
         @Size(max = 20, message = "type must be at most 20 characters")
         String type,
 
-        String replyToMessageId
+        String replyToMessageId,
+
+        @Size(max = 100, message = "clientMessageId must be at most 100 characters")
+        String clientMessageId
 ) {
     public CreateMessageRequest(String roomId, String content) {
-        this(roomId, content, null, null);
+        this(roomId, content, null, null, null);
+    }
+
+    public CreateMessageRequest(String roomId, String content, String type, String replyToMessageId) {
+        this(roomId, content, type, replyToMessageId, null);
     }
 }
 

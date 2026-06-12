@@ -20,7 +20,13 @@ import java.util.Set;
 @CompoundIndexes({
         @CompoundIndex(name = "idx_message_room_timestamp", def = "{'roomId': 1, 'timestamp': -1}"),
         @CompoundIndex(name = "idx_message_room_delivered_state", def = "{'roomId': 1, 'senderId': 1, 'deliveredToUserIds': 1, 'timestamp': -1}"),
-        @CompoundIndex(name = "idx_message_room_seen_state", def = "{'roomId': 1, 'senderId': 1, 'readByUserIds': 1, 'timestamp': -1}")
+        @CompoundIndex(name = "idx_message_room_seen_state", def = "{'roomId': 1, 'senderId': 1, 'readByUserIds': 1, 'timestamp': -1}"),
+        @CompoundIndex(
+                name = "uk_message_client_message_id",
+                def = "{'roomId': 1, 'senderId': 1, 'clientMessageId': 1}",
+                unique = true,
+                partialFilter = "{'clientMessageId': {'$type': 'string'}}"
+        )
 })
 @Document(collection = "messages")
 public class Message {
@@ -33,6 +39,7 @@ public class Message {
     @Builder.Default
     private String type = "TEXT";
     private String replyToMessageId;
+    private String clientMessageId;
     private LocalDateTime timestamp;
     private String status;
     @Builder.Default

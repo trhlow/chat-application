@@ -49,9 +49,10 @@ public class MessageController {
     public MessageResponse createMessageWithAttachment(
             @RequestParam String roomId,
             @RequestParam(required = false) String content,
+            @RequestParam(required = false) String clientMessageId,
             @RequestParam("file") MultipartFile file
     ) {
-        return messageService.createMessageWithAttachment(roomId, content, file);
+        return messageService.createMessageWithAttachment(roomId, content, clientMessageId, file);
     }
 
     @PatchMapping("/{messageId}/status")

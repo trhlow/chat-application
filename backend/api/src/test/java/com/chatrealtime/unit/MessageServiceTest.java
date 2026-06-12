@@ -5,6 +5,7 @@ import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.MessageAttachment;
 import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
+import com.chatrealtime.domain.GroupSettings;
 import com.chatrealtime.dto.request.CreateMessageRequest;
 import com.chatrealtime.dto.response.MessagePageResponse;
 import com.chatrealtime.dto.response.MessageResponse;
@@ -14,6 +15,7 @@ import com.chatrealtime.mapper.MessageMapper;
 import com.chatrealtime.repository.MessageAttachmentRepository;
 import com.chatrealtime.repository.MessageRepository;
 import com.chatrealtime.repository.RoomRepository;
+import com.chatrealtime.repository.UserBlockRepository;
 import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
@@ -76,6 +78,8 @@ class MessageServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private UserBlockRepository userBlockRepository;
+    @Mock
     private NotificationService notificationService;
     @Mock
     private PresenceService presenceService;
@@ -99,6 +103,80 @@ class MessageServiceTest {
         CreateMessageRequest request = new CreateMessageRequest("r1", "hello");
 
         assertThatThrownBy(() -> messageService.createMessage(request))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(messageRepository, never()).save(any(Message.class));
+    }
+
+    @Test
+    void createMessage_WithSameClientMessageId_ShouldReturnExistingMessageWithoutSaving() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Room room = Room.builder().id("r1").type("group").memberIds(List.of("u1", "u2")).build();
+        Message existing = Message.builder()
+                .id("m-existing")
+                .roomId("r1")
+                .senderId("u1")
+                .content("hello")
+                .clientMessageId("client-1")
+                .timestamp(LocalDateTime.now())
+                .status("sent")
+                .build();
+
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+        when(messageRepository.findByRoomIdAndSenderIdAndClientMessageId("r1", "u1", "client-1"))
+                .thenReturn(Optional.of(existing));
+        when(messageAttachmentRepository.findByMessageId("m-existing")).thenReturn(List.of());
+        when(messageMapper.toResponse(existing, List.of())).thenReturn(new MessageResponse(
+                "m-existing",
+                "r1",
+                "u1",
+                "hello",
+                existing.getTimestamp(),
+                "sent",
+                Set.of(),
+                Set.of(),
+                List.of(),
+                "TEXT",
+                null,
+                null,
+                false,
+                null,
+                "client-1"
+        ));
+
+        MessageResponse response = messageService.createMessage(
+                new CreateMessageRequest("r1", "hello retry", "TEXT", null, "client-1")
+        );
+
+        assertThat(response.id()).isEqualTo("m-existing");
+        verify(messageRepository, never()).save(any(Message.class));
+        verify(messagingTemplate, never()).convertAndSend(eq("/topic/rooms/r1/messages"), any(MessageResponse.class));
+    }
+
+    @Test
+    void createMessage_WhenDirectPeerBlocked_ShouldReject() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Room room = Room.builder().id("r1").type("direct").memberIds(List.of("u1", "u2")).build();
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(room));
+        when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(true);
+
+        assertThatThrownBy(() -> messageService.createMessage(new CreateMessageRequest("r1", "hello")))
+                .isInstanceOf(AccessDeniedException.class);
+        verify(messageRepository, never()).save(any(Message.class));
+    }
+
+    @Test
+    void createMessage_WhenGroupAdminOnlyAndUserIsMember_ShouldReject() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Room room = Room.builder()
+                .id("g1")
+                .type("group")
+                .memberIds(List.of("u1", "u2"))
+                .admins(List.of("u2"))
+                .settings(GroupSettings.builder().sendMessagePermission(GroupSettings.PERMISSION_ADMIN_ONLY).build())
+                .build();
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+
+        assertThatThrownBy(() -> messageService.createMessage(new CreateMessageRequest("g1", "hello")))
                 .isInstanceOf(AccessDeniedException.class);
         verify(messageRepository, never()).save(any(Message.class));
     }

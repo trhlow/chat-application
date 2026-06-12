@@ -11,10 +11,17 @@ public record RealtimeMessageRequest(
         @Size(max = 20, message = "type must be at most 20 characters")
         String type,
 
-        String replyToMessageId
+        String replyToMessageId,
+
+        @Size(max = 100, message = "clientMessageId must be at most 100 characters")
+        String clientMessageId
 ) {
     public RealtimeMessageRequest(String content) {
-        this(content, null, null);
+        this(content, null, null, null);
+    }
+
+    public RealtimeMessageRequest(String content, String type, String replyToMessageId) {
+        this(content, type, replyToMessageId, null);
     }
 }
 

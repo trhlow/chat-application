@@ -4,40 +4,40 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 32% 11%;
+    --background: 228 38% 97%;
+    --foreground: 232 28% 16%;
     --card: 0 0% 100%;
-    --card-foreground: 222 32% 11%;
-    --primary: 213 88% 52%;
+    --card-foreground: 232 28% 16%;
+    --primary: 269 78% 54%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 20% 94%;
-    --secondary-foreground: 222 28% 16%;
-    --muted: 210 20% 95%;
-    --muted-foreground: 215 14% 42%;
-    --accent: 211 100% 94%;
-    --accent-foreground: 214 84% 42%;
-    --border: 214 20% 88%;
-    --input: 214 20% 84%;
-    --ring: 213 88% 52%;
-    --radius: 0.875rem;
+    --secondary: 268 38% 94%;
+    --secondary-foreground: 269 54% 35%;
+    --muted: 230 30% 95%;
+    --muted-foreground: 230 12% 46%;
+    --accent: 269 72% 95%;
+    --accent-foreground: 269 72% 42%;
+    --border: 232 25% 89%;
+    --input: 232 25% 85%;
+    --ring: 269 78% 54%;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 222 25% 8%;
-    --foreground: 210 20% 96%;
-    --card: 222 23% 11%;
-    --card-foreground: 210 20% 96%;
-    --primary: 211 92% 62%;
+    --background: 238 24% 9%;
+    --foreground: 230 28% 96%;
+    --card: 238 22% 12%;
+    --card-foreground: 230 28% 96%;
+    --primary: 270 83% 67%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 18% 17%;
-    --secondary-foreground: 210 20% 94%;
-    --muted: 220 18% 15%;
-    --muted-foreground: 215 16% 67%;
-    --accent: 214 48% 20%;
-    --accent-foreground: 211 92% 78%;
-    --border: 220 16% 21%;
-    --input: 220 16% 25%;
-    --ring: 211 92% 62%;
+    --secondary: 258 24% 20%;
+    --secondary-foreground: 270 60% 88%;
+    --muted: 238 18% 17%;
+    --muted-foreground: 230 14% 68%;
+    --accent: 266 36% 22%;
+    --accent-foreground: 270 78% 83%;
+    --border: 238 17% 23%;
+    --input: 238 17% 27%;
+    --ring: 270 83% 67%;
   }
 
   * {
@@ -50,6 +50,9 @@
 
   body {
     @apply min-h-[100dvh] bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at 16% 0%, hsl(var(--primary) / 0.08), transparent 28rem),
+      radial-gradient(circle at 90% 100%, rgb(236 72 153 / 0.06), transparent 30rem);
     font-family:
       "Be Vietnam Pro", "Plus Jakarta Sans", "Segoe UI", ui-sans-serif, system-ui,
       -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
@@ -75,6 +78,24 @@
 
   .animate-rise-in {
     animation: rise-in 420ms ease-out both;
+  }
+
+  .brand-gradient {
+    background-image: linear-gradient(120deg, #5b43f1 0%, #9b31e6 48%, #ec2b91 100%);
+  }
+
+  .chat-surface {
+    background-color: hsl(224 42% 96%);
+    background-image:
+      radial-gradient(circle at 18% 8%, hsl(var(--primary) / 0.055), transparent 23rem),
+      radial-gradient(circle at 88% 84%, rgb(236 72 153 / 0.045), transparent 28rem);
+  }
+
+  .dark .chat-surface {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(circle at 18% 8%, hsl(var(--primary) / 0.1), transparent 23rem),
+      radial-gradient(circle at 88% 84%, rgb(236 72 153 / 0.06), transparent 28rem);
   }
 
   .pretty-scrollbar {

@@ -143,7 +143,7 @@ export const UserAvatar = ({
 }) => (
   <div
     className={cn(
-      "relative grid shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-secondary font-semibold text-secondary-foreground",
+      "relative grid shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-secondary font-semibold text-secondary-foreground shadow-sm dark:border-card",
       size === "sm" && "h-9 w-9 text-xs",
       size === "md" && "h-11 w-11 text-sm",
       size === "lg" && "h-12 w-12 text-base",
@@ -172,7 +172,7 @@ export const StatusBadge = ({ online, compact }: { online: boolean; compact?: bo
 
 export const UnreadCountBadge = ({ count }: { count: number }) =>
   count > 0 ? (
-    <span className="grid min-w-6 place-items-center rounded-full bg-primary px-2 py-1 text-xs font-bold text-primary-foreground">
+    <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground shadow-sm">
       {count > 99 ? "99+" : count}
     </span>
   ) : null;
@@ -237,8 +237,10 @@ export const ChatCard = ({
   return (
     <button
       className={cn(
-        "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-left transition",
-        active ? "bg-accent text-accent-foreground" : "hover:bg-muted/80",
+        "mx-2 grid w-[calc(100%_-_1rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-3 text-left transition duration-200",
+        active
+          ? "border-primary/55 bg-accent/75 text-foreground shadow-[0_10px_28px_-18px_hsl(var(--primary)/0.75)]"
+          : "border-transparent bg-card hover:border-primary/15 hover:bg-accent/35",
       )}
       onClick={onSelect}
     >
@@ -329,10 +331,10 @@ export const AppSidebar = ({
   }, [activeView, tab]);
 
   return (
-    <aside className="relative grid h-full min-h-0 grid-cols-[72px_minmax(0,1fr)] border-r border-border bg-card">
-      <nav className="flex min-h-0 flex-col items-center bg-primary py-5 text-primary-foreground">
+    <aside className="relative grid h-full min-h-0 grid-cols-[74px_minmax(0,1fr)] border-r border-border bg-card">
+      <nav className="brand-gradient flex min-h-0 flex-col items-center py-5 text-white">
         <button
-          className="mb-6 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-primary transition hover:scale-[1.03]"
+          className="mb-7 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-violet-600 transition hover:scale-[1.03]"
           onClick={() => setAccountMenuOpen((current) => !current)}
           aria-label="Mở menu tài khoản"
           aria-expanded={accountMenuOpen}
@@ -350,7 +352,7 @@ export const AppSidebar = ({
                 key={item}
                 className={cn(
                   "relative grid h-14 w-14 place-items-center rounded-xl transition hover:bg-white/15",
-                  tab === item && "bg-[#0759c7] shadow-inner",
+                  tab === item && "bg-white/20 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]",
                 )}
                 onClick={() => {
                   setTab(item);
@@ -363,7 +365,7 @@ export const AppSidebar = ({
               >
                 <Icon className="h-6 w-6" strokeWidth={2} />
                 {item === "friends" && incomingRequests.length > 0 ? (
-                  <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-red-500 px-1 py-0.5 text-[10px] font-bold text-white ring-2 ring-primary">
+                  <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-rose-500 px-1 py-0.5 text-[10px] font-bold text-white ring-2 ring-violet-600">
                     {incomingRequests.length > 9 ? "9+" : incomingRequests.length}
                   </span>
                 ) : null}
@@ -376,7 +378,7 @@ export const AppSidebar = ({
           <button
             className={cn(
               "grid h-14 w-14 place-items-center rounded-xl transition hover:bg-white/15",
-              settingsMenuOpen && "bg-[#0759c7] shadow-inner",
+              settingsMenuOpen && "bg-white/20 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]",
             )}
             onClick={() => {
               setSettingsMenuOpen((current) => !current);
@@ -391,7 +393,7 @@ export const AppSidebar = ({
       </nav>
 
       {accountMenuOpen ? (
-        <section className="absolute left-[82px] top-7 z-40 w-[320px] overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-[0_18px_50px_rgba(15,23,42,0.22)]">
+        <section className="absolute left-[84px] top-7 z-40 w-[320px] overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_22px_60px_-18px_hsl(var(--primary)/0.35)]">
           <div className="border-b border-border px-5 py-4">
             <p className="truncate text-lg font-bold">{user.fullName}</p>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">@{user.username}</p>
@@ -430,7 +432,7 @@ export const AppSidebar = ({
       ) : null}
 
       {settingsMenuOpen ? (
-        <section className="absolute bottom-4 left-[82px] z-40 w-[290px] rounded-xl border border-border bg-card p-2 text-card-foreground shadow-[0_18px_50px_rgba(15,23,42,0.22)]">
+        <section className="absolute bottom-4 left-[84px] z-40 w-[290px] rounded-2xl border border-border bg-card p-2 text-card-foreground shadow-[0_22px_60px_-18px_hsl(var(--primary)/0.35)]">
           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => { setTab("profile"); setSettingsMenuOpen(false); }}>
             <UserRound className="h-5 w-5" /> Thông tin tài khoản
           </button>
@@ -463,11 +465,11 @@ export const AppSidebar = ({
       ) : null}
 
       <div className="flex min-h-0 flex-col bg-card">
-        <header className="border-b border-border px-4 pb-4 pt-5">
+        <header className="border-b border-border/70 px-4 pb-4 pt-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-medium text-muted-foreground">InChat</p>
-              <h1 className="text-lg font-bold tracking-tight">{tabTitle}</h1>
+              <p className="bg-gradient-to-r from-violet-600 to-pink-500 bg-clip-text text-sm font-extrabold tracking-tight text-transparent">InChat</p>
+              <h1 className="mt-0.5 text-lg font-bold tracking-tight">{tabTitle}</h1>
             </div>
             {tab === "friends" ? (
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setModal("friend")} aria-label="Thêm bạn" title="Thêm bạn">
@@ -486,17 +488,17 @@ export const AppSidebar = ({
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="h-10 w-full rounded-lg border-0 bg-muted pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/20"
+                className="h-11 w-full rounded-xl border border-transparent bg-muted/80 pl-9 pr-3 text-sm outline-none transition focus:border-primary/25 focus:bg-card focus:ring-2 focus:ring-ring/15"
                 placeholder="Tìm kiếm"
               />
             </label>
           ) : null}
         </header>
 
-        <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-1 py-3">
           {tab === "chats" && (
             isLoadingRooms ? <ConversationSkeleton /> : (
-              <div className="-mx-3">
+              <div className="space-y-1">
                 {filteredRooms.length === 0 ? (
                   <div className="px-3"><EmptyText text="Không tìm thấy cuộc trò chuyện." /></div>
                 ) : filteredRooms.map((room) => (
@@ -722,27 +724,55 @@ export const ProfileCard = () => {
   };
 
   return (
-    <form className="space-y-4" onSubmit={submit}>
-      <div className="flex items-center gap-3">
-        <UserAvatar name={form.displayName || form.username} src={profile.avatarEndpoint ?? profile.avatar} size="lg" online={profile.online} />
-        <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-background px-3 text-xs font-semibold hover:bg-muted">
-          <Camera className="mr-2 h-4 w-4" /> Avatar
-          <input type="file" accept="image/*" className="sr-only" onChange={(event) => handleAvatarChange(event, uploadAvatar)} />
-        </label>
+    <form className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_45px_-30px_hsl(var(--primary)/0.5)]" onSubmit={submit}>
+      <div className="brand-gradient relative min-h-32 overflow-hidden p-5 text-white">
+        <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10" />
+        <div className="absolute bottom-0 right-16 h-20 w-20 rounded-full bg-white/10 blur-xl" />
+        <div className="relative flex items-end gap-4 pt-8">
+          <div className="relative">
+            <UserAvatar name={form.displayName || form.username} src={profile.avatarEndpoint ?? profile.avatar} size="lg" online={profile.online} />
+            <label className="absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full border-2 border-white bg-primary text-white shadow-md transition hover:scale-105">
+              <Camera className="h-3.5 w-3.5" />
+              <span className="sr-only">Avatar</span>
+              <input type="file" accept="image/*" className="sr-only" onChange={(event) => handleAvatarChange(event, uploadAvatar)} />
+            </label>
+          </div>
+          <div className="min-w-0 flex-1 pb-1">
+            <p className="truncate text-lg font-bold">{form.displayName || form.username}</p>
+            <p className="truncate text-xs text-white/75">@{form.username}</p>
+          </div>
+          <span className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-emerald-600 shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {profile.online ? "Online" : "Offline"}
+          </span>
+        </div>
       </div>
-      <TextInput label="Username" value={form.username} onChange={(value) => setForm((current) => ({ ...current, username: value }))} />
-      <TextInput label="Display name" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
-      <TextInput label="Phone" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
-      <label className="block space-y-1.5">
-        <span className="text-xs font-semibold text-muted-foreground">Giới thiệu</span>
-        <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={4} className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />
-      </label>
-      <select value={form.themePreference} onChange={(event) => setForm((current) => ({ ...current, themePreference: event.target.value }))} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none">
-        <option value="system">Theo hệ thống</option>
-        <option value="light">Sáng</option>
-        <option value="dark">Tối</option>
-      </select>
-      <Button type="submit" className="w-full rounded-lg" disabled={isMutating}>{isMutating ? "Đang lưu..." : "Lưu hồ sơ"}</Button>
+
+      <div className="border-b border-border px-5 py-3">
+        <p className="text-sm font-bold">Thông tin cá nhân</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">Cập nhật tên hiển thị và thông tin hồ sơ của bạn</p>
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div className="grid grid-cols-2 gap-3">
+          <TextInput label="Tên hiển thị" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
+          <TextInput label="Tên người dùng" value={form.username} onChange={(value) => setForm((current) => ({ ...current, username: value }))} />
+        </div>
+        <TextInput label="Số điện thoại" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
+        <label className="block space-y-1.5">
+          <span className="text-xs font-semibold text-muted-foreground">Giới thiệu</span>
+          <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={3} className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15" />
+        </label>
+        <label className="block space-y-1.5">
+          <span className="text-xs font-semibold text-muted-foreground">Giao diện</span>
+          <select value={form.themePreference} onChange={(event) => setForm((current) => ({ ...current, themePreference: event.target.value }))} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15">
+            <option value="system">Theo hệ thống</option>
+            <option value="light">Sáng</option>
+            <option value="dark">Tối</option>
+          </select>
+        </label>
+        <Button type="submit" className="rounded-xl px-5" disabled={isMutating}>{isMutating ? "Đang lưu..." : "Lưu thay đổi"}</Button>
+      </div>
     </form>
   );
 };
@@ -764,7 +794,7 @@ const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>, uploadAvatar: 
 const TextInput = ({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => (
   <label className="block space-y-1.5">
     <span className="text-xs font-semibold text-muted-foreground">{label}</span>
-    <input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />
+    <input value={value} onChange={(event) => onChange(event.target.value)} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15" />
   </label>
 );
 
@@ -949,7 +979,7 @@ export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
   if (!selectedRoom || !selectedRoomId) return <ChatWelcomeScreen />;
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-background">
+    <section className="chat-surface flex h-full min-h-0 flex-col">
       <ChatWindowHeader room={selectedRoom} user={user} usersById={usersById} />
       {error ? (
         <div className="border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-center text-xs text-red-600 dark:text-red-300">
@@ -963,9 +993,9 @@ export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
 };
 
 export const ChatWelcomeScreen = () => (
-  <section className="grid h-full place-items-center bg-background p-6">
+  <section className="chat-surface grid h-full place-items-center p-6">
     <div className="max-w-md text-center">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-lg bg-accent text-accent-foreground">
+      <div className="brand-gradient mx-auto grid h-16 w-16 place-items-center rounded-2xl text-white shadow-[0_18px_40px_-18px_hsl(var(--primary)/0.8)]">
         <MessageCircleMore className="h-7 w-7" />
       </div>
       <h1 className="mt-5 text-2xl font-bold tracking-tight">Chọn một cuộc trò chuyện</h1>
@@ -980,10 +1010,10 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
   const peer = getRoomPeer(room, user.id, usersById);
 
   return (
-    <header className="flex items-center gap-3 border-b border-border bg-card/80 px-4 py-3 backdrop-blur">
+    <header className="flex min-h-[78px] items-center gap-3 border-b border-border/70 bg-card/90 px-5 py-3 backdrop-blur-xl">
       <UserAvatar name={name} src={getRoomAvatar(room, user, usersById)} online={online} size="lg" />
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-base font-bold">{name}</h1>
+        <h1 className="truncate text-base font-bold tracking-tight">{name}</h1>
         <div className="mt-1 flex items-center gap-2">
           <StatusBadge online={online} />
           {!online && peer?.lastSeenAt ? <span className="text-xs text-muted-foreground">Last seen {formatRelativeTime(peer.lastSeenAt)}</span> : null}
@@ -1049,14 +1079,14 @@ export const ChatWindowBody = ({
   };
 
   return (
-    <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5">
+    <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-7">
       {pageState?.loadingOlder ? <p className="mb-3 flex items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading older messages</p> : null}
       {loading ? (
         <ChatWindowSkeleton />
       ) : messages.length === 0 ? (
         <EmptyText text="Chưa có tin nhắn nào. Hãy gửi lời chào đầu tiên." />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {messages.map((message) => (
             <MessageItem key={message.id} message={message} mine={message.senderId === currentUser.id} sender={usersById[message.senderId]} currentUserId={currentUser.id} />
           ))}
@@ -1080,11 +1110,16 @@ export const MessageItem = ({ message, mine, sender, currentUserId }: { message:
   const receipt = getReceiptLabel(message, currentUserId);
 
   return (
-    <div className={cn("mx-auto flex max-w-4xl gap-2", mine && "justify-end")}>
+    <div className={cn("mx-auto flex max-w-5xl gap-2.5", mine && "justify-end")}>
       {!mine ? <UserAvatar name={senderName} src={sender?.avatarEndpoint ?? sender?.avatar} size="sm" /> : null}
       <div className={cn("max-w-[78%]", mine && "text-right")}>
         {!mine ? <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">{senderName}</p> : null}
-        <div className={cn("space-y-2 rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-sm", mine ? "rounded-br-md bg-primary text-primary-foreground" : "rounded-bl-md border border-border bg-card text-card-foreground")}>
+        <div className={cn(
+          "space-y-2 rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-sm",
+          mine
+            ? "rounded-br-md bg-primary text-primary-foreground shadow-[0_12px_28px_-18px_hsl(var(--primary)/0.85)]"
+            : "rounded-bl-md border border-white/80 bg-card text-card-foreground dark:border-border",
+        )}>
           {message.content ? <p className="whitespace-pre-wrap break-words">{message.content}</p> : null}
           {message.attachments?.map((attachment) => {
             const url = resolveMediaUrl(attachment.url);
@@ -1144,14 +1179,14 @@ export const MessageInput = () => {
   };
 
   return (
-    <form onSubmit={submit} className="border-t border-border bg-card/90 p-3 backdrop-blur">
-      <div className="mx-auto flex max-w-4xl items-end gap-2 rounded-2xl border border-input bg-background p-2 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10">
+    <form onSubmit={submit} className="border-t border-border/70 bg-card/90 p-3 backdrop-blur-xl md:px-6 md:py-4">
+      <div className="mx-auto flex max-w-5xl items-end gap-2 rounded-2xl border border-input/80 bg-background/90 p-2 shadow-[0_12px_36px_-24px_hsl(var(--primary)/0.6)] transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
         <div className="relative">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-lg"
+            className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary"
             aria-label="Chọn emoji"
             aria-expanded={emojiOpen}
             onClick={() => setEmojiOpen((current) => !current)}
@@ -1182,7 +1217,7 @@ export const MessageInput = () => {
           className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-sm leading-6 outline-none"
           placeholder="Nhập tin nhắn..."
         />
-        <Button type="submit" size="icon" className="h-10 w-10 rounded-lg" disabled={isSending || !value.trim()} aria-label="Send message" title="Send">
+        <Button type="submit" size="icon" className="h-10 w-10 rounded-xl shadow-[0_8px_18px_-8px_hsl(var(--primary)/0.8)]" disabled={isSending || !value.trim()} aria-label="Send message" title="Send">
           <SendHorizontal className="h-5 w-5" />
         </Button>
       </div>

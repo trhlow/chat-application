@@ -1,9 +1,10 @@
 package com.chatrealtime.dto.response;
 
-import com.chatrealtime.dto.response.UserProfileResponse;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public record AuthResponse(
         String accessToken,
+        @JsonIgnore
         String refreshToken,
         String tokenType,
         long accessExpiresInMs,

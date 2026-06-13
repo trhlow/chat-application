@@ -6,7 +6,6 @@ import com.chatrealtime.dto.response.NotificationPageResponse;
 import com.chatrealtime.dto.response.NotificationRealtimeEventResponse;
 import com.chatrealtime.dto.response.NotificationUnreadCountResponse;
 import com.chatrealtime.dto.response.NotificationsResponse;
-import com.chatrealtime.exception.BadRequestException;
 import com.chatrealtime.exception.ResourceNotFoundException;
 import com.chatrealtime.domain.Notification;
 import com.chatrealtime.repository.NotificationRepository;
@@ -21,6 +20,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -86,7 +86,7 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         if (!principal.getId().equals(notification.getUserId())) {
-            throw new BadRequestException("Current user cannot update this notification");
+            throw new AccessDeniedException("Forbidden");
         }
         if (notification.isRead()) {
             return toResponse(notification);

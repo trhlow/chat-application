@@ -21,6 +21,7 @@ import org.springframework.data.domain.SliceImpl;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.security.access.AccessDeniedException;
 import com.mongodb.client.result.UpdateResult;
 
 import java.time.Instant;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -124,6 +126,19 @@ class NotificationServiceTest {
 
         assertThat(response.read()).isTrue();
         verify(notificationRealtimeEventBus).publish(eq("alice"), any());
+    }
+
+    @Test
+    void markAsRead_WhenNotificationBelongsToAnotherUser_ShouldDeny() {
+        Notification notification = notification("n1", "u2", false);
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(notificationRepository.findById("n1")).thenReturn(Optional.of(notification));
+
+        assertThatThrownBy(() -> notificationService.markAsRead("n1"))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+        verify(notificationRealtimeEventBus, never()).publish(any(), any());
     }
 
     private Notification notification(String id, String userId, boolean read) {

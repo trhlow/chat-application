@@ -31,8 +31,10 @@ import com.chatrealtime.service.MessageService;
 import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.storage.AvatarStorageService;
 import com.chatrealtime.storage.AvatarUploadResult;
+import com.chatrealtime.util.UserIdPair;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -107,8 +109,10 @@ public class RoomServiceImpl implements RoomService {
         uniqueMemberIds.add(principal.getId());
 
         validateMembersExist(uniqueMemberIds);
+        String directKey = null;
         if (ROOM_TYPE_DIRECT.equals(roomType)) {
             validateDirectRoomMembers(uniqueMemberIds);
+            directKey = directKey(uniqueMemberIds);
             Optional<Room> existingDirectRoom = findExistingDirectRoom(uniqueMemberIds);
             if (existingDirectRoom.isPresent()) {
                 return roomMapper.toResponse(existingDirectRoom.get(), 0L);
@@ -124,6 +128,7 @@ public class RoomServiceImpl implements RoomService {
                 .avatar(null)
                 .avatarPublicId(null)
                 .avatarProvider(null)
+                .directKey(directKey)
                 .memberIds(List.copyOf(uniqueMemberIds))
                 .admins(List.of(principal.getId()))
                 .settings(GroupSettings.defaults())
@@ -143,7 +148,17 @@ public class RoomServiceImpl implements RoomService {
             }
         }
 
-        Room savedRoom = roomRepository.save(room);
+        Room savedRoom;
+        try {
+            savedRoom = roomRepository.save(room);
+        } catch (DuplicateKeyException exception) {
+            if (ROOM_TYPE_DIRECT.equals(roomType)) {
+                return roomRepository.findByTypeAndDirectKey(ROOM_TYPE_DIRECT, directKey)
+                        .map(existingRoom -> roomMapper.toResponse(existingRoom, 0L))
+                        .orElseThrow(() -> exception);
+            }
+            throw exception;
+        }
         if (ROOM_TYPE_GROUP.equals(roomType)) {
             notifyAddedMembers(savedRoom, uniqueMemberIds.stream()
                     .filter(memberId -> !memberId.equals(principal.getId()))
@@ -521,6 +536,11 @@ public class RoomServiceImpl implements RoomService {
     }
 
     private Optional<Room> findExistingDirectRoom(Set<String> uniqueMemberIds) {
+        String directKey = directKey(uniqueMemberIds);
+        Optional<Room> byDirectKey = roomRepository.findByTypeAndDirectKey(ROOM_TYPE_DIRECT, directKey);
+        if (byDirectKey.isPresent()) {
+            return byDirectKey;
+        }
         List<String> memberIds = List.copyOf(uniqueMemberIds);
         return roomRepository.findByTypeAndMemberIdsContaining(ROOM_TYPE_DIRECT, memberIds.get(0))
                 .stream()
@@ -528,6 +548,12 @@ public class RoomServiceImpl implements RoomService {
                 .filter(room -> room.getMemberIds().size() == 2)
                 .filter(room -> room.getMemberIds().contains(memberIds.get(1)))
                 .findFirst();
+    }
+
+    private String directKey(Set<String> uniqueMemberIds) {
+        List<String> memberIds = List.copyOf(uniqueMemberIds);
+        UserIdPair.Ordered pair = UserIdPair.order(memberIds.get(0), memberIds.get(1));
+        return pair.userIdA() + ":" + pair.userIdB();
     }
 
     private String normalizeName(String name) {

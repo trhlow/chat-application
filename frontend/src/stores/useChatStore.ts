@@ -207,9 +207,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isLoadingRooms: true, error: null });
 
     try {
-      const [roomsResponse, usersResponse, unreadResponse] = await Promise.all([
+      const [roomsResponse, unreadResponse] = await Promise.all([
         chatApi.getRooms(),
-        chatApi.getUsers(),
         chatApi.getUnreadCounts().catch(() => ({ data: [] })),
       ]);
       const unreadByRoomId = new Map(
@@ -223,12 +222,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       set({
         rooms: sortRooms(rooms),
-        usersById: Object.fromEntries(
-          usersResponse.data.map((user) => [
-            user.id,
-            { ...user, avatar: user.avatarEndpoint ?? user.avatar ?? null },
-          ]),
-        ),
       });
       syncRoomSubscriptions(rooms.map((room) => room.id));
     } catch (_error) {
@@ -395,6 +388,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
         friends: friends.data,
         incomingFriendRequests: incoming.data,
         outgoingFriendRequests: outgoing.data,
+        usersById: {
+          ...get().usersById,
+          ...Object.fromEntries(
+            [
+              ...friends.data.map((item) => item.friend),
+              ...incoming.data.flatMap((item) => [item.requester, item.receiver]),
+              ...outgoing.data.flatMap((item) => [item.requester, item.receiver]),
+            ].map((user) => [
+              user.id,
+              {
+                ...user,
+                avatar: user.avatarEndpoint ?? user.avatar ?? null,
+                online: get().usersById[user.id]?.online ?? false,
+                lastSeenAt: get().usersById[user.id]?.lastSeenAt ?? null,
+              },
+            ]),
+          ),
+        },
       });
     } catch (_error) {
       set({ error: "Không thể tải danh sách bạn bè." });

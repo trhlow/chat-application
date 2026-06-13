@@ -27,6 +27,7 @@ let refreshPromise: Promise<string | null> | null = null;
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -34,6 +35,7 @@ export const apiClient = axios.create({
 
 export const authClient = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },

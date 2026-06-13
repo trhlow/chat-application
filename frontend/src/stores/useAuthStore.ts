@@ -1,7 +1,6 @@
 import { create } from "zustand";
 
 import { authApi } from "@/services/authService";
-import { authStorage } from "@/lib/auth-storage";
 import { bindAuthSession } from "@/lib/axios";
 import type {
   AuthUser,
@@ -24,8 +23,6 @@ const mapAuthUser = (user: BackendAuthUser): AuthUser => ({
 const applyAuthResponse = (
   response: BackendAuthResponse,
 ): { accessToken: string; user: AuthUser } => {
-  authStorage.setRefreshToken(response.refreshToken);
-
   return {
     accessToken: response.accessToken,
     user: mapAuthUser(response.user),
@@ -69,7 +66,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }));
   },
   clearSession: () => {
-    authStorage.clear();
     set({
       accessToken: null,
       user: null,
@@ -98,24 +94,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     get().setSession(applyAuthResponse(response.data));
   },
   signout: async () => {
-    const refreshToken = authStorage.getRefreshToken();
-
     try {
-      await authApi.signout(refreshToken);
+      await authApi.signout();
     } finally {
       get().clearSession();
     }
   },
   refreshAccessToken: async () => {
-    const refreshToken = authStorage.getRefreshToken();
-
-    if (!refreshToken) {
-      get().clearSession();
-      return null;
-    }
-
     try {
-      const response = await authApi.refresh(refreshToken);
+      const response = await authApi.refresh();
       get().setSession(applyAuthResponse(response.data));
       return response.data.accessToken;
     } catch (_error) {

@@ -12,9 +12,7 @@ export const authApi = {
     authClient.post<BackendAuthResponse>("/auth/register", payload),
   signin: (payload: SignInRequestPayload) =>
     authClient.post<BackendAuthResponse>("/auth/login", payload),
-  signout: (refreshToken?: string | null) =>
-    authClient.post<void>("/auth/logout", refreshToken ? { refreshToken } : {}),
-  refresh: (refreshToken: string) =>
-    authClient.post<BackendAuthResponse>("/auth/refresh", { refreshToken }),
+  signout: () => apiClient.post<void>("/auth/logout"),
+  refresh: () => authClient.post<BackendAuthResponse>("/auth/refresh"),
   getMe: () => apiClient.get<BackendAuthUser>("/users/me"),
 };

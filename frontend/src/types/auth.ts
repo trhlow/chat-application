@@ -25,7 +25,7 @@ export interface BackendAuthUser {
 
 export interface BackendAuthResponse {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   tokenType: string;
   accessExpiresInMs: number;
   refreshExpiresInMs: number;

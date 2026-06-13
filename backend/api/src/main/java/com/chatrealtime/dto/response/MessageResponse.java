@@ -18,8 +18,44 @@ public record MessageResponse(
         String replyToMessageId,
         String replyPreview,
         boolean recalled,
-        LocalDateTime recalledAt
+        LocalDateTime recalledAt,
+        String clientMessageId
 ) {
+    public MessageResponse(
+            String id,
+            String roomId,
+            String senderId,
+            String content,
+            LocalDateTime timestamp,
+            String status,
+            Set<String> deliveredToUserIds,
+            Set<String> readByUserIds,
+            List<MessageAttachmentResponse> attachments,
+            String type,
+            String replyToMessageId,
+            String replyPreview,
+            boolean recalled,
+            LocalDateTime recalledAt
+    ) {
+        this(
+                id,
+                roomId,
+                senderId,
+                content,
+                timestamp,
+                status,
+                deliveredToUserIds,
+                readByUserIds,
+                attachments,
+                type,
+                replyToMessageId,
+                replyPreview,
+                recalled,
+                recalledAt,
+                null
+        );
+    }
+
     public MessageResponse(
             String id,
             String roomId,
@@ -45,6 +81,7 @@ public record MessageResponse(
                 null,
                 null,
                 false,
+                null,
                 null
         );
     }

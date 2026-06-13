@@ -2,6 +2,7 @@ package com.chatrealtime.service;
 
 import com.chatrealtime.dto.request.CreateFriendRequestRequest;
 import com.chatrealtime.dto.response.FriendRequestResponse;
+import com.chatrealtime.dto.response.FriendUserResponse;
 import com.chatrealtime.dto.response.FriendshipResponse;
 
 import java.util.List;
@@ -22,4 +23,10 @@ public interface FriendService {
     List<FriendshipResponse> getFriends();
 
     void removeFriend(String friendId);
+
+    FriendUserResponse blockUser(String userId);
+
+    void unblockUser(String userId);
+
+    List<FriendUserResponse> getBlockedUsers();
 }

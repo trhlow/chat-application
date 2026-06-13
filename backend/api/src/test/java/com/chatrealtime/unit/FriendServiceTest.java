@@ -11,6 +11,7 @@ import com.chatrealtime.exception.ConflictException;
 import com.chatrealtime.mapper.FriendMapper;
 import com.chatrealtime.repository.FriendRequestRepository;
 import com.chatrealtime.repository.FriendshipRepository;
+import com.chatrealtime.repository.UserBlockRepository;
 import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
@@ -44,6 +45,8 @@ class FriendServiceTest {
     private FriendshipRepository friendshipRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private UserBlockRepository userBlockRepository;
     @Mock
     private FriendMapper friendMapper;
     @Mock
@@ -100,6 +103,21 @@ class FriendServiceTest {
         assertThatThrownBy(() -> friendService.sendFriendRequest(request))
                 .isInstanceOf(ConflictException.class);
         verify(notificationService, never()).createSystemNotification(anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void sendFriendRequest_WhenEitherUserBlocked_ShouldReject() {
+        User requester = user("u1", "alice");
+        User receiver = user("u2", "bob");
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(userRepository.findById("u1")).thenReturn(Optional.of(requester));
+        when(userRepository.findById("u2")).thenReturn(Optional.of(receiver));
+        when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(true);
+
+        assertThatThrownBy(() -> friendService.sendFriendRequest(new CreateFriendRequestRequest("u2")))
+                .isInstanceOf(BadRequestException.class);
+        verify(friendRequestRepository, never()).save(any(FriendRequest.class));
     }
 
     @Test

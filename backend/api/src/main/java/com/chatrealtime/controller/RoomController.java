@@ -1,11 +1,15 @@
 package com.chatrealtime.controller;
 
 import com.chatrealtime.dto.request.AddRoomMembersRequest;
+import com.chatrealtime.dto.request.CreateGroupJoinRequest;
 import com.chatrealtime.dto.request.CreateRoomRequest;
+import com.chatrealtime.dto.request.UpdateGroupSettingsRequest;
 import com.chatrealtime.dto.request.UpdateRoomNameRequest;
+import com.chatrealtime.dto.response.GroupJoinRequestResponse;
 import com.chatrealtime.dto.response.MessagePageResponse;
 import com.chatrealtime.dto.response.MessageResponse;
 import com.chatrealtime.dto.response.RoomUnreadCountResponse;
+import com.chatrealtime.dto.response.RoomMemberResponse;
 import com.chatrealtime.dto.response.RoomResponse;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.service.MessageService;
@@ -91,9 +95,10 @@ public class RoomController {
     public MessageResponse createRoomMessageWithAttachment(
             @PathVariable String roomId,
             @RequestParam(required = false) String content,
+            @RequestParam(required = false) String clientMessageId,
             @RequestParam("file") MultipartFile file
     ) {
-        return messageService.createMessageWithAttachment(roomId, content, file);
+        return messageService.createMessageWithAttachment(roomId, content, clientMessageId, file);
     }
 
     @PostMapping("/{roomId}/members")
@@ -107,6 +112,57 @@ public class RoomController {
     @DeleteMapping("/{roomId}/members/{memberId}")
     public RoomResponse removeMember(@PathVariable String roomId, @PathVariable String memberId) {
         return roomService.removeMember(roomId, memberId);
+    }
+
+    @GetMapping("/{roomId}/members")
+    public List<RoomMemberResponse> getMembers(@PathVariable String roomId) {
+        return roomService.getMembers(roomId);
+    }
+
+    @PostMapping("/{roomId}/admins/{memberId}")
+    public RoomResponse promoteAdmin(@PathVariable String roomId, @PathVariable String memberId) {
+        return roomService.promoteAdmin(roomId, memberId);
+    }
+
+    @DeleteMapping("/{roomId}/admins/{memberId}")
+    public RoomResponse demoteAdmin(@PathVariable String roomId, @PathVariable String memberId) {
+        return roomService.demoteAdmin(roomId, memberId);
+    }
+
+    @PutMapping("/{roomId}/owner/{memberId}")
+    public RoomResponse transferOwner(@PathVariable String roomId, @PathVariable String memberId) {
+        return roomService.transferOwner(roomId, memberId);
+    }
+
+    @PatchMapping("/{roomId}/settings")
+    public RoomResponse updateGroupSettings(
+            @PathVariable String roomId,
+            @Valid @RequestBody UpdateGroupSettingsRequest request
+    ) {
+        return roomService.updateGroupSettings(roomId, request);
+    }
+
+    @PostMapping("/{roomId}/join-requests")
+    public GroupJoinRequestResponse requestMemberInvite(
+            @PathVariable String roomId,
+            @Valid @RequestBody CreateGroupJoinRequest request
+    ) {
+        return roomService.requestMemberInvite(roomId, request);
+    }
+
+    @GetMapping("/{roomId}/join-requests")
+    public List<GroupJoinRequestResponse> getPendingJoinRequests(@PathVariable String roomId) {
+        return roomService.getPendingJoinRequests(roomId);
+    }
+
+    @PostMapping("/{roomId}/join-requests/{requestId}/approve")
+    public RoomResponse approveJoinRequest(@PathVariable String roomId, @PathVariable String requestId) {
+        return roomService.approveJoinRequest(roomId, requestId);
+    }
+
+    @PostMapping("/{roomId}/join-requests/{requestId}/reject")
+    public GroupJoinRequestResponse rejectJoinRequest(@PathVariable String roomId, @PathVariable String requestId) {
+        return roomService.rejectJoinRequest(roomId, requestId);
     }
 
     @PatchMapping("/{roomId}/name")

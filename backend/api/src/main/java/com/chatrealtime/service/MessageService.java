@@ -19,6 +19,8 @@ public interface MessageService {
 
     MessageResponse createMessageWithAttachment(String roomId, String content, MultipartFile file);
 
+    MessageResponse createMessageWithAttachment(String roomId, String content, String clientMessageId, MultipartFile file);
+
     MessageResponse createRealtimeMessage(AuthUserPrincipal principal, String roomId, String content);
 
     MessageResponse createRealtimeMessage(
@@ -27,6 +29,15 @@ public interface MessageService {
             String content,
             String type,
             String replyToMessageId
+    );
+
+    MessageResponse createRealtimeMessage(
+            AuthUserPrincipal principal,
+            String roomId,
+            String content,
+            String type,
+            String replyToMessageId,
+            String clientMessageId
     );
 
     MessageResponse updateMessageStatus(String messageId, String status);

@@ -38,7 +38,8 @@ public class MessageMapper {
                 message.getReplyToMessageId(),
                 replyPreview(replyToMessage),
                 message.isRecalled(),
-                message.getRecalledAt()
+                message.getRecalledAt(),
+                message.getClientMessageId()
         );
     }
 

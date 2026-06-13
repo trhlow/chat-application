@@ -144,6 +144,11 @@ public class AuthServiceImpl implements AuthService {
         presenceService.markOffline(user.getId());
     }
 
+    @Override
+    public long refreshTokenTtlMs() {
+        return jwtProperties.refreshExpirationMs();
+    }
+
     private AuthResponse buildAuthResponse(User user) {
         AuthUserPrincipal principal = AuthUserPrincipal.from(user);
         String accessToken = jwtTokenService.generateToken(principal);

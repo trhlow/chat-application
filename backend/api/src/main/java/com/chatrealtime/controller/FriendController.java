@@ -2,6 +2,7 @@ package com.chatrealtime.controller;
 
 import com.chatrealtime.dto.request.CreateFriendRequestRequest;
 import com.chatrealtime.dto.response.FriendRequestResponse;
+import com.chatrealtime.dto.response.FriendUserResponse;
 import com.chatrealtime.dto.response.FriendshipResponse;
 import com.chatrealtime.service.FriendService;
 import jakarta.validation.Valid;
@@ -62,5 +63,21 @@ public class FriendController {
     public ResponseEntity<Void> removeFriend(@PathVariable String friendId) {
         friendService.removeFriend(friendId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/blocks/{userId}")
+    public FriendUserResponse blockUser(@PathVariable String userId) {
+        return friendService.blockUser(userId);
+    }
+
+    @DeleteMapping("/blocks/{userId}")
+    public ResponseEntity<Void> unblockUser(@PathVariable String userId) {
+        friendService.unblockUser(userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/blocks")
+    public List<FriendUserResponse> getBlockedUsers() {
+        return friendService.getBlockedUsers();
     }
 }

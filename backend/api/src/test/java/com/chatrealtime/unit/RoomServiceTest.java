@@ -3,9 +3,14 @@ package com.chatrealtime.unit;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
+import com.chatrealtime.domain.GroupJoinRequest;
+import com.chatrealtime.domain.GroupJoinRequestStatus;
+import com.chatrealtime.repository.GroupJoinRequestRepository;
 import com.chatrealtime.dto.request.AddRoomMembersRequest;
+import com.chatrealtime.dto.request.CreateGroupJoinRequest;
 import com.chatrealtime.dto.request.CreateRoomRequest;
 import com.chatrealtime.dto.request.UpdateRoomNameRequest;
+import com.chatrealtime.dto.response.GroupJoinRequestResponse;
 import com.chatrealtime.dto.response.RoomResponse;
 import com.chatrealtime.mapper.RoomMapper;
 import com.chatrealtime.repository.MessageAttachmentRepository;
@@ -54,6 +59,8 @@ class RoomServiceTest {
     private MessageRepository messageRepository;
     @Mock
     private MessageAttachmentRepository messageAttachmentRepository;
+    @Mock
+    private GroupJoinRequestRepository groupJoinRequestRepository;
     @Mock
     private RoomMapper roomMapper;
     @Mock
@@ -304,6 +311,70 @@ class RoomServiceTest {
         assertThat(roomCaptor.getValue().getOwnerId()).isEqualTo("u2");
         assertThat(roomCaptor.getValue().getMemberIds()).containsExactly("u2", "u3");
         assertThat(roomCaptor.getValue().getAdmins()).containsExactly("u2");
+    }
+
+    @Test
+    void transferOwner_WhenOwnerTransfersToMember_ShouldUpdateOwnerAndEnsureAdmin() {
+        Room room = Room.builder()
+                .id("g1")
+                .type("group")
+                .memberIds(List.of("u1", "u2", "u3"))
+                .admins(List.of("u1"))
+                .ownerId("u1")
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageService.getUnreadCountMap(List.of("g1"))).thenReturn(Map.of("g1", 0L));
+        when(roomMapper.toResponse(any(Room.class), eq(0L))).thenAnswer(invocation -> toResponse(invocation.getArgument(0), invocation.getArgument(1)));
+
+        RoomResponse response = roomService.transferOwner("g1", "u2");
+
+        ArgumentCaptor<Room> captor = ArgumentCaptor.forClass(Room.class);
+        verify(roomRepository).save(captor.capture());
+        assertThat(captor.getValue().getOwnerId()).isEqualTo("u2");
+        assertThat(captor.getValue().getAdmins()).containsExactly("u1", "u2");
+        assertThat(response.ownerId()).isEqualTo("u2");
+    }
+
+    @Test
+    void requestMemberInvite_WhenMemberInvites_ShouldCreatePendingRequestAndNotifyAdmins() {
+        Room room = Room.builder()
+                .id("g1")
+                .name("Project A")
+                .type("group")
+                .memberIds(List.of("u1", "u2"))
+                .admins(List.of("u2"))
+                .ownerId("u2")
+                .build();
+        User requester = User.builder().id("u1").username("alice").displayName("Alice").build();
+        User target = User.builder().id("u3").username("carol").displayName("Carol").build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+        when(userRepository.existsById("u3")).thenReturn(true);
+        when(groupJoinRequestRepository.existsByRoomIdAndTargetUserIdAndStatus("g1", "u3", GroupJoinRequestStatus.PENDING))
+                .thenReturn(false);
+        when(groupJoinRequestRepository.save(any(GroupJoinRequest.class))).thenAnswer(invocation -> {
+            GroupJoinRequest request = invocation.getArgument(0);
+            request.setId("gjr1");
+            return request;
+        });
+        when(userRepository.findById("u1")).thenReturn(Optional.of(requester));
+        when(userRepository.findById("u3")).thenReturn(Optional.of(target));
+
+        GroupJoinRequestResponse response = roomService.requestMemberInvite("g1", new CreateGroupJoinRequest("u3"));
+
+        assertThat(response.id()).isEqualTo("gjr1");
+        assertThat(response.status()).isEqualTo(GroupJoinRequestStatus.PENDING);
+        verify(notificationService).createSystemNotification(
+                eq("u2"),
+                eq("group_invite_request"),
+                eq("Group invite needs approval"),
+                eq("Alice invited Carol to Project A"),
+                eq("gjr1")
+        );
     }
 
     private RoomResponse toResponse(Room room, long unreadCount) {

@@ -27,10 +27,18 @@ public class RealtimeController {
     ) {
         AuthUserPrincipal authPrincipal = requireAuthPrincipal(principal);
         if ((request.type() == null || request.type().isBlank())
-                && (request.replyToMessageId() == null || request.replyToMessageId().isBlank())) {
+                && (request.replyToMessageId() == null || request.replyToMessageId().isBlank())
+                && (request.clientMessageId() == null || request.clientMessageId().isBlank())) {
             return messageService.createRealtimeMessage(authPrincipal, roomId, request.content());
         }
-        return messageService.createRealtimeMessage(authPrincipal, roomId, request.content(), request.type(), request.replyToMessageId());
+        return messageService.createRealtimeMessage(
+                authPrincipal,
+                roomId,
+                request.content(),
+                request.type(),
+                request.replyToMessageId(),
+                request.clientMessageId()
+        );
     }
 
     @MessageMapping("/rooms/{roomId}/typing")

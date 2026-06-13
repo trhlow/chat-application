@@ -26,6 +26,7 @@ import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.util.UserIdPair;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -130,7 +131,7 @@ public class FriendServiceImpl implements FriendService {
         FriendRequest friendRequest = getPendingRequest(requestId);
 
         if (!currentUser.getId().equals(friendRequest.getReceiverId())) {
-            throw new BadRequestException("Only the receiver can accept this friend request");
+            throw new AccessDeniedException("Forbidden");
         }
 
         User requester = getUser(friendRequest.getRequesterId());
@@ -170,7 +171,7 @@ public class FriendServiceImpl implements FriendService {
         FriendRequest friendRequest = getPendingRequest(requestId);
 
         if (!currentUser.getId().equals(friendRequest.getReceiverId())) {
-            throw new BadRequestException("Only the receiver can reject this friend request");
+            throw new AccessDeniedException("Forbidden");
         }
 
         friendRequest.setStatus(FriendRequestStatus.REJECTED);
@@ -190,7 +191,7 @@ public class FriendServiceImpl implements FriendService {
         FriendRequest friendRequest = getPendingRequest(requestId);
 
         if (!currentUser.getId().equals(friendRequest.getRequesterId())) {
-            throw new BadRequestException("Only the requester can cancel this friend request");
+            throw new AccessDeniedException("Forbidden");
         }
 
         friendRequest.setStatus(FriendRequestStatus.CANCELED);

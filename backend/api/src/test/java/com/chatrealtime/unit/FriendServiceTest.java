@@ -24,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -185,6 +186,49 @@ class FriendServiceTest {
         verify(friendshipRepository).save(any(Friendship.class));
         assertThat(friendRequest.getStatus()).isEqualTo(FriendRequestStatus.ACCEPTED);
         assertThat(response.status()).isEqualTo(FriendRequestStatus.ACCEPTED);
+    }
+
+    @Test
+    void acceptRequest_WhenCurrentUserIsNotReceiver_ShouldDeny() {
+        User currentUser = user("u3", "mallory");
+        FriendRequest friendRequest = FriendRequest.builder()
+                .id("fr1")
+                .requesterId("u1")
+                .receiverId("u2")
+                .status(FriendRequestStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u3", "mallory", "pw", 0));
+        when(userRepository.findById("u3")).thenReturn(Optional.of(currentUser));
+        when(friendRequestRepository.findById("fr1")).thenReturn(Optional.of(friendRequest));
+
+        assertThatThrownBy(() -> friendService.acceptRequest("fr1"))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(friendshipRepository, never()).save(any(Friendship.class));
+        verify(friendRequestRepository, never()).save(any(FriendRequest.class));
+    }
+
+    @Test
+    void cancelRequest_WhenCurrentUserIsNotRequester_ShouldDeny() {
+        User currentUser = user("u3", "mallory");
+        FriendRequest friendRequest = FriendRequest.builder()
+                .id("fr1")
+                .requesterId("u1")
+                .receiverId("u2")
+                .status(FriendRequestStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u3", "mallory", "pw", 0));
+        when(userRepository.findById("u3")).thenReturn(Optional.of(currentUser));
+        when(friendRequestRepository.findById("fr1")).thenReturn(Optional.of(friendRequest));
+
+        assertThatThrownBy(() -> friendService.cancelRequest("fr1"))
+                .isInstanceOf(AccessDeniedException.class);
+
+        verify(friendRequestRepository, never()).save(any(FriendRequest.class));
     }
 
     private User user(String id, String username) {

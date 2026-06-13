@@ -385,7 +385,7 @@ public class RoomServiceImpl implements RoomService {
     public RoomResponse updateRoomName(String roomId, UpdateRoomNameRequest request) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = requireGroupRoomForMember(roomId, principal.getId());
-        ensureAdmin(room, principal.getId());
+        ensureCanEditGroupInfo(room, principal.getId());
 
         room.setName(normalizeRequiredGroupName(request.name()));
         room.setUpdatedAt(Instant.now());
@@ -398,7 +398,7 @@ public class RoomServiceImpl implements RoomService {
     public RoomResponse updateRoomAvatar(String roomId, MultipartFile file) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = requireGroupRoomForMember(roomId, principal.getId());
-        ensureAdmin(room, principal.getId());
+        ensureCanEditGroupInfo(room, principal.getId());
 
         String oldAvatarProvider = room.getAvatarProvider();
         String oldAvatarPublicId = room.getAvatarPublicId();
@@ -498,6 +498,14 @@ public class RoomServiceImpl implements RoomService {
         if (GroupSettings.PERMISSION_ADMIN_ONLY.equals(settings.getInviteMemberPermission())) {
             ensureAdmin(room, userId);
         }
+    }
+
+    private void ensureCanEditGroupInfo(Room room, String userId) {
+        GroupSettings settings = groupSettings(room);
+        if (GroupSettings.PERMISSION_ALL.equals(settings.getEditGroupInfoPermission())) {
+            return;
+        }
+        ensureAdmin(room, userId);
     }
 
     private String normalizeRoomType(String type) {

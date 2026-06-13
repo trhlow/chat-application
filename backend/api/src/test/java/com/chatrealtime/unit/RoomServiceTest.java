@@ -3,6 +3,7 @@ package com.chatrealtime.unit;
 import com.chatrealtime.domain.Message;
 import com.chatrealtime.domain.Room;
 import com.chatrealtime.domain.User;
+import com.chatrealtime.domain.GroupSettings;
 import com.chatrealtime.domain.GroupJoinRequest;
 import com.chatrealtime.domain.GroupJoinRequestStatus;
 import com.chatrealtime.repository.GroupJoinRequestRepository;
@@ -242,6 +243,33 @@ class RoomServiceTest {
     }
 
     @Test
+    void updateRoomName_WhenEditGroupInfoPermissionAllowsAll_ShouldAllowMember() {
+        Room room = Room.builder()
+                .id("g1")
+                .type("group")
+                .memberIds(List.of("u1", "u2", "u3"))
+                .admins(List.of("u2"))
+                .ownerId("u2")
+                .settings(GroupSettings.builder()
+                        .editGroupInfoPermission(GroupSettings.PERMISSION_ALL)
+                        .build())
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageService.getUnreadCountMap(List.of("g1"))).thenReturn(Map.of("g1", 0L));
+        when(roomMapper.toResponse(any(Room.class), eq(0L))).thenAnswer(invocation -> toResponse(invocation.getArgument(0), invocation.getArgument(1)));
+
+        RoomResponse response = roomService.updateRoomName("g1", new UpdateRoomNameRequest("Renamed"));
+
+        ArgumentCaptor<Room> roomCaptor = ArgumentCaptor.forClass(Room.class);
+        verify(roomRepository).save(roomCaptor.capture());
+        assertThat(roomCaptor.getValue().getName()).isEqualTo("Renamed");
+        assertThat(response.name()).isEqualTo("Renamed");
+    }
+
+    @Test
     void dissolveRoom_WhenCurrentUserIsNotOwner_ShouldThrowAccessDenied() {
         Room room = Room.builder()
                 .id("g1")
@@ -314,6 +342,40 @@ class RoomServiceTest {
 
         verify(avatarStorageService).deleteAvatar("local", "new-room.png");
         verify(avatarStorageService, never()).deleteAvatar("local", "old-room.png");
+    }
+
+    @Test
+    void updateRoomAvatar_WhenEditGroupInfoPermissionAllowsAll_ShouldAllowMember() {
+        Room room = Room.builder()
+                .id("g1")
+                .name("Project A")
+                .type("group")
+                .memberIds(List.of("u1", "u2"))
+                .admins(List.of("u2"))
+                .ownerId("u2")
+                .settings(GroupSettings.builder()
+                        .editGroupInfoPermission(GroupSettings.PERMISSION_ALL)
+                        .build())
+                .avatarProvider("local")
+                .avatarPublicId("old-room.png")
+                .build();
+        MultipartFile file = org.mockito.Mockito.mock(MultipartFile.class);
+        AvatarUploadResult uploaded = new AvatarUploadResult("http://local/new.png", "new-room.png", "local");
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
+        when(avatarStorageService.uploadAvatar("room-g1", file)).thenReturn(uploaded);
+        when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(messageService.getUnreadCountMap(List.of("g1"))).thenReturn(Map.of("g1", 0L));
+        when(roomMapper.toResponse(any(Room.class), eq(0L))).thenAnswer(invocation -> toResponse(invocation.getArgument(0), invocation.getArgument(1)));
+
+        RoomResponse response = roomService.updateRoomAvatar("g1", file);
+
+        ArgumentCaptor<Room> roomCaptor = ArgumentCaptor.forClass(Room.class);
+        verify(roomRepository).save(roomCaptor.capture());
+        assertThat(roomCaptor.getValue().getAvatar()).isEqualTo("http://local/new.png");
+        assertThat(response.avatarEndpoint()).isEqualTo("/api/rooms/g1/avatar");
+        verify(avatarStorageService).deleteAvatar("local", "old-room.png");
     }
 
     @Test

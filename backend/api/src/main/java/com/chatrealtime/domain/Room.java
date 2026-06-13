@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,6 +16,12 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@CompoundIndex(
+        name = "uk_direct_room_key",
+        def = "{'type': 1, 'directKey': 1}",
+        unique = true,
+        partialFilter = "{'type': 'direct', 'directKey': {'$type': 'string'}}"
+)
 @Document(collection = "rooms")
 public class Room {
     @Id
@@ -25,6 +32,7 @@ public class Room {
     private String avatar;
     private String avatarPublicId;
     private String avatarProvider;
+    private String directKey;
     @Indexed
     private List<String> memberIds;
     private List<String> admins;

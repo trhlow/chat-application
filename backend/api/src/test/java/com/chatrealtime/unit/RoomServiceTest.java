@@ -30,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.access.AccessDeniedException;
@@ -118,6 +119,35 @@ class RoomServiceTest {
         RoomResponse response = roomService.createRoom(request);
 
         verify(roomRepository, never()).save(any(Room.class));
+        assertThat(response.id()).isEqualTo("r-existing");
+    }
+
+    @Test
+    void createRoom_whenDirectUniqueIndexRaceOccurs_shouldReturnExistingRoom() {
+        CreateRoomRequest request = new CreateRoomRequest(null, "direct", List.of("u2"));
+        Room existingRoom = Room.builder()
+                .id("r-existing")
+                .type("direct")
+                .directKey("u1:u2")
+                .memberIds(List.of("u1", "u2"))
+                .build();
+
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        when(userRepository.existsById("u1")).thenReturn(true);
+        when(userRepository.existsById("u2")).thenReturn(true);
+        when(roomRepository.findByTypeAndDirectKey("direct", "u1:u2"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(existingRoom));
+        when(roomRepository.findByTypeAndMemberIdsContaining("direct", "u2")).thenReturn(List.of());
+        when(roomRepository.save(any(Room.class))).thenThrow(new DuplicateKeyException("duplicate direct room"));
+        when(roomMapper.toResponse(existingRoom, 0L)).thenReturn(toResponse(existingRoom, 0L));
+
+        RoomResponse response = roomService.createRoom(request);
+
+        ArgumentCaptor<Room> roomCaptor = ArgumentCaptor.forClass(Room.class);
+        verify(roomRepository).save(roomCaptor.capture());
+        assertThat(roomCaptor.getValue().getDirectKey()).isEqualTo("u1:u2");
         assertThat(response.id()).isEqualTo("r-existing");
     }
 

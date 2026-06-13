@@ -4,6 +4,7 @@ server:
 spring:
   mongodb:
     uri: ${SPRING_MONGODB_URI:${SPRING_DATA_MONGODB_URI}}
+  data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST}
       port: ${SPRING_DATA_REDIS_PORT:6379}

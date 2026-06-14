@@ -240,10 +240,10 @@ export const ChatCard = ({
   return (
     <button
       className={cn(
-        "conversation-card mx-2 grid w-[calc(100%_-_1rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-3 py-3 text-left transition duration-200",
+        "conversation-card grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-2.5 py-2.5 text-left transition duration-200",
         active
-          ? "border-primary/35 bg-accent text-foreground shadow-[0_12px_30px_-22px_hsl(var(--primary)/0.9)]"
-          : "border-transparent bg-card hover:border-primary/15 hover:bg-muted/80",
+          ? "border-primary/45 bg-accent/70 text-foreground"
+          : "border-transparent bg-card hover:bg-muted/70",
       )}
       onClick={onSelect}
     >
@@ -326,6 +326,8 @@ export const AppSidebar = ({
     if (!normalizedQuery) return rooms;
     return rooms.filter((room) => getRoomName(room, user, usersById).toLowerCase().includes(normalizedQuery));
   }, [query, rooms, user, usersById]);
+  const groupRooms = filteredRooms.filter((room) => !isDirectRoom(room));
+  const directRooms = filteredRooms.filter(isDirectRoom);
 
   const tabTitle = tab === "chats" ? "Tin nhắn" : tab === "friends" ? "Bạn bè" : "Hồ sơ";
 
@@ -334,10 +336,11 @@ export const AppSidebar = ({
   }, [activeView, tab]);
 
   return (
-    <aside className="relative grid h-full min-h-0 grid-cols-[68px_minmax(0,1fr)] border-r border-border/70 bg-card">
-      <nav className="sidebar-rail flex min-h-0 flex-col items-center py-4 text-white">
+    <aside className="relative flex h-full min-h-0 flex-col border-r border-border/70 bg-card p-3">
+      <nav className="brand-gradient flex h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-white shadow-[0_10px_24px_-16px_rgb(126_34_206/0.8)]">
+        <span className="mr-auto text-base font-extrabold tracking-tight">InChat</span>
         <button
-          className="mb-6 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-violet-600 transition hover:scale-[1.03]"
+          className="rounded-full ring-1 ring-white/70 transition hover:scale-[1.03]"
           onClick={() => setAccountMenuOpen((current) => !current)}
           aria-label="Mở menu tài khoản"
           aria-expanded={accountMenuOpen}
@@ -346,7 +349,7 @@ export const AppSidebar = ({
           <UserAvatar name={user.fullName} src={user.avatarUrl} size="md" />
         </button>
 
-        <div className="flex w-full flex-col items-center gap-1 px-2">
+        <div className="flex items-center gap-1">
           {(["chats", "friends"] as AppView[]).map((item) => {
             const Icon = item === "chats" ? MessageCircleMore : UsersRound;
             const label = item === "chats" ? "Tin nhắn" : "Bạn bè";
@@ -354,7 +357,7 @@ export const AppSidebar = ({
               <button
                 key={item}
                 className={cn(
-                  "relative grid h-12 w-12 place-items-center rounded-2xl transition hover:bg-white/15",
+                  "relative grid h-9 w-9 place-items-center rounded-lg transition hover:bg-white/15",
                   tab === item && "bg-white/20 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]",
                 )}
                 onClick={() => {
@@ -366,7 +369,7 @@ export const AppSidebar = ({
                 aria-label={label}
                 title={label}
               >
-                <Icon className="h-6 w-6" strokeWidth={2} />
+                <Icon className="h-4 w-4" strokeWidth={2} />
                 {item === "friends" && incomingRequests.length > 0 ? (
                   <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-rose-500 px-1 py-0.5 text-[10px] font-bold text-white ring-2 ring-violet-600">
                     {incomingRequests.length > 9 ? "9+" : incomingRequests.length}
@@ -377,10 +380,10 @@ export const AppSidebar = ({
           })}
         </div>
 
-        <div className="mt-auto px-2">
+        <div>
           <button
             className={cn(
-              "grid h-12 w-12 place-items-center rounded-2xl transition hover:bg-white/15",
+              "grid h-9 w-9 place-items-center rounded-lg transition hover:bg-white/15",
               settingsMenuOpen && "bg-white/20 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]",
             )}
             onClick={() => {
@@ -390,13 +393,13 @@ export const AppSidebar = ({
             aria-label="Cài đặt"
             title="Cài đặt"
           >
-            <Settings className="h-6 w-6" />
+            <Settings className="h-4 w-4" />
           </button>
         </div>
       </nav>
 
       {accountMenuOpen ? (
-        <section className="absolute left-[84px] top-7 z-40 w-[320px] overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_22px_60px_-18px_hsl(var(--primary)/0.35)]">
+        <section className="absolute left-3 top-16 z-40 w-[320px] overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_22px_60px_-18px_hsl(var(--primary)/0.35)]">
           <div className="border-b border-border px-5 py-4">
             <p className="truncate text-lg font-bold">{user.fullName}</p>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">@{user.username}</p>
@@ -435,7 +438,7 @@ export const AppSidebar = ({
       ) : null}
 
       {settingsMenuOpen ? (
-        <section className="absolute bottom-4 left-[84px] z-40 w-[290px] rounded-2xl border border-border bg-card p-2 text-card-foreground shadow-[0_22px_60px_-18px_hsl(var(--primary)/0.35)]">
+        <section className="absolute right-3 top-16 z-40 w-[290px] rounded-2xl border border-border bg-card p-2 text-card-foreground shadow-[0_22px_60px_-18px_hsl(var(--primary)/0.35)]">
           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => { setTab("profile"); setSettingsMenuOpen(false); }}>
             <UserRound className="h-5 w-5" /> Thông tin tài khoản
           </button>
@@ -467,12 +470,11 @@ export const AppSidebar = ({
         </section>
       ) : null}
 
-      <div className="flex min-h-0 flex-col bg-card">
-        <header className="border-b border-border/60 px-4 pb-4 pt-4">
+      <div className="mt-3 flex min-h-0 flex-1 flex-col bg-card">
+        <header className="shrink-0 border-b border-border/60 pb-3">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">InChat</p>
-              <h1 className="mt-1 text-xl font-bold tracking-tight">{tabTitle}</h1>
+              <h1 className="text-lg font-bold tracking-tight">{tabTitle}</h1>
             </div>
             {tab === "friends" ? (
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setModal("friend")} aria-label="Thêm bạn" title="Thêm bạn">
@@ -486,37 +488,36 @@ export const AppSidebar = ({
           </div>
 
           {tab === "chats" ? (
-            <label className="relative mt-4 block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                className="h-11 w-full rounded-2xl border border-transparent bg-muted/80 pl-9 pr-3 text-sm outline-none transition focus:border-primary/25 focus:bg-card focus:ring-2 focus:ring-ring/15"
-                placeholder="Tìm kiếm"
-              />
-            </label>
+            <div className="mt-3 space-y-3">
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  className="h-10 w-full rounded-xl border border-transparent bg-muted/80 pl-9 pr-3 text-sm outline-none transition focus:border-primary/25 focus:bg-card focus:ring-2 focus:ring-ring/15"
+                  placeholder="Tìm kiếm"
+                />
+              </label>
+              <button className="flex h-11 w-full items-center gap-3 rounded-xl border border-primary/10 bg-accent/70 px-3 text-left text-sm font-semibold text-accent-foreground transition hover:bg-accent" onClick={() => setModal("friend")}>
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground"><Plus className="h-4 w-4" /></span>
+                Gửi tin nhắn mới
+              </button>
+            </div>
           ) : null}
         </header>
 
-        <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto px-1 py-3">
+        <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto py-3">
           {tab === "chats" && (
             isLoadingRooms ? <ConversationSkeleton /> : (
-              <div className="space-y-1">
+              <div className="space-y-5">
                 {filteredRooms.length === 0 ? (
                   <div className="px-3"><EmptyText text="Không tìm thấy cuộc trò chuyện." /></div>
-                ) : filteredRooms.map((room) => (
-                  <ChatCard
-                    key={room.id}
-                    room={room}
-                    active={room.id === selectedRoomId}
-                    currentUser={user}
-                    usersById={usersById}
-                    onSelect={() => {
-                      setSelectedRoomId(room.id);
-                      setAccountMenuOpen(false);
-                    }}
-                  />
-                ))}
+                ) : (
+                  <>
+                    <ChatRoomSection title="Nhóm chat" rooms={groupRooms} selectedRoomId={selectedRoomId} user={user} usersById={usersById} onSelect={setSelectedRoomId} />
+                    <ChatRoomSection title="Bạn bè" rooms={directRooms} selectedRoomId={selectedRoomId} user={user} usersById={usersById} onSelect={setSelectedRoomId} />
+                  </>
+                )}
               </div>
             )
           )}
@@ -529,6 +530,9 @@ export const AppSidebar = ({
           )}
           {tab === "profile" && <ProfileCard />}
         </div>
+        <div className="shrink-0 border-t border-border/60 pt-3">
+          <NavUser user={user} onProfile={() => setTab("profile")} />
+        </div>
       </div>
 
       {modal === "friend" ? <AddFriendModal onClose={() => setModal(null)} /> : null}
@@ -537,6 +541,41 @@ export const AppSidebar = ({
     </aside>
   );
 };
+
+const ChatRoomSection = ({
+  title,
+  rooms,
+  selectedRoomId,
+  user,
+  usersById,
+  onSelect,
+}: {
+  title: string;
+  rooms: ChatRoom[];
+  selectedRoomId: string | null;
+  user: AuthUser;
+  usersById: Record<string, ChatUser>;
+  onSelect: (roomId: string) => void;
+}) => (
+  <section className="space-y-1">
+    <div className="flex items-center justify-between px-2">
+      <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</h2>
+      <span className="text-[10px] font-semibold text-muted-foreground">{rooms.length}</span>
+    </div>
+    {rooms.length === 0 ? (
+      <p className="px-2 py-2 text-xs text-muted-foreground">Chưa có cuộc trò chuyện.</p>
+    ) : rooms.map((room) => (
+      <ChatCard
+        key={room.id}
+        room={room}
+        active={room.id === selectedRoomId}
+        currentUser={user}
+        usersById={usersById}
+        onSelect={() => onSelect(room.id)}
+      />
+    ))}
+  </section>
+);
 
 const FriendsNavigation = ({
   active,
@@ -1044,7 +1083,7 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
   const peer = getRoomPeer(room, user.id, usersById);
 
   return (
-    <header className="flex min-h-[78px] items-center gap-3 border-b border-border/60 bg-card/90 px-4 py-3 backdrop-blur-xl md:px-6">
+    <header className="flex min-h-[72px] items-center gap-3 border-b border-border/60 bg-card px-4 py-3 md:px-6">
       <UserAvatar name={name} src={getRoomAvatar(room, user, usersById)} online={online} size="lg" />
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-base font-bold tracking-tight">{name}</h1>
@@ -1054,7 +1093,7 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
         </div>
       </div>
       {!isDirectRoom(room) ? <span className="hidden text-xs text-muted-foreground lg:inline">{room.memberIds.length} thành viên</span> : null}
-      <div className="flex items-center gap-1">
+      <div className="hidden items-center gap-1 sm:flex">
         {[
           { icon: Search, label: "Tìm trong cuộc trò chuyện", message: "Tính năng tìm kiếm trong hội thoại đang được chuẩn bị." },
           { icon: Phone, label: "Gọi thoại", message: "Cuộc gọi thoại cần kết nối dịch vụ WebRTC." },
@@ -1225,8 +1264,8 @@ export const MessageInput = () => {
   };
 
   return (
-    <form onSubmit={submit} className="border-t border-border/60 bg-card/90 p-3 backdrop-blur-xl md:px-6 md:py-4">
-      <div className="mx-auto flex max-w-5xl items-end gap-1 rounded-2xl border border-input/80 bg-background/95 p-2 shadow-[0_12px_36px_-24px_hsl(var(--primary)/0.6)] transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+    <form onSubmit={submit} className="border-t border-border/60 bg-card p-3 md:px-5">
+      <div className="mx-auto flex max-w-5xl items-end gap-1 rounded-xl border border-input/80 bg-card p-1.5 transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
         <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label="Đính kèm tệp" title="Đính kèm tệp" onClick={() => toast.info("Đính kèm tệp cần được kết nối với API tải lên.")}>
           <Paperclip className="h-5 w-5" />
         </Button>

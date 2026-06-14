@@ -10,6 +10,8 @@ import {
   LogOut,
   MessageCircleMore,
   MoonStar,
+  Paperclip,
+  Phone,
   Plus,
   Search,
   SendHorizontal,
@@ -20,6 +22,7 @@ import {
   UserPlus,
   UserRound,
   UsersRound,
+  Video,
   X,
 } from "lucide-react";
 import {
@@ -237,10 +240,10 @@ export const ChatCard = ({
   return (
     <button
       className={cn(
-        "mx-2 grid w-[calc(100%_-_1rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-3 text-left transition duration-200",
+        "conversation-card mx-2 grid w-[calc(100%_-_1rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border px-3 py-3 text-left transition duration-200",
         active
-          ? "border-primary/55 bg-accent/75 text-foreground shadow-[0_10px_28px_-18px_hsl(var(--primary)/0.75)]"
-          : "border-transparent bg-card hover:border-primary/15 hover:bg-accent/35",
+          ? "border-primary/35 bg-accent text-foreground shadow-[0_12px_30px_-22px_hsl(var(--primary)/0.9)]"
+          : "border-transparent bg-card hover:border-primary/15 hover:bg-muted/80",
       )}
       onClick={onSelect}
     >
@@ -331,10 +334,10 @@ export const AppSidebar = ({
   }, [activeView, tab]);
 
   return (
-    <aside className="relative grid h-full min-h-0 grid-cols-[74px_minmax(0,1fr)] border-r border-border bg-card">
-      <nav className="brand-gradient flex min-h-0 flex-col items-center py-5 text-white">
+    <aside className="relative grid h-full min-h-0 grid-cols-[68px_minmax(0,1fr)] border-r border-border/70 bg-card">
+      <nav className="sidebar-rail flex min-h-0 flex-col items-center py-4 text-white">
         <button
-          className="mb-7 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-violet-600 transition hover:scale-[1.03]"
+          className="mb-6 rounded-full ring-2 ring-white/80 ring-offset-2 ring-offset-violet-600 transition hover:scale-[1.03]"
           onClick={() => setAccountMenuOpen((current) => !current)}
           aria-label="Mở menu tài khoản"
           aria-expanded={accountMenuOpen}
@@ -351,7 +354,7 @@ export const AppSidebar = ({
               <button
                 key={item}
                 className={cn(
-                  "relative grid h-14 w-14 place-items-center rounded-xl transition hover:bg-white/15",
+                  "relative grid h-12 w-12 place-items-center rounded-2xl transition hover:bg-white/15",
                   tab === item && "bg-white/20 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]",
                 )}
                 onClick={() => {
@@ -377,7 +380,7 @@ export const AppSidebar = ({
         <div className="mt-auto px-2">
           <button
             className={cn(
-              "grid h-14 w-14 place-items-center rounded-xl transition hover:bg-white/15",
+              "grid h-12 w-12 place-items-center rounded-2xl transition hover:bg-white/15",
               settingsMenuOpen && "bg-white/20 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]",
             )}
             onClick={() => {
@@ -465,11 +468,11 @@ export const AppSidebar = ({
       ) : null}
 
       <div className="flex min-h-0 flex-col bg-card">
-        <header className="border-b border-border/70 px-4 pb-4 pt-4">
+        <header className="border-b border-border/60 px-4 pb-4 pt-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <p className="bg-gradient-to-r from-violet-600 to-pink-500 bg-clip-text text-sm font-extrabold tracking-tight text-transparent">InChat</p>
-              <h1 className="mt-0.5 text-lg font-bold tracking-tight">{tabTitle}</h1>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">InChat</p>
+              <h1 className="mt-1 text-xl font-bold tracking-tight">{tabTitle}</h1>
             </div>
             {tab === "friends" ? (
               <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setModal("friend")} aria-label="Thêm bạn" title="Thêm bạn">
@@ -488,7 +491,7 @@ export const AppSidebar = ({
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                className="h-11 w-full rounded-xl border border-transparent bg-muted/80 pl-9 pr-3 text-sm outline-none transition focus:border-primary/25 focus:bg-card focus:ring-2 focus:ring-ring/15"
+                className="h-11 w-full rounded-2xl border border-transparent bg-muted/80 pl-9 pr-3 text-sm outline-none transition focus:border-primary/25 focus:bg-card focus:ring-2 focus:ring-ring/15"
                 placeholder="Tìm kiếm"
               />
             </label>
@@ -703,6 +706,7 @@ export const ProfileCard = () => {
   const updateProfile = useChatStore((state) => state.updateProfile);
   const uploadAvatar = useChatStore((state) => state.uploadAvatar);
   const [form, setForm] = useState({ username: "", displayName: "", bio: "", phone: "", themePreference: "system" });
+  const [profileTab, setProfileTab] = useState<"account" | "preferences" | "privacy">("account");
 
   useEffect(() => {
     if (profile) {
@@ -724,8 +728,8 @@ export const ProfileCard = () => {
   };
 
   return (
-    <form className="overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_45px_-30px_hsl(var(--primary)/0.5)]" onSubmit={submit}>
-      <div className="brand-gradient relative min-h-32 overflow-hidden p-5 text-white">
+    <form className="mx-2 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_45px_-30px_hsl(var(--primary)/0.5)]" onSubmit={submit}>
+      <div className="profile-cover relative min-h-36 overflow-hidden p-5 text-white">
         <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10" />
         <div className="absolute bottom-0 right-16 h-20 w-20 rounded-full bg-white/10 blur-xl" />
         <div className="relative flex items-end gap-4 pt-8">
@@ -748,29 +752,59 @@ export const ProfileCard = () => {
         </div>
       </div>
 
-      <div className="border-b border-border px-5 py-3">
-        <p className="text-sm font-bold">Thông tin cá nhân</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">Cập nhật tên hiển thị và thông tin hồ sơ của bạn</p>
+      <div className="grid grid-cols-3 border-b border-border px-2 pt-2">
+        {([
+          ["account", "Tài khoản"],
+          ["preferences", "Cấu hình"],
+          ["privacy", "Bảo mật"],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(
+              "border-b-2 border-transparent px-1 py-3 text-xs font-semibold text-muted-foreground transition",
+              profileTab === id && "border-primary text-primary",
+            )}
+            onClick={() => setProfileTab(id)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="space-y-4 p-5">
-        <div className="grid grid-cols-2 gap-3">
-          <TextInput label="Tên hiển thị" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
-          <TextInput label="Tên người dùng" value={form.username} onChange={(value) => setForm((current) => ({ ...current, username: value }))} />
-        </div>
-        <TextInput label="Số điện thoại" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold text-muted-foreground">Giới thiệu</span>
-          <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={3} className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15" />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold text-muted-foreground">Giao diện</span>
-          <select value={form.themePreference} onChange={(event) => setForm((current) => ({ ...current, themePreference: event.target.value }))} className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15">
-            <option value="system">Theo hệ thống</option>
-            <option value="light">Sáng</option>
-            <option value="dark">Tối</option>
-          </select>
-        </label>
+        {profileTab === "account" ? (
+          <>
+            <div>
+              <p className="text-sm font-bold">Thông tin cá nhân</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Cập nhật tên hiển thị và thông tin hồ sơ của bạn.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <TextInput label="Tên hiển thị" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
+              <TextInput label="Tên người dùng" value={form.username} onChange={(value) => setForm((current) => ({ ...current, username: value }))} />
+            </div>
+            <TextInput label="Số điện thoại" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">Giới thiệu</span>
+              <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={3} className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15" />
+            </label>
+          </>
+        ) : profileTab === "preferences" ? (
+          <label className="block space-y-2">
+            <span className="text-sm font-bold">Giao diện ứng dụng</span>
+            <select value={form.themePreference} onChange={(event) => setForm((current) => ({ ...current, themePreference: event.target.value }))} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15">
+              <option value="system">Theo hệ thống</option>
+              <option value="light">Sáng</option>
+              <option value="dark">Tối</option>
+            </select>
+            <span className="block text-xs leading-5 text-muted-foreground">Tùy chọn này sẽ được lưu cùng hồ sơ của bạn.</span>
+          </label>
+        ) : (
+          <div className="rounded-xl border border-border bg-muted/60 p-4">
+            <p className="text-sm font-bold">Quyền riêng tư</p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">Trạng thái trực tuyến và thông tin hồ sơ đang được đồng bộ an toàn qua tài khoản của bạn.</p>
+          </div>
+        )}
         <Button type="submit" className="rounded-xl px-5" disabled={isMutating}>{isMutating ? "Đang lưu..." : "Lưu thay đổi"}</Button>
       </div>
     </form>
@@ -1010,7 +1044,7 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
   const peer = getRoomPeer(room, user.id, usersById);
 
   return (
-    <header className="flex min-h-[78px] items-center gap-3 border-b border-border/70 bg-card/90 px-5 py-3 backdrop-blur-xl">
+    <header className="flex min-h-[78px] items-center gap-3 border-b border-border/60 bg-card/90 px-4 py-3 backdrop-blur-xl md:px-6">
       <UserAvatar name={name} src={getRoomAvatar(room, user, usersById)} online={online} size="lg" />
       <div className="min-w-0 flex-1">
         <h1 className="truncate text-base font-bold tracking-tight">{name}</h1>
@@ -1019,7 +1053,19 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
           {!online && peer?.lastSeenAt ? <span className="text-xs text-muted-foreground">Last seen {formatRelativeTime(peer.lastSeenAt)}</span> : null}
         </div>
       </div>
-      {!isDirectRoom(room) ? <span className="text-xs text-muted-foreground">{room.memberIds.length} members</span> : null}
+      {!isDirectRoom(room) ? <span className="hidden text-xs text-muted-foreground lg:inline">{room.memberIds.length} thành viên</span> : null}
+      <div className="flex items-center gap-1">
+        {[
+          { icon: Search, label: "Tìm trong cuộc trò chuyện", message: "Tính năng tìm kiếm trong hội thoại đang được chuẩn bị." },
+          { icon: Phone, label: "Gọi thoại", message: "Cuộc gọi thoại cần kết nối dịch vụ WebRTC." },
+          { icon: Video, label: "Gọi video", message: "Cuộc gọi video cần kết nối dịch vụ WebRTC." },
+          { icon: CircleHelp, label: "Thông tin hội thoại", message: `${name} có ${room.memberIds.length} thành viên.` },
+        ].map(({ icon: Icon, label, message }) => (
+          <Button key={label} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label={label} title={label} onClick={() => toast.info(message)}>
+            <Icon className="h-4.5 w-4.5" />
+          </Button>
+        ))}
+      </div>
     </header>
   );
 };
@@ -1079,14 +1125,14 @@ export const ChatWindowBody = ({
   };
 
   return (
-    <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-7">
+    <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-7 md:px-8">
       {pageState?.loadingOlder ? <p className="mb-3 flex items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading older messages</p> : null}
       {loading ? (
         <ChatWindowSkeleton />
       ) : messages.length === 0 ? (
         <EmptyText text="Chưa có tin nhắn nào. Hãy gửi lời chào đầu tiên." />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {messages.map((message) => (
             <MessageItem key={message.id} message={message} mine={message.senderId === currentUser.id} sender={usersById[message.senderId]} currentUserId={currentUser.id} />
           ))}
@@ -1142,7 +1188,7 @@ export const MessageItem = ({ message, mine, sender, currentUserId }: { message:
             );
           })}
         </div>
-        <p className="mt-1 px-1 text-xs text-muted-foreground">
+        <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
           {new Date(message.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
           {mine ? ` - ${receipt}` : ""}
         </p>
@@ -1179,8 +1225,11 @@ export const MessageInput = () => {
   };
 
   return (
-    <form onSubmit={submit} className="border-t border-border/70 bg-card/90 p-3 backdrop-blur-xl md:px-6 md:py-4">
-      <div className="mx-auto flex max-w-5xl items-end gap-2 rounded-2xl border border-input/80 bg-background/90 p-2 shadow-[0_12px_36px_-24px_hsl(var(--primary)/0.6)] transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+    <form onSubmit={submit} className="border-t border-border/60 bg-card/90 p-3 backdrop-blur-xl md:px-6 md:py-4">
+      <div className="mx-auto flex max-w-5xl items-end gap-1 rounded-2xl border border-input/80 bg-background/95 p-2 shadow-[0_12px_36px_-24px_hsl(var(--primary)/0.6)] transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
+        <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label="Đính kèm tệp" title="Đính kèm tệp" onClick={() => toast.info("Đính kèm tệp cần được kết nối với API tải lên.")}>
+          <Paperclip className="h-5 w-5" />
+        </Button>
         <div className="relative">
           <Button
             type="button"

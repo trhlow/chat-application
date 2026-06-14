@@ -39,8 +39,8 @@ export const ChatAppPage = () => {
   }
 
   return (
-    <main className="min-h-[100dvh] overflow-hidden bg-background p-0 text-foreground md:p-3 xl:p-4">
-      <div className="mx-auto grid h-[100dvh] max-w-[1680px] grid-cols-1 overflow-hidden bg-card shadow-[0_24px_80px_-32px_hsl(var(--primary)/0.28)] md:h-[calc(100dvh-1.5rem)] md:grid-cols-[390px_minmax(0,1fr)] md:rounded-2xl md:border md:border-white/70 xl:h-[calc(100dvh-2rem)] xl:grid-cols-[430px_minmax(0,1fr)] dark:border-border">
+    <main className="min-h-[100dvh] overflow-hidden bg-background p-0 text-foreground md:p-3 xl:p-5">
+      <div className="app-frame mx-auto grid h-[100dvh] max-w-[1720px] grid-cols-1 overflow-hidden bg-card md:h-[calc(100dvh-1.5rem)] md:grid-cols-[370px_minmax(0,1fr)] md:rounded-[24px] md:border md:border-white/80 xl:h-[calc(100dvh-2.5rem)] xl:grid-cols-[400px_minmax(0,1fr)] dark:border-border">
         <div className="hidden min-h-0 md:block">
           <AppSidebar
             user={user}

@@ -2,10 +2,12 @@ import {
   Camera,
   Check,
   ChevronRight,
+  ChevronsUpDown,
   CircleHelp,
   Database,
   ExternalLink,
   Globe2,
+  Heart,
   Loader2,
   LogOut,
   MessageCircleMore,
@@ -142,7 +144,7 @@ export const UserAvatar = ({
   name: string;
   src?: string | null;
   online?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }) => (
   <div
     className={cn(
@@ -150,6 +152,7 @@ export const UserAvatar = ({
       size === "sm" && "h-9 w-9 text-xs",
       size === "md" && "h-11 w-11 text-sm",
       size === "lg" && "h-12 w-12 text-base",
+      size === "xl" && "h-24 w-24 text-xl",
     )}
   >
     {src ? (
@@ -202,20 +205,27 @@ const Modal = ({
   title,
   children,
   onClose,
+  size = "default",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  size?: "compact" | "default" | "wide";
 }) => (
-  <div className="fixed inset-0 z-50 grid place-items-center bg-background/70 p-4 backdrop-blur-sm">
-    <section className="max-h-[88vh] w-full max-w-lg overflow-hidden rounded-lg border border-border bg-card shadow-soft">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-base font-bold">{title}</h2>
-        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={onClose} aria-label="Close" title="Close">
+  <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[2px]">
+    <section className={cn(
+      "max-h-[92vh] w-full overflow-hidden rounded-2xl border border-white/70 bg-card shadow-[0_24px_70px_-24px_rgb(15_23_42/0.5)]",
+      size === "compact" && "max-w-[420px]",
+      size === "default" && "max-w-lg",
+      size === "wide" && "max-w-[680px]",
+    )}>
+      <header className="flex items-center justify-between px-5 pb-2 pt-4">
+        <h2 className="text-xl font-extrabold tracking-tight">{title}</h2>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground" onClick={onClose} aria-label="Đóng" title="Đóng">
           <X className="h-4 w-4" />
         </Button>
       </header>
-      <div className="pretty-scrollbar max-h-[calc(88vh-58px)] overflow-y-auto p-4">{children}</div>
+      <div className="pretty-scrollbar max-h-[calc(92vh-54px)] overflow-y-auto px-5 pb-5 pt-2">{children}</div>
     </section>
   </div>
 );
@@ -240,21 +250,37 @@ export const ChatCard = ({
   return (
     <button
       className={cn(
-        "conversation-card grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-2.5 py-2.5 text-left transition duration-200",
+        "conversation-card grid min-h-[62px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-xl border px-3 py-2 text-left shadow-[0_5px_14px_-13px_hsl(var(--primary)/0.65)] transition duration-200",
         active
-          ? "border-primary/45 bg-accent/70 text-foreground"
-          : "border-transparent bg-card hover:bg-muted/70",
+          ? "border-primary/60 bg-accent/70 text-foreground shadow-[0_6px_18px_-16px_hsl(var(--primary)/0.7)]"
+          : "border-transparent bg-accent/35 hover:border-primary/15 hover:bg-accent/55",
       )}
       onClick={onSelect}
     >
-      <UserAvatar name={name} src={getRoomAvatar(room, currentUser, usersById)} online={online} />
+      {group ? (
+        <div className="flex w-[54px] shrink-0 -space-x-3">
+          {room.memberIds.slice(0, 3).map((memberId) => {
+            const member = usersById[memberId];
+            const memberName = member?.displayName || member?.username || name;
+            return (
+              <UserAvatar
+                key={memberId}
+                name={memberName}
+                src={member?.avatarEndpoint ?? member?.avatar}
+                size="sm"
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <UserAvatar name={name} src={getRoomAvatar(room, currentUser, usersById)} online={online} />
+      )}
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-2">
-          {group ? <UsersRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : null}
           <span className="truncate text-sm font-semibold">{name}</span>
         </span>
-        <span className="mt-1 block truncate text-xs text-muted-foreground">
-          {room.lastMessagePreview || "Chưa có tin nhắn"}
+        <span className="mt-1 block truncate text-sm text-muted-foreground">
+          {group ? `${room.memberIds.length} thành viên` : room.lastMessagePreview || "Chưa có tin nhắn"}
         </span>
       </span>
       <span className="flex flex-col items-end gap-2">
@@ -279,7 +305,7 @@ export const NavUser = ({ user, onProfile }: { user: AuthUser; onProfile: () => 
   const signout = useAuthStore((state) => state.signout);
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-muted/70 p-2.5">
+    <div className="flex items-center gap-3 bg-card px-1 py-2">
       <button className="contents" onClick={onProfile} aria-label="Open profile">
         <UserAvatar name={user.fullName} src={user.avatarUrl} online={user.isOnline} />
       </button>
@@ -287,8 +313,8 @@ export const NavUser = ({ user, onProfile }: { user: AuthUser; onProfile: () => 
         <p className="truncate text-sm font-semibold">{user.fullName}</p>
         <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
       </button>
-      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => void signout()} aria-label="Sign out" title="Sign out">
-        <LogOut className="h-4 w-4" />
+      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => void signout()} aria-label="Đăng xuất" title="Đăng xuất">
+        <ChevronsUpDown className="h-4 w-4" />
       </Button>
     </div>
   );
@@ -315,8 +341,10 @@ export const AppSidebar = ({
   const setSelectedRoomId = useChatStore((state) => state.setSelectedRoomId);
   const isLoadingRooms = useChatStore((state) => state.isLoadingRooms);
   const incomingRequests = useChatStore((state) => state.incomingFriendRequests);
+  const fetchProfile = useChatStore((state) => state.fetchProfile);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<SidebarTab>(activeView);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [modal, setModal] = useState<"friend" | "requests" | "group" | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
@@ -336,11 +364,11 @@ export const AppSidebar = ({
   }, [activeView, tab]);
 
   return (
-    <aside className="relative flex h-full min-h-0 flex-col border-r border-border/70 bg-card p-3">
-      <nav className="brand-gradient flex h-12 shrink-0 items-center gap-2 rounded-xl px-3 text-white shadow-[0_10px_24px_-16px_rgb(126_34_206/0.8)]">
-        <span className="mr-auto text-base font-extrabold tracking-tight">InChat</span>
+    <aside className="relative flex h-full min-h-0 flex-col border-r border-border/70 bg-card p-2">
+      <nav className="brand-gradient flex h-16 shrink-0 items-center gap-2 rounded-2xl px-5 text-white shadow-[0_10px_24px_-16px_rgb(126_34_206/0.8)]">
+        <span className="mr-auto text-2xl font-extrabold tracking-tight">InChat</span>
         <button
-          className="rounded-full ring-1 ring-white/70 transition hover:scale-[1.03]"
+          className="hidden"
           onClick={() => setAccountMenuOpen((current) => !current)}
           aria-label="Mở menu tài khoản"
           aria-expanded={accountMenuOpen}
@@ -349,7 +377,7 @@ export const AppSidebar = ({
           <UserAvatar name={user.fullName} src={user.avatarUrl} size="md" />
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="hidden">
           {(["chats", "friends"] as AppView[]).map((item) => {
             const Icon = item === "chats" ? MessageCircleMore : UsersRound;
             const label = item === "chats" ? "Tin nhắn" : "Bạn bè";
@@ -359,6 +387,7 @@ export const AppSidebar = ({
                 className={cn(
                   "relative grid h-9 w-9 place-items-center rounded-lg transition hover:bg-white/15",
                   tab === item && "bg-white/20 shadow-[inset_0_0_0_1px_rgb(255_255_255/0.2)]",
+                  item === "chats" && "hidden",
                 )}
                 onClick={() => {
                   setTab(item);
@@ -371,7 +400,7 @@ export const AppSidebar = ({
               >
                 <Icon className="h-4 w-4" strokeWidth={2} />
                 {item === "friends" && incomingRequests.length > 0 ? (
-                  <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-rose-500 px-1 py-0.5 text-[10px] font-bold text-white ring-2 ring-violet-600">
+                  <span className="absolute right-1 top-1 grid min-w-5 place-items-center rounded-full bg-blue-500 px-1 py-0.5 text-[10px] font-bold text-white ring-2 ring-blue-600">
                     {incomingRequests.length > 9 ? "9+" : incomingRequests.length}
                   </span>
                 ) : null}
@@ -380,7 +409,7 @@ export const AppSidebar = ({
           })}
         </div>
 
-        <div>
+        <div className="hidden">
           <button
             className={cn(
               "grid h-9 w-9 place-items-center rounded-lg transition hover:bg-white/15",
@@ -396,7 +425,34 @@ export const AppSidebar = ({
             <Settings className="h-4 w-4" />
           </button>
         </div>
+        <SunMedium className="h-5 w-5 text-white/75" />
+        <button
+          type="button"
+          role="switch"
+          aria-checked={theme === "dark"}
+          aria-label="Đổi giao diện sáng tối"
+          title="Đổi giao diện sáng tối"
+          className="relative h-7 w-12 rounded-full bg-white/80 p-1 shadow-inner transition hover:bg-white"
+          onClick={toggleTheme}
+        >
+          <span className={cn(
+            "block h-5 w-5 rounded-full bg-white shadow-md transition-transform",
+            theme === "dark" && "translate-x-5 bg-blue-500",
+          )} />
+        </button>
+        <MoonStar className="h-5 w-5 text-white/75" />
       </nav>
+
+      <button
+        type="button"
+        className="mt-3 flex h-12 shrink-0 items-center gap-3 rounded-xl border border-primary/10 bg-accent/45 px-3 text-left text-sm font-semibold text-foreground shadow-[0_6px_16px_-14px_hsl(var(--primary)/0.75)] transition hover:border-primary/25 hover:bg-accent/70 active:scale-[0.99]"
+        onClick={() => setModal("friend")}
+      >
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-400 text-white shadow-sm">
+          <MessageCircleMore className="h-4 w-4" />
+        </span>
+        Gửi Tin Nhắn Mới
+      </button>
 
       {accountMenuOpen ? (
         <section className="absolute left-3 top-16 z-40 w-[320px] overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_22px_60px_-18px_hsl(var(--primary)/0.35)]">
@@ -408,7 +464,8 @@ export const AppSidebar = ({
             <button
               className="flex w-full items-center justify-between rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted"
               onClick={() => {
-                setTab("profile");
+                setProfileOpen(true);
+                void fetchProfile();
                 setAccountMenuOpen(false);
               }}
             >
@@ -470,8 +527,8 @@ export const AppSidebar = ({
         </section>
       ) : null}
 
-      <div className="mt-3 flex min-h-0 flex-1 flex-col bg-card">
-        <header className="shrink-0 border-b border-border/60 pb-3">
+      <div className="mt-5 flex min-h-0 flex-1 flex-col bg-card">
+        <header className={cn("shrink-0 border-b border-border/60 pb-3", tab === "chats" && "hidden")}>
           <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-lg font-bold tracking-tight">{tabTitle}</h1>
@@ -506,7 +563,7 @@ export const AppSidebar = ({
           ) : null}
         </header>
 
-        <div className="pretty-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto py-3">
+        <div className="pretty-scrollbar min-h-0 flex-1 space-y-7 overflow-y-auto px-0.5 py-1">
           {tab === "chats" && (
             isLoadingRooms ? <ConversationSkeleton /> : (
               <div className="space-y-5">
@@ -514,8 +571,8 @@ export const AppSidebar = ({
                   <div className="px-3"><EmptyText text="Không tìm thấy cuộc trò chuyện." /></div>
                 ) : (
                   <>
-                    <ChatRoomSection title="Nhóm chat" rooms={groupRooms} selectedRoomId={selectedRoomId} user={user} usersById={usersById} onSelect={setSelectedRoomId} />
-                    <ChatRoomSection title="Bạn bè" rooms={directRooms} selectedRoomId={selectedRoomId} user={user} usersById={usersById} onSelect={setSelectedRoomId} />
+                    <ChatRoomSection title="Nhóm chat" rooms={groupRooms} selectedRoomId={selectedRoomId} user={user} usersById={usersById} onSelect={setSelectedRoomId} onAction={() => setModal("group")} />
+                    <ChatRoomSection title="Bạn bè" rooms={directRooms} selectedRoomId={selectedRoomId} user={user} usersById={usersById} onSelect={setSelectedRoomId} onAction={() => setModal("friend")} />
                   </>
                 )}
               </div>
@@ -528,13 +585,32 @@ export const AppSidebar = ({
               onChange={onFriendsSectionChange}
             />
           )}
-          {tab === "profile" && <ProfileCard />}
         </div>
-        <div className="shrink-0 border-t border-border/60 pt-3">
-          <NavUser user={user} onProfile={() => setTab("profile")} />
+        <div className="shrink-0 border-t border-border/60 bg-card pt-1.5">
+          <NavUser user={user} onProfile={() => {
+            setProfileOpen(true);
+            void fetchProfile();
+          }} />
         </div>
       </div>
 
+      {profileOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/55 p-4 backdrop-blur-[2px]">
+          <section className="pretty-scrollbar relative max-h-[94vh] w-full max-w-[460px] overflow-y-auto rounded-2xl border border-white/70 bg-card shadow-[0_24px_70px_-24px_rgb(15_23_42/0.5)]">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-5 top-5 z-10 h-8 w-8 rounded-lg text-muted-foreground"
+              onClick={() => setProfileOpen(false)}
+              aria-label="Đóng hồ sơ"
+              title="Đóng hồ sơ"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <ProfileCard />
+          </section>
+        </div>
+      ) : null}
       {modal === "friend" ? <AddFriendModal onClose={() => setModal(null)} /> : null}
       {modal === "requests" ? <FriendRequestDialog onClose={() => setModal(null)} /> : null}
       {modal === "group" ? <NewGroupChatModal onClose={() => setModal(null)} /> : null}
@@ -549,6 +625,7 @@ const ChatRoomSection = ({
   user,
   usersById,
   onSelect,
+  onAction,
 }: {
   title: string;
   rooms: ChatRoom[];
@@ -556,11 +633,14 @@ const ChatRoomSection = ({
   user: AuthUser;
   usersById: Record<string, ChatUser>;
   onSelect: (roomId: string) => void;
+  onAction: () => void;
 }) => (
-  <section className="space-y-1">
-    <div className="flex items-center justify-between px-2">
-      <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{title}</h2>
-      <span className="text-[10px] font-semibold text-muted-foreground">{rooms.length}</span>
+  <section className="space-y-2">
+    <div className="flex items-center justify-between px-1">
+      <h2 className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">{title}</h2>
+      <button type="button" className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-primary" onClick={onAction} aria-label={`Thêm ${title.toLowerCase()}`}>
+        {title === "Nhóm chat" ? <UsersRound className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+      </button>
     </div>
     {rooms.length === 0 ? (
       <p className="px-2 py-2 text-xs text-muted-foreground">Chưa có cuộc trò chuyện.</p>
@@ -739,13 +819,29 @@ export const FriendsWorkspace = ({
 };
 
 export const ProfileCard = () => {
-  const profile = useChatStore((state) => state.profile);
+  const storedProfile = useChatStore((state) => state.profile);
+  const authUser = useAuthStore((state) => state.user);
+  const { theme, toggleTheme } = useTheme();
   const isLoadingProfile = useChatStore((state) => state.isLoadingProfile);
   const isMutating = useChatStore((state) => state.isMutating);
   const updateProfile = useChatStore((state) => state.updateProfile);
   const uploadAvatar = useChatStore((state) => state.uploadAvatar);
   const [form, setForm] = useState({ username: "", displayName: "", bio: "", phone: "", themePreference: "system" });
   const [profileTab, setProfileTab] = useState<"account" | "preferences" | "privacy">("account");
+  const [showOnlineStatus, setShowOnlineStatus] = useState(true);
+  const profile = useMemo(() => storedProfile ?? (authUser ? {
+    id: authUser.id,
+    username: authUser.username,
+    email: authUser.email,
+    displayName: authUser.fullName,
+    bio: null,
+    phone: null,
+    themePreference: "system",
+    avatarEndpoint: authUser.avatarUrl,
+    avatar: authUser.avatarUrl,
+    online: authUser.isOnline,
+    lastSeenAt: authUser.lastSeenAt,
+  } : null), [authUser, storedProfile]);
 
   useEffect(() => {
     if (profile) {
@@ -759,7 +855,16 @@ export const ProfileCard = () => {
     }
   }, [profile]);
 
-  if (isLoadingProfile || !profile) return <ConversationSkeleton />;
+  if (!profile) {
+    return (
+      <div className="space-y-4 p-4">
+        <SkeletonLine className="h-6 w-48" />
+        <SkeletonLine className="h-44 w-full rounded-2xl" />
+        <SkeletonLine className="h-11 w-full rounded-xl" />
+        <SkeletonLine className="h-72 w-full rounded-xl" />
+      </div>
+    );
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -767,31 +872,35 @@ export const ProfileCard = () => {
   };
 
   return (
-    <form className="mx-2 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_18px_45px_-30px_hsl(var(--primary)/0.5)]" onSubmit={submit}>
-      <div className="profile-cover relative min-h-36 overflow-hidden p-5 text-white">
+    <form className="overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-[0_18px_45px_-30px_hsl(var(--primary)/0.5)]" onSubmit={submit}>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-extrabold tracking-tight">Profile &amp; Settings</h2>
+        {isLoadingProfile ? <Loader2 className="mr-10 h-4 w-4 animate-spin text-primary" /> : null}
+      </div>
+      <div className="profile-cover relative min-h-44 overflow-hidden rounded-2xl p-6 text-white shadow-[0_16px_30px_-18px_hsl(var(--primary)/0.75)]">
         <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-white/10" />
         <div className="absolute bottom-0 right-16 h-20 w-20 rounded-full bg-white/10 blur-xl" />
-        <div className="relative flex items-end gap-4 pt-8">
+        <div className="relative flex items-end gap-5 pt-12">
           <div className="relative">
-            <UserAvatar name={form.displayName || form.username} src={profile.avatarEndpoint ?? profile.avatar} size="lg" online={profile.online} />
-            <label className="absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full border-2 border-white bg-primary text-white shadow-md transition hover:scale-105">
-              <Camera className="h-3.5 w-3.5" />
+            <UserAvatar name={form.displayName || form.username} src={profile.avatarEndpoint ?? profile.avatar} size="xl" />
+            <label className="absolute -bottom-1 -right-1 grid h-9 w-9 cursor-pointer place-items-center rounded-full border-2 border-white bg-secondary text-primary shadow-md transition hover:scale-105">
+              <Camera className="h-4 w-4" />
               <span className="sr-only">Avatar</span>
               <input type="file" accept="image/*" className="sr-only" onChange={(event) => handleAvatarChange(event, uploadAvatar)} />
             </label>
           </div>
-          <div className="min-w-0 flex-1 pb-1">
-            <p className="truncate text-lg font-bold">{form.displayName || form.username}</p>
-            <p className="truncate text-xs text-white/75">@{form.username}</p>
+          <div className="min-w-0 flex-1 pb-2">
+            <p className="truncate text-2xl font-bold">{form.displayName || form.username}</p>
+            <p className="mt-1 line-clamp-2 text-sm text-white/80">{form.bio || `@${form.username}`}</p>
           </div>
-          <span className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-emerald-600 shadow-sm">
+          <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-bold text-emerald-600 shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             {profile.online ? "Online" : "Offline"}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 border-b border-border px-2 pt-2">
+      <div className="mt-4 grid grid-cols-3 rounded-xl bg-muted/60 p-1">
         {([
           ["account", "Tài khoản"],
           ["preferences", "Cấu hình"],
@@ -801,8 +910,8 @@ export const ProfileCard = () => {
             key={id}
             type="button"
             className={cn(
-              "border-b-2 border-transparent px-1 py-3 text-xs font-semibold text-muted-foreground transition",
-              profileTab === id && "border-primary text-primary",
+              "rounded-lg px-1 py-2.5 text-sm font-semibold text-muted-foreground transition",
+              profileTab === id && "bg-card text-foreground shadow-sm",
             )}
             onClick={() => setProfileTab(id)}
           >
@@ -811,40 +920,86 @@ export const ProfileCard = () => {
         ))}
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="mt-3 space-y-4 rounded-xl border border-border bg-card p-5 shadow-sm">
         {profileTab === "account" ? (
           <>
             <div>
-              <p className="text-sm font-bold">Thông tin cá nhân</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">Cập nhật tên hiển thị và thông tin hồ sơ của bạn.</p>
+              <p className="flex items-center gap-2 text-base font-bold"><Heart className="h-5 w-5 text-primary" /> Thông tin cá nhân</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Cập nhật chi tiết cá nhân và thông tin hồ sơ của bạn.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <TextInput label="Tên hiển thị" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
+              <TextInput label="Họ và tên" value={form.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} />
               <TextInput label="Tên người dùng" value={form.username} onChange={(value) => setForm((current) => ({ ...current, username: value }))} />
             </div>
-            <TextInput label="Số điện thoại" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-muted-foreground">Email</span>
+                <input value={profile.email} readOnly className="h-10 w-full rounded-xl border border-input bg-muted/40 px-3 text-sm outline-none" />
+              </label>
+              <TextInput label="Số điện thoại" value={form.phone} onChange={(value) => setForm((current) => ({ ...current, phone: value }))} />
+            </div>
             <label className="block space-y-1.5">
               <span className="text-xs font-semibold text-muted-foreground">Giới thiệu</span>
               <textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={3} className="w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15" />
             </label>
           </>
         ) : profileTab === "preferences" ? (
-          <label className="block space-y-2">
-            <span className="text-sm font-bold">Giao diện ứng dụng</span>
-            <select value={form.themePreference} onChange={(event) => setForm((current) => ({ ...current, themePreference: event.target.value }))} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/15">
-              <option value="system">Theo hệ thống</option>
-              <option value="light">Sáng</option>
-              <option value="dark">Tối</option>
-            </select>
-            <span className="block text-xs leading-5 text-muted-foreground">Tùy chọn này sẽ được lưu cùng hồ sơ của bạn.</span>
-          </label>
+          <div className="space-y-5">
+            <div>
+              <p className="flex items-center gap-2 text-base font-bold"><SlidersHorizontal className="h-5 w-5 text-primary" /> Tùy chỉnh ứng dụng</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Cá nhân hóa trải nghiệm trò chuyện của bạn.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Chế độ tối</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Chuyển đổi giữa giao diện sáng và tối</p>
+              </div>
+              <SunMedium className="h-4 w-4 text-muted-foreground" />
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === "dark"}
+                className={cn(
+                  "relative h-6 w-11 rounded-full p-0.5 transition",
+                  theme === "dark" ? "bg-primary" : "bg-muted",
+                )}
+                onClick={() => {
+                  toggleTheme();
+                  setForm((current) => ({ ...current, themePreference: theme === "dark" ? "light" : "dark" }));
+                }}
+              >
+                <span className={cn("block h-5 w-5 rounded-full bg-white shadow-sm transition-transform", theme === "dark" && "translate-x-5")} />
+              </button>
+              <MoonStar className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Hiển thị trạng thái online</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Cho phép người khác thấy khi bạn đang online</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showOnlineStatus}
+                className={cn(
+                  "relative h-6 w-11 rounded-full p-0.5 transition",
+                  showOnlineStatus ? "bg-primary" : "bg-muted",
+                )}
+                onClick={() => setShowOnlineStatus((current) => !current)}
+              >
+                <span className={cn("block h-5 w-5 rounded-full bg-white shadow-sm transition-transform", showOnlineStatus && "translate-x-5")} />
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="rounded-xl border border-border bg-muted/60 p-4">
             <p className="text-sm font-bold">Quyền riêng tư</p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">Trạng thái trực tuyến và thông tin hồ sơ đang được đồng bộ an toàn qua tài khoản của bạn.</p>
           </div>
         )}
-        <Button type="submit" className="rounded-xl px-5" disabled={isMutating}>{isMutating ? "Đang lưu..." : "Lưu thay đổi"}</Button>
+        {profileTab === "account" ? (
+          <Button type="submit" className="brand-gradient rounded-xl border-0 px-5 text-white" disabled={isMutating}>{isMutating ? "Đang lưu..." : "Lưu thay đổi"}</Button>
+        ) : null}
       </div>
     </form>
   );
@@ -905,19 +1060,39 @@ export const AddFriendModal = ({ onClose }: { onClose: () => void }) => {
   }, [currentUser?.id, query]);
 
   return (
-    <Modal title="Thêm bạn" onClose={onClose}>
+    <Modal title="Kết Bạn" onClose={onClose} size="compact">
       <div className="space-y-3">
-        <TextInput label="Tìm người dùng" value={query} onChange={setQuery} />
-        {loading ? <ConversationSkeleton /> : results.map((user) => (
-          <div key={user.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-            <UserAvatar name={user.displayName || user.username} src={user.avatarEndpoint ?? user.avatar} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{user.displayName || user.username}</p>
-              <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
-            </div>
-            <Button size="sm" className="rounded-lg" disabled={isMutating} onClick={() => void sendFriendRequest(user.id)}>Gửi lời mời</Button>
+        <label className="block space-y-2">
+          <span className="text-sm font-bold">Tìm bằng username</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="h-11 w-full rounded-xl border-2 border-primary/70 bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
+            placeholder="Gõ tên username vào đây..."
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="h-10 rounded-xl" onClick={onClose}>Cancel</Button>
+          <Button className="brand-gradient h-10 rounded-xl border-0 text-white" disabled={!query.trim() || loading}>
+            <Search className="h-4 w-4" /> Tìm
+          </Button>
+        </div>
+        {query.trim() ? (
+          <div className="pretty-scrollbar max-h-56 space-y-2 overflow-y-auto pt-1">
+            {loading ? <ConversationSkeleton /> : results.length === 0 ? (
+              <p className="rounded-xl bg-muted/60 p-3 text-center text-sm text-muted-foreground">Không tìm thấy người dùng.</p>
+            ) : results.map((user) => (
+              <div key={user.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                <UserAvatar name={user.displayName || user.username} src={user.avatarEndpoint ?? user.avatar} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{user.displayName || user.username}</p>
+                  <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
+                </div>
+                <Button size="sm" className="brand-gradient rounded-lg border-0 text-white" disabled={isMutating} onClick={() => void sendFriendRequest(user.id)}>Kết bạn</Button>
+              </div>
+            ))}
           </div>
-        ))}
+        ) : null}
       </div>
     </Modal>
   );
@@ -929,29 +1104,59 @@ export const FriendRequestDialog = ({ onClose }: { onClose: () => void }) => {
   const acceptFriendRequest = useChatStore((state) => state.acceptFriendRequest);
   const rejectFriendRequest = useChatStore((state) => state.rejectFriendRequest);
   const isMutating = useChatStore((state) => state.isMutating);
-  const [firstMessages, setFirstMessages] = useState<Record<string, string>>({});
+  const [activeRequestTab, setActiveRequestTab] = useState<"received" | "sent">("received");
 
   return (
-    <Modal title="Lời mời kết bạn" onClose={onClose}>
-      <div className="space-y-5">
-        <ChatListSection title="Đã nhận" count={incoming.length}>
-          {incoming.length === 0 ? <EmptyText text="Không có lời mời mới." /> : incoming.map((request) => (
-            <FriendRequestItem
-              key={request.id}
-              request={request}
-              value={firstMessages[request.id] ?? ""}
-              onChange={(value) => setFirstMessages((current) => ({ ...current, [request.id]: value }))}
-              onAccept={() => void acceptFriendRequest(request.id, firstMessages[request.id])}
-              onReject={() => void rejectFriendRequest(request.id)}
-              disabled={isMutating}
-            />
-          ))}
-        </ChatListSection>
-        <ChatListSection title="Đã gửi" count={outgoing.length}>
-          {outgoing.length === 0 ? <EmptyText text="Bạn chưa gửi lời mời nào." /> : outgoing.map((request) => (
-            <SimpleUserRow key={request.id} user={request.receiver} suffix="Đang chờ" />
-          ))}
-        </ChatListSection>
+    <Modal title="Lời mời kết bạn" onClose={onClose} size="compact">
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 rounded-xl bg-muted/70 p-1">
+          <button
+            type="button"
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition",
+              activeRequestTab === "received" && "border-2 border-primary bg-card py-1 text-foreground shadow-sm",
+            )}
+            onClick={() => setActiveRequestTab("received")}
+          >
+            Đã nhận
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "rounded-lg px-3 py-1.5 text-xs font-bold text-muted-foreground transition",
+              activeRequestTab === "sent" && "border-2 border-primary bg-card py-1 text-foreground shadow-sm",
+            )}
+            onClick={() => setActiveRequestTab("sent")}
+          >
+            Đã gửi
+          </button>
+        </div>
+
+        <div className="pretty-scrollbar max-h-64 space-y-2 overflow-y-auto">
+          {activeRequestTab === "received" ? (
+            incoming.length === 0 ? <EmptyText text="Không có lời mời mới." /> : incoming.map((request) => (
+              <div key={request.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5 shadow-sm">
+                <UserAvatar name={getFriendName(request.requester)} src={request.requester.avatarEndpoint ?? request.requester.avatar} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{getFriendName(request.requester)}</p>
+                  <p className="truncate text-xs text-muted-foreground">@{request.requester.username}</p>
+                </div>
+                <Button variant="outline" size="sm" className="h-8 rounded-lg border-primary/40 px-3 text-primary" disabled={isMutating} onClick={() => void acceptFriendRequest(request.id)}>
+                  Chấp nhận
+                </Button>
+                <button type="button" className="shrink-0 text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground" disabled={isMutating} onClick={() => void rejectFriendRequest(request.id)}>
+                  Từ chối
+                </button>
+              </div>
+            ))
+          ) : (
+            outgoing.length === 0 ? <EmptyText text="Bạn chưa gửi lời mời nào." /> : outgoing.map((request) => (
+              <div key={request.id} className="rounded-xl border border-border bg-card p-2.5 shadow-sm">
+                <SimpleUserRow user={request.receiver} suffix="Đang chờ" />
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </Modal>
   );
@@ -1068,11 +1273,15 @@ export const ChatWindowLayout = ({ user }: { user: AuthUser }) => {
 export const ChatWelcomeScreen = () => (
   <section className="chat-surface grid h-full place-items-center p-6">
     <div className="max-w-md text-center">
-      <div className="brand-gradient mx-auto grid h-16 w-16 place-items-center rounded-2xl text-white shadow-[0_18px_40px_-18px_hsl(var(--primary)/0.8)]">
-        <MessageCircleMore className="h-7 w-7" />
+      <div className="welcome-orb mx-auto grid h-28 w-28 place-items-center rounded-full">
+        <div className="welcome-chat-icon brand-gradient grid h-20 w-20 place-items-center rounded-full text-white shadow-[0_18px_40px_-12px_hsl(var(--primary)/0.7)]">
+          <MessageCircleMore className="h-8 w-8" />
+        </div>
       </div>
-      <h1 className="mt-5 text-2xl font-bold tracking-tight">Chọn một cuộc trò chuyện</h1>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">Tin nhắn và trạng thái trực tuyến sẽ được cập nhật theo thời gian thực.</p>
+      <h1 className="mt-5 bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent">
+        Chào mừng bạn đến với InChat!
+      </h1>
+      <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">Chọn một cuộc hội thoại để bắt đầu chat!</p>
     </div>
   </section>
 );
@@ -1083,17 +1292,17 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
   const peer = getRoomPeer(room, user.id, usersById);
 
   return (
-    <header className="flex min-h-[72px] items-center gap-3 border-b border-border/60 bg-card px-4 py-3 md:px-6">
+    <header className="flex min-h-[112px] items-center gap-4 border-b border-border/40 bg-card px-5 py-4 md:px-8">
       <UserAvatar name={name} src={getRoomAvatar(room, user, usersById)} online={online} size="lg" />
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-base font-bold tracking-tight">{name}</h1>
-        <div className="mt-1 flex items-center gap-2">
+        <h1 className="truncate text-xl font-bold tracking-tight">{name}</h1>
+        <div className="hidden">
           <StatusBadge online={online} />
           {!online && peer?.lastSeenAt ? <span className="text-xs text-muted-foreground">Last seen {formatRelativeTime(peer.lastSeenAt)}</span> : null}
         </div>
       </div>
-      {!isDirectRoom(room) ? <span className="hidden text-xs text-muted-foreground lg:inline">{room.memberIds.length} thành viên</span> : null}
-      <div className="hidden items-center gap-1 sm:flex">
+      {!isDirectRoom(room) ? <span className="hidden">{room.memberIds.length} thành viên</span> : null}
+      <div className="hidden">
         {[
           { icon: Search, label: "Tìm trong cuộc trò chuyện", message: "Tính năng tìm kiếm trong hội thoại đang được chuẩn bị." },
           { icon: Phone, label: "Gọi thoại", message: "Cuộc gọi thoại cần kết nối dịch vụ WebRTC." },
@@ -1169,7 +1378,9 @@ export const ChatWindowBody = ({
       {loading ? (
         <ChatWindowSkeleton />
       ) : messages.length === 0 ? (
-        <EmptyText text="Chưa có tin nhắn nào. Hãy gửi lời chào đầu tiên." />
+        <div className="grid h-full place-items-center">
+          <p className="text-base font-medium text-muted-foreground">Chưa có tin nhắn nào trong cuộc trò chuyện này.</p>
+        </div>
       ) : (
         <div className="space-y-5">
           {messages.map((message) => (

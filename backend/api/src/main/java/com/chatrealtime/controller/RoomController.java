@@ -91,16 +91,6 @@ public class RoomController {
         return roomService.createRoom(request);
     }
 
-    @PostMapping(value = "/{roomId}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public MessageResponse createRoomMessageWithAttachment(
-            @PathVariable String roomId,
-            @RequestParam(required = false) String content,
-            @RequestParam(required = false) String clientMessageId,
-            @RequestParam("file") MultipartFile file
-    ) {
-        return messageService.createMessageWithAttachment(roomId, content, clientMessageId, file);
-    }
-
     @PostMapping("/{roomId}/members")
     public RoomResponse addMembers(
             @PathVariable String roomId,

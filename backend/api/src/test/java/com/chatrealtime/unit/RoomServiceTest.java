@@ -21,6 +21,7 @@ import com.chatrealtime.repository.UserRepository;
 import com.chatrealtime.security.AuthContextService;
 import com.chatrealtime.security.AuthUserPrincipal;
 import com.chatrealtime.service.MessageService;
+import com.chatrealtime.repository.UserBlockRepository;
 import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.service.impl.RoomServiceImpl;
 import com.chatrealtime.storage.AvatarStorageService;
@@ -75,6 +76,8 @@ class RoomServiceTest {
     private AvatarStorageService avatarStorageService;
     @Mock
     private MongoTemplate mongoTemplate;
+    @Mock
+    private UserBlockRepository userBlockRepository;
 
     @InjectMocks
     private RoomServiceImpl roomService;
@@ -91,6 +94,7 @@ class RoomServiceTest {
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
         when(userRepository.existsById("u1")).thenReturn(true);
         when(userRepository.existsById("u2")).thenReturn(true);
+        when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(false);
         when(roomRepository.findByTypeAndMemberIdsContaining("direct", "u2")).thenReturn(List.of(existingRoom));
         when(roomMapper.toResponse(existingRoom, 0L)).thenReturn(toResponse(existingRoom, 0L));
 
@@ -112,6 +116,7 @@ class RoomServiceTest {
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
         when(userRepository.existsById("u1")).thenReturn(true);
         when(userRepository.existsById("u2")).thenReturn(true);
+        when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(false);
         when(roomRepository.findByTypeAndMemberIdsContaining("direct", "u2"))
                 .thenReturn(List.of())
                 .thenReturn(List.of(lateDiscovered));
@@ -136,6 +141,7 @@ class RoomServiceTest {
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
         when(userRepository.existsById("u1")).thenReturn(true);
         when(userRepository.existsById("u2")).thenReturn(true);
+        when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(false);
         when(roomRepository.findByTypeAndDirectKey("direct", "u1:u2"))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.empty())

@@ -74,8 +74,6 @@ public class MessageServiceImpl implements MessageService {
     private static final String TYPE_TEXT = "TEXT";
     private static final String TYPE_IMAGE = "IMAGE";
     private static final String TYPE_FILE = "FILE";
-    private static final boolean ENFORCE_RECALL_TIME_LIMIT = false;
-    private static final int RECALL_TIME_LIMIT_MINUTES = 5;
 
     private final MessageRepository messageRepository;
     private final MessageAttachmentRepository messageAttachmentRepository;
@@ -522,10 +520,10 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private void ensureRecallWindowAllows(Message message) {
-        if (!ENFORCE_RECALL_TIME_LIMIT || message.getTimestamp() == null) {
+        if (!appMessagesProperties.enforceRecallTimeLimit() || message.getTimestamp() == null) {
             return;
         }
-        if (message.getTimestamp().isBefore(LocalDateTime.now().minusMinutes(RECALL_TIME_LIMIT_MINUTES))) {
+        if (message.getTimestamp().isBefore(LocalDateTime.now().minusMinutes(appMessagesProperties.recallTimeLimitMinutes()))) {
             throw new BadRequestException("Message recall time limit has expired");
         }
     }

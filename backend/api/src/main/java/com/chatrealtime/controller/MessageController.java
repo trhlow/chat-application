@@ -74,15 +74,6 @@ public class MessageController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Marks read receipts in bounded batches; clients should invoke repeatedly while unread counts drop if rooms are very large.
-     */
-    @PostMapping("/rooms/{roomId}/read")
-    public ResponseEntity<Void> markRoomAsRead(@PathVariable String roomId) {
-        messageService.markRoomAsRead(roomId);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping("/unread-counts")
     public List<RoomUnreadCountResponse> getUnreadCounts() {
         return messageService.getUnreadCounts();

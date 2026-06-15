@@ -123,7 +123,9 @@ public class AuthServiceImpl implements AuthService {
             refreshTokenService.revokeUserToken(user.getId(), request.refreshToken());
         }
 
+        user.setTokenVersion(user.getTokenVersion() + 1);
         user.setOnline(false);
+        user.setUpdatedAt(Instant.now());
         User savedUser = userRepository.save(user);
         userPrincipalService.evictUserCaches(savedUser.getId(), savedUser.getUsername());
         presenceService.markOffline(user.getId());

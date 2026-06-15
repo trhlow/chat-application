@@ -32,6 +32,7 @@ import com.chatrealtime.service.NotificationService;
 import com.chatrealtime.storage.AvatarStorageService;
 import com.chatrealtime.storage.AvatarUploadResult;
 import com.chatrealtime.util.UserIdPair;
+import com.chatrealtime.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -76,6 +77,7 @@ public class RoomServiceImpl implements RoomService {
     private final NotificationService notificationService;
     private final AvatarStorageService avatarStorageService;
     private final MongoTemplate mongoTemplate;
+    private final UserBlockRepository userBlockRepository;
 
     @Override
     public List<RoomResponse> getCurrentUserRooms() {
@@ -112,6 +114,13 @@ public class RoomServiceImpl implements RoomService {
         String directKey = null;
         if (ROOM_TYPE_DIRECT.equals(roomType)) {
             validateDirectRoomMembers(uniqueMemberIds);
+            
+            String otherUserId = uniqueMemberIds.stream()
+                    .filter(id -> !id.equals(principal.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new BadRequestException("A direct room must contain exactly 2 distinct members"));
+            ensureNotBlockedInDirectRoom(principal.getId(), otherUserId);
+
             directKey = directKey(uniqueMemberIds);
             Optional<Room> existingDirectRoom = findExistingDirectRoom(uniqueMemberIds);
             if (existingDirectRoom.isPresent()) {
@@ -467,6 +476,12 @@ public class RoomServiceImpl implements RoomService {
     public Room getRoomEntityById(String roomId) {
         return roomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
+    }
+
+    private void ensureNotBlockedInDirectRoom(String userId, String otherUserId) {
+        if (userBlockRepository.existsBetweenUsers(userId, otherUserId)) {
+            throw new AccessDeniedException("Blocked users cannot create direct rooms");
+        }
     }
 
     private Room requireGroupRoomForMember(String roomId, String userId) {

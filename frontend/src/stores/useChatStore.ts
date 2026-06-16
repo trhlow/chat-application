@@ -15,7 +15,12 @@ import type {
   ChatUser,
   FriendRequest,
   Friendship,
+  NotificationItem,
+  NotificationRealtimeEvent,
   PresenceEvent,
+  PublicUserProfile,
+  RoomMember,
+  TypingEvent,
   UserProfile,
 } from "@/types/chat";
 
@@ -33,6 +38,11 @@ interface ChatState {
   friends: Friendship[];
   incomingFriendRequests: FriendRequest[];
   outgoingFriendRequests: FriendRequest[];
+  blockedUsers: PublicUserProfile[];
+  notifications: NotificationItem[];
+  notificationUnreadCount: number;
+  typingByRoomId: Record<string, TypingEvent[]>;
+  roomMembersByRoomId: Record<string, RoomMember[]>;
   profile: UserProfile | null;
   selectedRoomId: string | null;
   isLoadingRooms: boolean;
@@ -48,12 +58,27 @@ interface ChatState {
   fetchMessages: (roomId: string) => Promise<void>;
   fetchOlderMessages: (roomId: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
+  sendAttachment: (file: File, content?: string) => Promise<void>;
+  recallMessage: (messageId: string) => Promise<void>;
+  deleteMessageForMe: (messageId: string) => Promise<void>;
   createDirectRoom: (memberId: string) => Promise<ChatRoom | null>;
   createGroupRoom: (payload: { name: string; memberIds: string[] }) => Promise<ChatRoom | null>;
   fetchFriends: () => Promise<void>;
   sendFriendRequest: (receiverId: string) => Promise<void>;
   acceptFriendRequest: (requestId: string, firstMessage?: string) => Promise<void>;
   rejectFriendRequest: (requestId: string) => Promise<void>;
+  cancelFriendRequest: (requestId: string) => Promise<void>;
+  unfriend: (friendId: string) => Promise<void>;
+  blockUser: (userId: string) => Promise<void>;
+  unblockUser: (userId: string) => Promise<void>;
+  fetchBlockedUsers: () => Promise<void>;
+  fetchNotifications: () => Promise<void>;
+  markNotificationRead: (notificationId: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  sendTyping: (typing: boolean) => void;
+  fetchRoomMembers: (roomId: string) => Promise<void>;
+  refreshRoom: (room: ChatRoom) => void;
+  removeRoomLocally: (roomId: string) => void;
   fetchProfile: () => Promise<void>;
   updateProfile: (payload: {
     username: string;
@@ -76,6 +101,7 @@ const realtimeClient = new ChatRealtimeClient();
 const statusUpdatesInFlight = new Set<string>();
 const roomSubscriptions = new Map<string, () => void>();
 let presenceUnsubscribe: (() => void) | null = null;
+let notificationUnsubscribe: (() => void) | null = null;
 let connectionUnsubscribe: (() => void) | null = null;
 
 const clearRealtimeSubscriptions = () => {
@@ -83,6 +109,8 @@ const clearRealtimeSubscriptions = () => {
   roomSubscriptions.clear();
   presenceUnsubscribe?.();
   presenceUnsubscribe = null;
+  notificationUnsubscribe?.();
+  notificationUnsubscribe = null;
   connectionUnsubscribe?.();
   connectionUnsubscribe = null;
 };
@@ -120,16 +148,57 @@ const syncRoomSubscriptions = (roomIds: string[]) => {
         }
       },
     );
+    const unsubscribeTyping = realtimeClient.subscribe(
+      `/topic/rooms/${roomId}/typing`,
+      (payload) => {
+        try {
+          const event = JSON.parse(payload) as TypingEvent;
+          useChatStore.setState((state) => ({
+            typingByRoomId: {
+              ...state.typingByRoomId,
+              [roomId]: event.typing
+                ? [
+                    ...(state.typingByRoomId[roomId] ?? []).filter(
+                      (item) => item.userId !== event.userId,
+                    ),
+                    event,
+                  ]
+                : (state.typingByRoomId[roomId] ?? []).filter(
+                    (item) => item.userId !== event.userId,
+                  ),
+            },
+          }));
+        } catch (_error) {
+          // Ignore malformed realtime payloads.
+        }
+      },
+    );
 
     roomSubscriptions.set(roomId, () => {
       unsubscribeMessage();
       unsubscribeStatus();
+      unsubscribeTyping();
     });
   });
 };
 
+const normalizeRoom = (room: ChatRoom): ChatRoom => ({
+  ...room,
+  memberIds: room.memberIds ?? [],
+  admins: room.admins ?? [],
+  unreadCount: room.unreadCount ?? 0,
+});
+
+const normalizeMessage = (message: ChatMessage): ChatMessage => ({
+  ...message,
+  content: message.content ?? "",
+  deliveredToUserIds: message.deliveredToUserIds ?? [],
+  readByUserIds: message.readByUserIds ?? [],
+  attachments: message.attachments ?? [],
+});
+
 const sortRooms = (rooms: ChatRoom[]) =>
-  [...rooms].sort((a, b) => {
+  rooms.map(normalizeRoom).sort((a, b) => {
     const aTime = a.lastMessageAt ?? a.updatedAt ?? a.createdAt ?? "";
     const bTime = b.lastMessageAt ?? b.updatedAt ?? b.createdAt ?? "";
     return bTime.localeCompare(aTime);
@@ -137,14 +206,17 @@ const sortRooms = (rooms: ChatRoom[]) =>
 
 const uniqueMessages = (messages: ChatMessage[]) => {
   const byId = new Map<string, ChatMessage>();
-  messages.forEach((message) => byId.set(message.id, message));
+  messages.forEach((message) => {
+    const normalizedMessage = normalizeMessage(message);
+    byId.set(normalizedMessage.id, normalizedMessage);
+  });
   return [...byId.values()].sort((a, b) =>
     a.timestamp.localeCompare(b.timestamp),
   );
 };
 
 const mergeRooms = (rooms: ChatRoom[], room: ChatRoom) =>
-  sortRooms([room, ...rooms.filter((item) => item.id !== room.id)]);
+  sortRooms([normalizeRoom(room), ...rooms.filter((item) => item.id !== room.id)]);
 
 export const getNextUnreadCount = ({
   currentCount,
@@ -180,6 +252,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   friends: [],
   incomingFriendRequests: [],
   outgoingFriendRequests: [],
+  blockedUsers: [],
+  notifications: [],
+  notificationUnreadCount: 0,
+  typingByRoomId: {},
+  roomMembersByRoomId: {},
   profile: null,
   selectedRoomId: null,
   isLoadingRooms: false,
@@ -332,6 +409,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ isSending: false });
     }
   },
+  sendAttachment: async (file, content) => {
+    const roomId = get().selectedRoomId;
+    if (!roomId) return;
+    set({ isSending: true, error: null });
+    try {
+      const response = await chatApi.sendAttachment(roomId, file, content);
+      get().handleIncomingMessage(response.data);
+      toast.success("Đã gửi tệp đính kèm.");
+    } catch (_error) {
+      toast.error("Không thể gửi tệp đính kèm.");
+    } finally {
+      set({ isSending: false });
+    }
+  },
+  recallMessage: async (messageId) => {
+    try {
+      const response = await chatApi.recallMessage(messageId);
+      get().handleMessageStatus(response.data);
+      toast.success("Đã thu hồi tin nhắn.");
+    } catch (_error) {
+      toast.error("Không thể thu hồi tin nhắn.");
+    }
+  },
+  deleteMessageForMe: async (messageId) => {
+    try {
+      await chatApi.deleteMessageForMe(messageId);
+      set((state) => ({
+        messagesByRoomId: Object.fromEntries(
+          Object.entries(state.messagesByRoomId).map(([roomId, messages]) => [
+            roomId,
+            messages.filter((message) => message.id !== messageId),
+          ]),
+        ),
+      }));
+      toast.success("Đã xóa tin nhắn ở phía bạn.");
+    } catch (_error) {
+      toast.error("Không thể xóa tin nhắn.");
+    }
+  },
   createDirectRoom: async (memberId) => {
     set({ isMutating: true, error: null });
     try {
@@ -476,6 +592,98 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ isMutating: false });
     }
   },
+  cancelFriendRequest: async (requestId) => {
+    try {
+      await chatApi.cancelFriendRequest(requestId);
+      set((state) => ({
+        outgoingFriendRequests: state.outgoingFriendRequests.filter((item) => item.id !== requestId),
+      }));
+      toast.success("Đã thu hồi lời mời kết bạn.");
+    } catch (_error) {
+      toast.error("Không thể thu hồi lời mời.");
+    }
+  },
+  unfriend: async (friendId) => {
+    try {
+      await chatApi.unfriend(friendId);
+      set((state) => ({ friends: state.friends.filter((item) => item.friend.id !== friendId) }));
+      toast.success("Đã hủy kết bạn.");
+    } catch (_error) {
+      toast.error("Không thể hủy kết bạn.");
+    }
+  },
+  blockUser: async (userId) => {
+    try {
+      await chatApi.blockUser(userId);
+      await Promise.all([get().fetchFriends(), get().fetchBlockedUsers()]);
+      toast.success("Đã chặn người dùng.");
+    } catch (_error) {
+      toast.error("Không thể chặn người dùng.");
+    }
+  },
+  unblockUser: async (userId) => {
+    try {
+      await chatApi.unblockUser(userId);
+      await get().fetchBlockedUsers();
+      toast.success("Đã bỏ chặn người dùng.");
+    } catch (_error) {
+      toast.error("Không thể bỏ chặn người dùng.");
+    }
+  },
+  fetchBlockedUsers: async () => {
+    try {
+      const response = await chatApi.getBlockedUsers();
+      set({ blockedUsers: response.data });
+    } catch (_error) {
+      set({ blockedUsers: [] });
+    }
+  },
+  fetchNotifications: async () => {
+    try {
+      const [items, count] = await Promise.all([
+        chatApi.getNotifications(),
+        chatApi.getNotificationUnreadCount(),
+      ]);
+      set({ notifications: items.data.items, notificationUnreadCount: count.data.unreadCount });
+    } catch (_error) {
+      toast.error("Không thể tải thông báo.");
+    }
+  },
+  markNotificationRead: async (notificationId) => {
+    const response = await chatApi.markNotificationRead(notificationId);
+    set((state) => ({
+      notifications: state.notifications.map((item) =>
+        item.id === notificationId ? response.data : item,
+      ),
+      notificationUnreadCount: Math.max(0, state.notificationUnreadCount - 1),
+    }));
+  },
+  markAllNotificationsRead: async () => {
+    await chatApi.markAllNotificationsRead();
+    set((state) => ({
+      notifications: state.notifications.map((item) => ({ ...item, read: true })),
+      notificationUnreadCount: 0,
+    }));
+  },
+  sendTyping: (typing) => {
+    const roomId = get().selectedRoomId;
+    if (roomId) realtimeClient.sendTyping(roomId, typing);
+  },
+  fetchRoomMembers: async (roomId) => {
+    const response = await chatApi.getRoomMembers(roomId);
+    set((state) => ({
+      roomMembersByRoomId: { ...state.roomMembersByRoomId, [roomId]: response.data },
+    }));
+  },
+  refreshRoom: (room) => {
+    set((state) => ({ rooms: mergeRooms(state.rooms, room) }));
+  },
+  removeRoomLocally: (roomId) => {
+    set((state) => ({
+      rooms: state.rooms.filter((room) => room.id !== roomId),
+      selectedRoomId: state.selectedRoomId === roomId ? null : state.selectedRoomId,
+    }));
+  },
   fetchProfile: async () => {
     set({ isLoadingProfile: true, error: null });
     try {
@@ -494,7 +702,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         messages
           .filter((message) => message.senderId !== response.data.id)
-          .filter((message) => !message.deliveredToUserIds.includes(response.data.id))
+          .filter((message) => !(message.deliveredToUserIds ?? []).includes(response.data.id))
           .forEach((message) => state.markMessageStatus(message, "delivered"));
       });
     } catch (_error) {
@@ -547,7 +755,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const messages = get().messagesByRoomId[roomId] ?? [];
     messages
       .filter((message) => message.senderId !== currentUserId)
-      .filter((message) => !message.readByUserIds.includes(currentUserId))
+      .filter((message) => !(message.readByUserIds ?? []).includes(currentUserId))
       .forEach((message) => {
         get().markMessageStatus(message, "seen");
       });
@@ -558,11 +766,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
-    if (status === "delivered" && message.deliveredToUserIds.includes(currentUserId)) {
+    if (status === "delivered" && (message.deliveredToUserIds ?? []).includes(currentUserId)) {
       return;
     }
 
-    if (status === "seen" && message.readByUserIds.includes(currentUserId)) {
+    if (status === "seen" && (message.readByUserIds ?? []).includes(currentUserId)) {
       return;
     }
 
@@ -607,10 +815,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       connectedOnce = true;
       syncRoomSubscriptions(get().rooms.map((room) => room.id));
     });
-    presenceUnsubscribe = realtimeClient.subscribe("/topic/presence", (payload) => {
+    presenceUnsubscribe = realtimeClient.subscribe("/user/queue/presence", (payload) => {
       const event = parsePresenceEvent(payload);
       if (event) {
         get().handlePresence(event);
+      }
+    });
+    notificationUnsubscribe = realtimeClient.subscribe("/user/queue/notifications", (payload) => {
+      try {
+        const event = JSON.parse(payload) as NotificationRealtimeEvent;
+        set((state) => ({
+          notifications: event.notification
+            ? [event.notification, ...state.notifications.filter((item) => item.id !== event.notification?.id)]
+            : state.notifications,
+          notificationUnreadCount: event.unreadCount,
+        }));
+      } catch (_error) {
+        // Ignore malformed realtime payloads.
       }
     });
     syncRoomSubscriptions(get().rooms.map((room) => room.id));
@@ -665,10 +886,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   handleMessageStatus: (message) => {
     const currentUserId = get().profile?.id;
     if (currentUserId) {
-      if (message.deliveredToUserIds.includes(currentUserId)) {
+      if ((message.deliveredToUserIds ?? []).includes(currentUserId)) {
         statusUpdatesInFlight.delete(`${message.id}:delivered`);
       }
-      if (message.readByUserIds.includes(currentUserId)) {
+      if ((message.readByUserIds ?? []).includes(currentUserId)) {
         statusUpdatesInFlight.delete(`${message.id}:seen`);
       }
     }

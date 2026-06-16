@@ -13,6 +13,7 @@ export const authApi = {
   signin: (payload: SignInRequestPayload) =>
     authClient.post<BackendAuthResponse>("/auth/login", payload),
   signout: () => apiClient.post<void>("/auth/logout"),
+  signoutAll: () => apiClient.post<void>("/auth/logout-all"),
   refresh: () => authClient.post<BackendAuthResponse>("/auth/refresh"),
   getMe: () => apiClient.get<BackendAuthUser>("/users/me"),
 };

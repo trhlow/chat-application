@@ -27,15 +27,24 @@ export interface ChatRoom {
   lastMessagePreview: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  settings?: GroupSettings | null;
+}
+
+export interface GroupSettings {
+  sendMessagePermission: "ALL" | "ADMIN_ONLY" | string;
+  editGroupInfoPermission: "ALL" | "ADMIN_ONLY" | string;
+  inviteMemberPermission: "ALL" | "ADMIN_ONLY" | string;
+  allowNewMemberReadHistory: boolean;
 }
 
 export interface MessageAttachment {
   id: string;
   messageId: string;
-  url: string;
-  type: string;
-  fileName: string | null;
-  size: number | null;
+  downloadEndpoint: string;
+  fileType: string;
+  mimeType: string;
+  fileSize: number | null;
+  originalName: string | null;
 }
 
 export interface ChatMessage {
@@ -48,6 +57,12 @@ export interface ChatMessage {
   deliveredToUserIds: string[];
   readByUserIds: string[];
   attachments: MessageAttachment[];
+  type?: string;
+  replyToMessageId?: string | null;
+  replyPreview?: string | null;
+  recalled?: boolean;
+  recalledAt?: string | null;
+  clientMessageId?: string | null;
 }
 
 export interface MessagePage {
@@ -62,12 +77,28 @@ export interface PresenceEvent {
   lastSeenAt: string | null;
 }
 
+export interface TypingEvent {
+  roomId: string;
+  userId: string;
+  username: string;
+  typing: boolean;
+  timestamp: string;
+}
+
 export interface RoomUnreadCount {
   roomId: string;
   unreadCount: number;
 }
 
 export interface FriendUser {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarEndpoint: string | null;
+  avatar: string | null;
+}
+
+export interface PublicUserProfile {
   id: string;
   username: string;
   displayName: string | null;
@@ -102,4 +133,43 @@ export interface UserProfile {
   avatar: string | null;
   online: boolean;
   lastSeenAt: string | null;
+}
+
+export interface RoomMember extends PublicUserProfile {
+  role: "OWNER" | "ADMIN" | "MEMBER" | string;
+}
+
+export interface GroupJoinRequest {
+  id: string;
+  roomId: string;
+  requesterId: string;
+  targetUserId: string;
+  status: string;
+  createdAt: string;
+  respondedAt: string | null;
+  respondedBy: string | null;
+}
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  relatedId: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  items: NotificationItem[];
+  page: number;
+  size: number;
+  hasMore: boolean;
+}
+
+export interface NotificationRealtimeEvent {
+  eventType: string;
+  notification: NotificationItem | null;
+  unreadCount: number;
 }

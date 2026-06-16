@@ -40,6 +40,7 @@ interface AuthState {
   signup: (values: SignUpFormValues) => Promise<void>;
   signin: (values: SignInFormValues) => Promise<void>;
   signout: () => Promise<void>;
+  signoutAll: () => Promise<void>;
   refreshAccessToken: () => Promise<string | null>;
   fetchCurrentUser: () => Promise<AuthUser>;
   bootstrap: () => Promise<void>;
@@ -96,6 +97,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signout: async () => {
     try {
       await authApi.signout();
+    } finally {
+      get().clearSession();
+    }
+  },
+  signoutAll: async () => {
+    try {
+      await authApi.signoutAll();
     } finally {
       get().clearSession();
     }

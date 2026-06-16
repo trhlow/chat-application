@@ -22,6 +22,7 @@ import {
   SlidersHorizontal,
   SunMedium,
   UserPlus,
+  UserMinus,
   UserRound,
   UsersRound,
   Video,
@@ -39,6 +40,14 @@ import {
 import { toast } from "sonner";
 
 import { EmojiPicker } from "@/components/chat/EmojiPicker";
+import {
+  BlockedUsersDialog,
+  ConversationSearchDialog,
+  FriendActions,
+  GroupRequestsWorkspace,
+  NotificationCenter,
+  RoomSettingsDialog,
+} from "@/components/chat/FeatureDialogs";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { API_URL } from "@/lib/config";
@@ -47,11 +56,13 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
 import type { AuthUser } from "@/types/auth";
-import type { ChatMessage, ChatRoom, ChatUser, FriendRequest, FriendUser } from "@/types/chat";
+import type { ChatMessage, ChatRoom, ChatUser, FriendRequest, FriendUser, TypingEvent } from "@/types/chat";
 
 type SidebarTab = "chats" | "friends" | "profile";
 type AppView = "chats" | "friends";
 type FriendsSection = "list" | "groups" | "requests" | "groupRequests";
+
+const EMPTY_TYPING_USERS: TypingEvent[] = [];
 
 const apiOrigin = API_URL.replace(/\/api\/?$/, "");
 
@@ -250,10 +261,10 @@ export const ChatCard = ({
   return (
     <button
       className={cn(
-        "conversation-card grid min-h-[62px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-xl border px-3 py-2 text-left shadow-[0_5px_14px_-13px_hsl(var(--primary)/0.65)] transition duration-200",
+        "conversation-card grid min-h-[70px] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition duration-200",
         active
-          ? "border-primary/60 bg-accent/70 text-foreground shadow-[0_6px_18px_-16px_hsl(var(--primary)/0.7)]"
-          : "border-transparent bg-accent/35 hover:border-primary/15 hover:bg-accent/55",
+          ? "border-primary/20 bg-primary/[0.08] text-foreground shadow-[inset_3px_0_0_hsl(var(--primary))]"
+          : "border-transparent bg-transparent hover:bg-muted/70",
       )}
       onClick={onSelect}
     >
@@ -335,6 +346,7 @@ export const AppSidebar = ({
 }) => {
   const { theme, toggleTheme } = useTheme();
   const signout = useAuthStore((state) => state.signout);
+  const signoutAll = useAuthStore((state) => state.signoutAll);
   const rooms = useChatStore((state) => state.rooms);
   const usersById = useChatStore((state) => state.usersById);
   const selectedRoomId = useChatStore((state) => state.selectedRoomId);
@@ -348,6 +360,7 @@ export const AppSidebar = ({
   const [modal, setModal] = useState<"friend" | "requests" | "group" | null>(null);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [blockedUsersOpen, setBlockedUsersOpen] = useState(false);
 
   const filteredRooms = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -364,9 +377,12 @@ export const AppSidebar = ({
   }, [activeView, tab]);
 
   return (
-    <aside className="relative flex h-full min-h-0 flex-col border-r border-border/70 bg-card p-2">
-      <nav className="brand-gradient flex h-16 shrink-0 items-center gap-2 rounded-2xl px-5 text-white shadow-[0_10px_24px_-16px_rgb(126_34_206/0.8)]">
-        <span className="mr-auto text-2xl font-extrabold tracking-tight">InChat</span>
+    <aside className="relative flex h-full min-h-0 flex-col border-r border-border/70 bg-card">
+      <nav className="flex h-[72px] shrink-0 items-center gap-2 border-b border-border/70 px-5">
+        <span className="mr-auto flex items-center gap-2.5 text-xl font-extrabold tracking-tight">
+          <span className="brand-gradient grid h-9 w-9 place-items-center rounded-xl text-white shadow-[0_8px_20px_-10px_hsl(var(--primary))]"><MessageCircleMore className="h-5 w-5" /></span>
+          InChat
+        </span>
         <button
           className="hidden"
           onClick={() => setAccountMenuOpen((current) => !current)}
@@ -425,14 +441,14 @@ export const AppSidebar = ({
             <Settings className="h-4 w-4" />
           </button>
         </div>
-        <SunMedium className="h-5 w-5 text-white/75" />
+        <SunMedium className="h-4 w-4 text-muted-foreground" />
         <button
           type="button"
           role="switch"
           aria-checked={theme === "dark"}
           aria-label="Đổi giao diện sáng tối"
           title="Đổi giao diện sáng tối"
-          className="relative h-7 w-12 rounded-full bg-white/80 p-1 shadow-inner transition hover:bg-white"
+          className="relative h-6 w-11 rounded-full bg-muted p-0.5 shadow-inner transition hover:bg-muted/80"
           onClick={toggleTheme}
         >
           <span className={cn(
@@ -440,15 +456,16 @@ export const AppSidebar = ({
             theme === "dark" && "translate-x-5 bg-blue-500",
           )} />
         </button>
-        <MoonStar className="h-5 w-5 text-white/75" />
+        <MoonStar className="h-4 w-4 text-muted-foreground" />
+        <NotificationCenter />
       </nav>
 
       <button
         type="button"
-        className="mt-3 flex h-12 shrink-0 items-center gap-3 rounded-xl border border-primary/10 bg-accent/45 px-3 text-left text-sm font-semibold text-foreground shadow-[0_6px_16px_-14px_hsl(var(--primary)/0.75)] transition hover:border-primary/25 hover:bg-accent/70 active:scale-[0.99]"
+        className="mx-4 mt-4 flex h-11 shrink-0 items-center gap-3 rounded-xl bg-primary px-3 text-left text-sm font-semibold text-primary-foreground shadow-[0_10px_24px_-16px_hsl(var(--primary))] transition hover:bg-primary/90 active:scale-[0.98]"
         onClick={() => setModal("friend")}
       >
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-blue-600 to-cyan-400 text-white shadow-sm">
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/15 text-white">
           <MessageCircleMore className="h-4 w-4" />
         </span>
         Gửi Tin Nhắn Mới
@@ -502,6 +519,9 @@ export const AppSidebar = ({
           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => { toggleTheme(); setSettingsMenuOpen(false); }}>
             <Settings className="h-5 w-5" /> Cài đặt
           </button>
+          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => { setBlockedUsersOpen(true); setSettingsMenuOpen(false); }}>
+            <UserMinus className="h-5 w-5" /> Danh sách đã chặn
+          </button>
           <div className="my-1 border-t border-border" />
           {[
             { icon: Database, label: "Dữ liệu" },
@@ -521,14 +541,17 @@ export const AppSidebar = ({
           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400" onClick={() => void signout()}>
             <LogOut className="h-5 w-5" /> Đăng xuất
           </button>
+          <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400" onClick={() => void signoutAll()}>
+            <LogOut className="h-5 w-5" /> Đăng xuất tất cả thiết bị
+          </button>
           <button className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm transition hover:bg-muted" onClick={() => setSettingsMenuOpen(false)}>
             <X className="h-5 w-5" /> Thoát
           </button>
         </section>
       ) : null}
 
-      <div className="mt-5 flex min-h-0 flex-1 flex-col bg-card">
-        <header className={cn("shrink-0 border-b border-border/60 pb-3", tab === "chats" && "hidden")}>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col bg-card px-4">
+        <header className="shrink-0 pb-3">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h1 className="text-lg font-bold tracking-tight">{tabTitle}</h1>
@@ -555,7 +578,7 @@ export const AppSidebar = ({
                   placeholder="Tìm kiếm"
                 />
               </label>
-              <button className="flex h-11 w-full items-center gap-3 rounded-xl border border-primary/10 bg-accent/70 px-3 text-left text-sm font-semibold text-accent-foreground transition hover:bg-accent" onClick={() => setModal("friend")}>
+              <button className="hidden" onClick={() => setModal("friend")}>
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-primary text-primary-foreground"><Plus className="h-4 w-4" /></span>
                 Gửi tin nhắn mới
               </button>
@@ -563,7 +586,7 @@ export const AppSidebar = ({
           ) : null}
         </header>
 
-        <div className="pretty-scrollbar min-h-0 flex-1 space-y-7 overflow-y-auto px-0.5 py-1">
+        <div className="pretty-scrollbar min-h-0 flex-1 space-y-7 overflow-y-auto py-2">
           {tab === "chats" && (
             isLoadingRooms ? <ConversationSkeleton /> : (
               <div className="space-y-5">
@@ -586,7 +609,7 @@ export const AppSidebar = ({
             />
           )}
         </div>
-        <div className="shrink-0 border-t border-border/60 bg-card pt-1.5">
+        <div className="shrink-0 border-t border-border/60 bg-card py-2">
           <NavUser user={user} onProfile={() => {
             setProfileOpen(true);
             void fetchProfile();
@@ -611,6 +634,7 @@ export const AppSidebar = ({
           </section>
         </div>
       ) : null}
+      {blockedUsersOpen ? <BlockedUsersDialog onClose={() => setBlockedUsersOpen(false)} /> : null}
       {modal === "friend" ? <AddFriendModal onClose={() => setModal(null)} /> : null}
       {modal === "requests" ? <FriendRequestDialog onClose={() => setModal(null)} /> : null}
       {modal === "group" ? <NewGroupChatModal onClose={() => setModal(null)} /> : null}
@@ -753,7 +777,7 @@ export const FriendsWorkspace = ({
                 {isLoading ? <ConversationSkeleton /> : filteredFriends.length === 0 ? <EmptyText text="Không tìm thấy bạn bè." /> : (
                   <div className="divide-y divide-border">
                     {filteredFriends.map(({ id, friend }) => (
-                      <button
+                      <div
                         key={id}
                         className="flex w-full items-center gap-4 px-2 py-4 text-left transition hover:bg-muted"
                         onClick={() => void createDirectRoom(friend.id).then((room) => { if (room) onOpenChat(); })}
@@ -763,7 +787,8 @@ export const FriendsWorkspace = ({
                           <p className="truncate font-semibold">{getFriendName(friend)}</p>
                           <p className="truncate text-xs text-muted-foreground">@{friend.username}</p>
                         </div>
-                      </button>
+                        <FriendActions friend={friend} />
+                      </div>
                     ))}
                   </div>
                 )}
@@ -805,12 +830,15 @@ export const FriendsWorkspace = ({
               <div className="space-y-3">
                 <h2 className="font-bold">Đã gửi ({outgoing.length})</h2>
                 {outgoing.length === 0 ? <EmptyText text="Bạn chưa gửi lời mời nào." /> : outgoing.map((request) => (
-                  <div key={request.id} className="rounded-lg border border-border p-3"><SimpleUserRow user={request.receiver} suffix="Đang chờ" /></div>
+                  <div key={request.id} className="flex items-center gap-2 rounded-lg border border-border p-3">
+                    <div className="min-w-0 flex-1"><SimpleUserRow user={request.receiver} suffix="Đang chờ" /></div>
+                    <Button variant="ghost" size="sm" onClick={() => void useChatStore.getState().cancelFriendRequest(request.id)}>Thu hồi</Button>
+                  </div>
                 ))}
               </div>
             </div>
           ) : (
-            <EmptyText text="Backend chưa cung cấp API lời mời vào nhóm." />
+            <GroupRequestsWorkspace rooms={rooms} />
           )}
         </div>
       </div>
@@ -1290,13 +1318,15 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
   const name = getRoomName(room, user, usersById);
   const online = getRoomOnline(room, user, usersById);
   const peer = getRoomPeer(room, user.id, usersById);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <header className="flex min-h-[112px] items-center gap-4 border-b border-border/40 bg-card px-5 py-4 md:px-8">
+    <header className="flex min-h-[80px] items-center gap-3 border-b border-border/60 bg-card px-5 shadow-[0_1px_0_hsl(var(--border)/0.35)] md:px-7">
       <UserAvatar name={name} src={getRoomAvatar(room, user, usersById)} online={online} size="lg" />
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-bold tracking-tight">{name}</h1>
-        <div className="hidden">
+        <h1 className="truncate text-base font-bold tracking-tight">{name}</h1>
+        <div className="mt-0.5 flex items-center gap-2">
           <StatusBadge online={online} />
           {!online && peer?.lastSeenAt ? <span className="text-xs text-muted-foreground">Last seen {formatRelativeTime(peer.lastSeenAt)}</span> : null}
         </div>
@@ -1314,6 +1344,12 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
           </Button>
         ))}
       </div>
+      <div className="flex gap-1">
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label="Tìm trong cuộc trò chuyện" onClick={() => setSearchOpen(true)}><Search className="h-5 w-5" /></Button>
+        {!isDirectRoom(room) ? <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label="Quản lý nhóm" onClick={() => setSettingsOpen(true)}><Settings className="h-5 w-5" /></Button> : null}
+      </div>
+      {searchOpen ? <ConversationSearchDialog roomId={room.id} onClose={() => setSearchOpen(false)} /> : null}
+      {settingsOpen ? <RoomSettingsDialog room={room} user={user} usersById={usersById} onClose={() => setSettingsOpen(false)} /> : null}
     </header>
   );
 };
@@ -1339,6 +1375,7 @@ export const ChatWindowBody = ({
   const previousLastMessageIdRef = useRef<string | null>(null);
   const fetchOlderMessages = useChatStore((state) => state.fetchOlderMessages);
   const markVisibleMessages = useChatStore((state) => state.markVisibleMessages);
+  const typingUsers = useChatStore((state) => state.typingByRoomId[roomId] ?? EMPTY_TYPING_USERS);
   const lastMessageId = messages.at(-1)?.id ?? null;
 
   useEffect(() => {
@@ -1373,7 +1410,7 @@ export const ChatWindowBody = ({
   };
 
   return (
-    <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-7 md:px-8">
+    <div ref={scrollRef} onScroll={handleScroll} className="pretty-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-7">
       {pageState?.loadingOlder ? <p className="mb-3 flex items-center justify-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading older messages</p> : null}
       {loading ? (
         <ChatWindowSkeleton />
@@ -1382,12 +1419,17 @@ export const ChatWindowBody = ({
           <p className="text-base font-medium text-muted-foreground">Chưa có tin nhắn nào trong cuộc trò chuyện này.</p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-3">
           {messages.map((message) => (
             <MessageItem key={message.id} message={message} mine={message.senderId === currentUser.id} sender={usersById[message.senderId]} currentUserId={currentUser.id} />
           ))}
         </div>
       )}
+      {typingUsers.filter((item) => item.userId !== currentUser.id).length > 0 ? (
+        <p className="mt-3 text-xs font-medium text-primary">
+          {typingUsers.filter((item) => item.userId !== currentUser.id).map((item) => item.username).join(", ")} đang nhập...
+        </p>
+      ) : null}
       <div ref={bottomRef} />
     </div>
   );
@@ -1404,41 +1446,47 @@ export const ChatWindowSkeleton = () => (
 export const MessageItem = ({ message, mine, sender, currentUserId }: { message: ChatMessage; mine: boolean; sender?: ChatUser; currentUserId: string }) => {
   const senderName = sender?.displayName || sender?.username || "User";
   const receipt = getReceiptLabel(message, currentUserId);
+  const recallMessage = useChatStore((state) => state.recallMessage);
+  const deleteMessageForMe = useChatStore((state) => state.deleteMessageForMe);
 
   return (
-    <div className={cn("mx-auto flex max-w-5xl gap-2.5", mine && "justify-end")}>
+    <div className={cn("group mx-auto flex max-w-none gap-2.5", mine && "justify-end")}>
       {!mine ? <UserAvatar name={senderName} src={sender?.avatarEndpoint ?? sender?.avatar} size="sm" /> : null}
-      <div className={cn("max-w-[78%]", mine && "text-right")}>
+      <div className={cn("max-w-[76%]", mine && "text-right")}>
         {!mine ? <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">{senderName}</p> : null}
         <div className={cn(
-          "space-y-2 rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-sm",
+          "inline-block space-y-2 rounded-2xl px-3.5 py-2 text-left text-sm leading-6",
           mine
-            ? "rounded-br-md bg-primary text-primary-foreground shadow-[0_12px_28px_-18px_hsl(var(--primary)/0.85)]"
-            : "rounded-bl-md border border-white/80 bg-card text-card-foreground dark:border-border",
+            ? "rounded-br-md bg-primary text-primary-foreground shadow-[0_8px_18px_-14px_hsl(var(--primary))]"
+            : "rounded-bl-md border border-border/70 bg-card text-card-foreground shadow-[0_5px_14px_-12px_hsl(var(--foreground)/0.3)]",
         )}>
           {message.content ? <p className="whitespace-pre-wrap break-words">{message.content}</p> : null}
           {message.attachments?.map((attachment) => {
-            const url = resolveMediaUrl(attachment.url);
+            const url = resolveMediaUrl(attachment.downloadEndpoint);
             if (!url) return null;
 
-            if (attachment.type.toLowerCase().startsWith("image/")) {
+            if (attachment.mimeType?.toLowerCase().startsWith("image/") || attachment.fileType?.toLowerCase() === "image") {
               return (
                 <a key={attachment.id} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg">
-                  <img src={url} alt={attachment.fileName || "Ảnh đính kèm"} className="max-h-72 w-full object-cover" loading="lazy" />
+                  <img src={url} alt={attachment.originalName || "Ảnh đính kèm"} className="max-h-72 w-full object-cover" loading="lazy" />
                 </a>
               );
             }
 
-            const fileSize = formatFileSize(attachment.size);
+            const fileSize = formatFileSize(attachment.fileSize);
             return (
               <a key={attachment.id} href={url} target="_blank" rel="noreferrer" className="block rounded-lg border border-current/20 px-3 py-2 underline-offset-4 hover:underline">
-                {attachment.fileName || "Tệp đính kèm"}
+                {attachment.originalName || "Tệp đính kèm"}
                 {fileSize ? ` (${fileSize})` : ""}
               </a>
             );
           })}
         </div>
-        <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
+        <div className={cn("mt-1 flex h-4 gap-2 opacity-0 transition group-hover:opacity-60 hover:!opacity-100", mine && "justify-end")}>
+          {mine && !message.recalled ? <button className="text-[11px] hover:underline" onClick={() => void recallMessage(message.id)}>Thu hồi</button> : null}
+          <button className="text-[11px] hover:underline" onClick={() => void deleteMessageForMe(message.id)}>Xóa phía tôi</button>
+        </div>
+        <p className="px-1 text-[10px] text-muted-foreground/80">
           {new Date(message.timestamp).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
           {mine ? ` - ${receipt}` : ""}
         </p>
@@ -1448,25 +1496,42 @@ export const MessageItem = ({ message, mine, sender, currentUserId }: { message:
 };
 
 const getReceiptLabel = (message: ChatMessage, currentUserId: string) => {
-  const readByOthers = message.readByUserIds.filter((id) => id !== currentUserId);
+  const readByOthers = (message.readByUserIds ?? []).filter((id) => id !== currentUserId);
   if (readByOthers.length > 0 || message.status?.toLowerCase() === "seen") return "Seen";
-  const deliveredToOthers = message.deliveredToUserIds.filter((id) => id !== currentUserId);
+  const deliveredToOthers = (message.deliveredToUserIds ?? []).filter((id) => id !== currentUserId);
   if (deliveredToOthers.length > 0 || message.status?.toLowerCase() === "delivered") return "Delivered";
   return "Sent";
 };
 
 export const MessageInput = () => {
   const sendMessage = useChatStore((state) => state.sendMessage);
+  const sendAttachment = useChatStore((state) => state.sendAttachment);
+  const sendTyping = useChatStore((state) => state.sendTyping);
   const isSending = useChatStore((state) => state.isSending);
   const [value, setValue] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const typingTimerRef = useRef<number | null>(null);
 
   const sendCurrentValue = () => {
     const content = value.trim();
     if (!content) return;
     setValue("");
     setEmojiOpen(false);
+    sendTyping(false);
     void sendMessage(content);
+  };
+
+  useEffect(() => () => {
+    if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    sendTyping(false);
+  }, [sendTyping]);
+
+  const handleTyping = (nextValue: string) => {
+    setValue(nextValue);
+    sendTyping(Boolean(nextValue.trim()));
+    if (typingTimerRef.current) window.clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = window.setTimeout(() => sendTyping(false), 1800);
   };
 
   const submit = (event: FormEvent) => {
@@ -1475,9 +1540,10 @@ export const MessageInput = () => {
   };
 
   return (
-    <form onSubmit={submit} className="border-t border-border/60 bg-card p-3 md:px-5">
-      <div className="mx-auto flex max-w-5xl items-end gap-1 rounded-xl border border-input/80 bg-card p-1.5 transition focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
-        <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label="Đính kèm tệp" title="Đính kèm tệp" onClick={() => toast.info("Đính kèm tệp cần được kết nối với API tải lên.")}>
+    <form onSubmit={submit} className="border-t border-border/60 bg-card px-4 py-2.5 md:px-6">
+      <div className="mx-auto flex items-end gap-1 rounded-xl border border-input/70 bg-card p-1 transition focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/10">
+        <input ref={fileInputRef} type="file" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void sendAttachment(file, value).then(() => setValue("")); event.target.value = ""; }} />
+        <Button type="button" variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label="Đính kèm tệp" title="Đính kèm tệp" onClick={() => fileInputRef.current?.click()}>
           <Paperclip className="h-5 w-5" />
         </Button>
         <div className="relative">
@@ -1505,7 +1571,7 @@ export const MessageInput = () => {
         </div>
         <textarea
           value={value}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={(event) => handleTyping(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();

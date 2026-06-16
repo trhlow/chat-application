@@ -150,6 +150,10 @@ export class ChatRealtimeClient {
     return this.send(`/app/messages/${messageId}/status`, { status });
   }
 
+  sendTyping(roomId: string, typing: boolean) {
+    return this.send(`/app/rooms/${roomId}/typing`, { typing });
+  }
+
   private send(destination: string, payload: unknown) {
     if (!this.connected || this.socket?.readyState !== WebSocket.OPEN) {
       return false;

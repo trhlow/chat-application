@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { chatApi } from "@/services/chatService";
 import { useChatStore } from "@/stores/useChatStore";
 import type { AuthUser } from "@/types/auth";
-import type { ChatMessage, ChatRoom, ChatUser, FriendUser, GroupJoinRequest, PublicUserProfile, RoomMember } from "@/types/chat";
+import type { ChatMessage, ChatRoom, FriendUser, GroupJoinRequest, PublicUserProfile, RoomMember } from "@/types/chat";
 
 const EMPTY_ROOM_MEMBERS: RoomMember[] = [];
 
@@ -143,7 +143,7 @@ export const ConversationSearchDialog = ({ roomId, onClose }: { roomId: string; 
   </Dialog>;
 };
 
-export const RoomSettingsDialog = ({ room, user, usersById, onClose }: { room: ChatRoom; user: AuthUser; usersById: Record<string, ChatUser>; onClose: () => void }) => {
+export const RoomSettingsDialog = ({ room, user, onClose }: { room: ChatRoom; user: AuthUser; onClose: () => void }) => {
   const friends = useChatStore((state) => state.friends);
   const members = useChatStore((state) => state.roomMembersByRoomId[room.id] ?? EMPTY_ROOM_MEMBERS);
   const fetchRoomMembers = useChatStore((state) => state.fetchRoomMembers);

@@ -1349,7 +1349,7 @@ export const ChatWindowHeader = ({ room, user, usersById }: { room: ChatRoom; us
         {!isDirectRoom(room) ? <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-muted-foreground hover:text-primary" aria-label="Quản lý nhóm" onClick={() => setSettingsOpen(true)}><Settings className="h-5 w-5" /></Button> : null}
       </div>
       {searchOpen ? <ConversationSearchDialog roomId={room.id} onClose={() => setSearchOpen(false)} /> : null}
-      {settingsOpen ? <RoomSettingsDialog room={room} user={user} usersById={usersById} onClose={() => setSettingsOpen(false)} /> : null}
+      {settingsOpen ? <RoomSettingsDialog room={room} user={user} onClose={() => setSettingsOpen(false)} /> : null}
     </header>
   );
 };

@@ -27,16 +27,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Locale;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
-    private static final String REGISTER_CONFLICT_MESSAGE = "An account with these details already exists";
+    private static final String REGISTER_CONFLICT_MESSAGE = "Tài khoản với thông tin này đã tồn tại";
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenService jwtTokenService;
@@ -89,7 +87,7 @@ public class AuthServiceImpl implements AuthService {
         User user = findByEmailOrUsername(request.email(), request.username());
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new InvalidCredentialsException("Invalid credentials");
+            throw new InvalidCredentialsException("Thông tin đăng nhập không hợp lệ");
         }
 
         user.setUpdatedAt(Instant.now());
@@ -104,7 +102,7 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse refresh(RefreshTokenRequest request) {
         RefreshRotationResult rotation = refreshTokenService.rotateRefreshToken(request.refreshToken());
         User user = userRepository.findById(rotation.userId())
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("Không tìm thấy người dùng"));
 
         String accessToken = jwtTokenService.generateToken(AuthUserPrincipal.from(user));
         return new AuthResponse(
@@ -121,7 +119,7 @@ public class AuthServiceImpl implements AuthService {
     public void logout(LogoutRequest request) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         User user = userRepository.findById(principal.getId())
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("Không tìm thấy người dùng"));
 
         if (request != null) {
             refreshTokenService.revokeUserToken(user.getId(), request.refreshToken());
@@ -139,7 +137,7 @@ public class AuthServiceImpl implements AuthService {
     public void logoutAll() {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         User user = userRepository.findById(principal.getId())
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("Không tìm thấy người dùng"));
 
         refreshTokenService.revokeAllUserTokens(user.getId());
         user.setTokenVersion(user.getTokenVersion() + 1);
@@ -172,15 +170,15 @@ public class AuthServiceImpl implements AuthService {
     private User findByEmailOrUsername(String email, String username) {
         if (email != null && !email.isBlank()) {
             return userRepository.findByEmail(email.trim().toLowerCase(Locale.ROOT))
-                    .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
+                    .orElseThrow(() -> new InvalidCredentialsException("Thông tin đăng nhập không hợp lệ"));
         }
 
         if (username != null && !username.isBlank()) {
             return userRepository.findByUsername(username.trim().toLowerCase(Locale.ROOT))
-                    .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
+                    .orElseThrow(() -> new InvalidCredentialsException("Thông tin đăng nhập không hợp lệ"));
         }
 
-        throw new InvalidCredentialsException("Email or username is required");
+        throw new InvalidCredentialsException("Yêu cầu cung cấp email hoặc tên đăng nhập");
     }
 }
 

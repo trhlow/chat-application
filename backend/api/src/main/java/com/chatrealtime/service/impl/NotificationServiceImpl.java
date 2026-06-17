@@ -37,6 +37,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final MongoTemplate mongoTemplate;
 
     @Override
+    @Transactional(readOnly = true)
     public NotificationPageResponse getNotificationsByCurrentUser(int page, int size) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         int safePage = Math.max(page, 0);
@@ -54,6 +55,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public NotificationUnreadCountResponse getUnreadCount() {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         return new NotificationUnreadCountResponse(notificationRepository.countByUserIdAndReadFalse(principal.getId()));

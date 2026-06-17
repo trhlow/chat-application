@@ -56,6 +56,8 @@ import java.util.Set;
 import java.util.Collection;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
+import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.scheduling.annotation.Scheduled;
 
 @Service
 @Transactional
@@ -74,6 +76,9 @@ public class MessageServiceImpl implements MessageService {
     private static final String TYPE_TEXT = "TEXT";
     private static final String TYPE_IMAGE = "IMAGE";
     private static final String TYPE_FILE = "FILE";
+    private static final long TYPING_DEBOUNCE_MS = 500;
+
+    private final Map<String, Long> lastTypingTime = new ConcurrentHashMap<>();
 
     private final MessageRepository messageRepository;
     private final MessageAttachmentRepository messageAttachmentRepository;
@@ -267,6 +272,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public MessagePageResponse searchMessages(String roomId, String keyword, int page, int size) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = ensureRoomExists(roomId);
@@ -303,12 +309,30 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void publishTypingIndicator(AuthUserPrincipal principal, String roomId, boolean typing) {
+        if (typing && !shouldSendTyping(principal.getId(), roomId)) {
+            return;
+        }
         Room room = ensureRoomExists(roomId);
         ensureMembership(room, principal.getId());
         messagingTemplate.convertAndSend(
                 "/topic/rooms/" + roomId + "/typing",
                 new TypingIndicatorResponse(roomId, principal.getId(), principal.getUsername(), typing, Instant.now())
         );
+    }
+
+    private boolean shouldSendTyping(String userId, String roomId) {
+        String key = userId + ":" + roomId;
+        long now = System.currentTimeMillis();
+        Long last = lastTypingTime.get(key);
+        if (last != null && now - last < TYPING_DEBOUNCE_MS) return false;
+        lastTypingTime.put(key, now);
+        return true;
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    public void cleanupTypingCache() {
+        long threshold = System.currentTimeMillis() - 60_000;
+        lastTypingTime.entrySet().removeIf(entry -> entry.getValue() < threshold);
     }
 
     @Override
@@ -333,6 +357,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RoomUnreadCountResponse> getUnreadCounts() {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         List<Room> rooms = roomRepository.findByMemberIdsContaining(principal.getId());
@@ -345,12 +370,14 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public RoomUnreadCountResponse getUnreadCount(String roomId) {
         long count = getUnreadCountMap(List.of(roomId)).getOrDefault(roomId, 0L);
         return new RoomUnreadCountResponse(roomId, count);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Map<String, Long> getUnreadCountMap(Collection<String> roomIds) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         if (roomIds == null || roomIds.isEmpty()) {

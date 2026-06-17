@@ -80,6 +80,7 @@ public class RoomServiceImpl implements RoomService {
     private final UserBlockRepository userBlockRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<RoomResponse> getCurrentUserRooms() {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         List<Room> rooms = roomRepository.findByMemberIdsContaining(principal.getId())
@@ -92,6 +93,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public RoomResponse getRoomById(String roomId) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = roomRepository.findById(roomId)
@@ -232,6 +234,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RoomMemberResponse> getMembers(String roomId) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = requireGroupRoomForMember(roomId, principal.getId());
@@ -345,6 +348,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<GroupJoinRequestResponse> getPendingJoinRequests(String roomId) {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         Room room = requireGroupRoomForMember(roomId, principal.getId());
@@ -473,6 +477,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Room getRoomEntityById(String roomId) {
         return roomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
@@ -612,6 +617,9 @@ public class RoomServiceImpl implements RoomService {
     }
 
     private void deleteRoomData(Room room) {
+        room.setDissolvedAt(Instant.now());
+        roomRepository.save(room);
+
         while (true) {
             Query batchQuery = Query.query(Criteria.where("roomId").is(room.getId()))
                     .limit(ROOM_DELETE_MESSAGE_BATCH_SIZE);
@@ -784,6 +792,7 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public boolean isMember(String roomId, String userId) {
         return roomRepository.findById(roomId)
                 .map(room -> room.getMemberIds() != null && room.getMemberIds().contains(userId))

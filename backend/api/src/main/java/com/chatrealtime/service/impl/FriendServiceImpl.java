@@ -102,6 +102,7 @@ public class FriendServiceImpl implements FriendService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<FriendRequestResponse> getIncomingRequests() {
         User currentUser = getCurrentUser();
         List<FriendRequest> requests = friendRequestRepository.findByReceiverIdAndStatusOrderByCreatedAtDesc(
@@ -112,6 +113,7 @@ public class FriendServiceImpl implements FriendService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<FriendRequestResponse> getOutgoingRequests() {
         User currentUser = getCurrentUser();
         List<FriendRequest> requests = friendRequestRepository.findByRequesterIdAndStatusOrderByCreatedAtDesc(
@@ -224,6 +226,7 @@ public class FriendServiceImpl implements FriendService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<FriendshipResponse> getFriends() {
         User currentUser = getCurrentUser();
         List<Friendship> friendships = friendshipRepository.findByUserIdsContaining(currentUser.getId());
@@ -285,6 +288,7 @@ public class FriendServiceImpl implements FriendService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<FriendUserResponse> getBlockedUsers() {
         User currentUser = getCurrentUser();
         List<String> blockedIds = userBlockRepository.findByBlockerIdOrderByCreatedAtDesc(currentUser.getId())

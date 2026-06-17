@@ -529,6 +529,27 @@ class MessageServiceTest {
     }
 
     @Test
+    void recallMessage_WhenOlderThan24Hours_ShouldReject() {
+        when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
+        Message message = Message.builder()
+                .id("m1")
+                .roomId("r1")
+                .senderId("u1")
+                .content("secret")
+                .timestamp(LocalDateTime.now().minusHours(25))
+                .status("sent")
+                .build();
+        when(messageRepository.findById("m1")).thenReturn(Optional.of(message));
+        when(roomRepository.findById("r1")).thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+        when(appMessagesProperties.enforceRecallTimeLimit()).thenReturn(true);
+        when(appMessagesProperties.recallTimeLimitMinutes()).thenReturn(1440);
+
+        assertThatThrownBy(() -> messageService.recallMessage("m1"))
+                .isInstanceOf(BadRequestException.class);
+        verify(messageRepository, never()).save(any(Message.class));
+    }
+
+    @Test
     void deleteMessageForCurrentUser_ShouldOnlyHideMessageForThatUser() {
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u2", "bob", "pw", 0));
         Message message = Message.builder()

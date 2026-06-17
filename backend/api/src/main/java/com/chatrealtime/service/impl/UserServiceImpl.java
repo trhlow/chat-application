@@ -39,6 +39,7 @@ public class UserServiceImpl implements UserService {
     private final UserPrincipalService userPrincipalService;
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserSearchResultResponse> getUsers(String query) {
         String normalizedQuery = query == null ? "" : query.trim();
         if (normalizedQuery.length() < 2) {
@@ -53,18 +54,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public User getUserEntityById(String userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserProfileResponse getCurrentUserProfile() {
         AuthUserPrincipal principal = authContextService.requireCurrentUser();
         return userMapper.toUserProfileResponse(getUserEntityById(principal.getId()));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PublicUserProfileResponse getPublicUserProfileById(String userId) {
         return userMapper.toPublicUserProfileResponse(getUserEntityById(userId));
     }

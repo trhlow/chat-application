@@ -78,7 +78,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(ExistsUsernameException.class)
-                .hasMessage("An account with these details already exists");
+                .hasMessage("Tài khoản với thông tin này đã tồn tại");
     }
 
     @Test
@@ -95,7 +95,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.register(request))
                 .isInstanceOf(ExistsEmailException.class)
-                .hasMessage("An account with these details already exists");
+                .hasMessage("Tài khoản với thông tin này đã tồn tại");
     }
 
     @Test
@@ -158,6 +158,15 @@ class AuthServiceTest {
     }
 
     @Test
+    void login_ShouldThrowOnEmailNotFound() {
+        LoginRequest request = new LoginRequest(null, "notfound@example.com", "password");
+        when(userRepository.findByEmail("notfound@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
     void refresh_ShouldRotateRefreshTokenAndReturnNewTokens() {
         RefreshTokenRequest request = new RefreshTokenRequest("old-refresh");
 
@@ -184,6 +193,16 @@ class AuthServiceTest {
     }
 
     @Test
+    void refresh_ShouldThrowOnRevokedToken() {
+        RefreshTokenRequest request = new RefreshTokenRequest("revoked-token");
+        when(refreshTokenService.rotateRefreshToken("revoked-token"))
+                .thenThrow(new InvalidCredentialsException("Invalid refresh token"));
+
+        assertThatThrownBy(() -> authService.refresh(request))
+                .isInstanceOf(InvalidCredentialsException.class);
+    }
+
+    @Test
     void logout_ShouldRevokeRefreshTokenAndMarkUserOffline() {
         LogoutRequest request = new LogoutRequest("refresh-token");
 
@@ -202,6 +221,27 @@ class AuthServiceTest {
 
         assertThat(user.isOnline()).isFalse();
         verify(refreshTokenService).revokeUserToken("u1", "refresh-token");
+        verify(userPrincipalService).evictUserCaches("u1", "alice");
+        verify(presenceService).markOffline("u1");
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void logoutAll_ShouldRevokeAllUserTokens() {
+        User user = User.builder()
+                .id("u1")
+                .username("alice")
+                .isOnline(true)
+                .build();
+        when(authContextService.requireCurrentUser())
+                .thenReturn(new AuthUserPrincipal("u1", "alice", "hashed", 0));
+        when(userRepository.findById("u1")).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+
+        authService.logoutAll();
+
+        assertThat(user.isOnline()).isFalse();
+        verify(refreshTokenService).revokeAllUserTokens("u1");
         verify(userPrincipalService).evictUserCaches("u1", "alice");
         verify(presenceService).markOffline("u1");
         verify(userRepository).save(user);

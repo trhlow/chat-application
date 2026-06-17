@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.MongoTransactionManager;
 
 @Configuration
-@Profile("prod")
+@Profile("!test")
 public class MongoTransactionConfig {
     @Bean
     public MongoTransactionManager mongoTransactionManager(MongoDatabaseFactory databaseFactory) {

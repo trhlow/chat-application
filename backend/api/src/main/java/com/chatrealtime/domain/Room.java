@@ -44,6 +44,7 @@ public class Room {
     private String lastMessagePreview;
     private Instant createdAt;
     private Instant updatedAt;
+    private Instant dissolvedAt;
 }
 
 

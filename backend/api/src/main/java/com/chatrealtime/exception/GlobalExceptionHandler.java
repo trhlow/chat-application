@@ -42,10 +42,10 @@ public class GlobalExceptionHandler {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         exception.getBindingResult().getFieldErrors().forEach(fieldError ->
                 fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage() == null
-                        ? "Invalid value"
+                        ? "Giá trị không hợp lệ"
                         : fieldError.getDefaultMessage())
         );
-        String message = fieldErrors.values().stream().findFirst().orElse("Invalid request body");
+        String message = fieldErrors.values().stream().findFirst().orElse("Dữ liệu yêu cầu không hợp lệ");
         return ResponseEntity.badRequest().body(
                 buildError(400, "BAD_REQUEST", message, request.getRequestURI(), fieldErrors)
         );
@@ -58,6 +58,15 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity.badRequest()
                 .body(buildError(400, "BAD_REQUEST", exception.getMessage(), request.getRequestURI(), null));
+    }
+
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingServletRequestParameterException(
+            org.springframework.web.bind.MissingServletRequestParameterException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.badRequest()
+                .body(buildError(400, "BAD_REQUEST", "Thiếu tham số yêu cầu: " + exception.getParameterName(), request.getRequestURI(), null));
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -84,14 +93,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         return ResponseEntity.badRequest()
-                .body(buildError(400, "BAD_REQUEST", "Malformed JSON request body", request.getRequestURI(), null));
+                .body(buildError(400, "BAD_REQUEST", "Dữ liệu JSON không đúng định dạng", request.getRequestURI(), null));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleException(Exception exception, HttpServletRequest request) {
         log.error("Unhandled error {} {}", request.getMethod(), request.getRequestURI(), exception);
         return ResponseEntity.status(500)
-                .body(buildError(500, "INTERNAL_SERVER_ERROR", "Internal server error", request.getRequestURI(), null));
+                .body(buildError(500, "INTERNAL_SERVER_ERROR", "Lỗi máy chủ nội bộ", request.getRequestURI(), null));
     }
 
     private ApiErrorResponse buildError(

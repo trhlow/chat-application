@@ -36,7 +36,7 @@ class MongoTransactionStartupValidatorTest {
                 .thenReturn(new Document("isWritablePrimary", true));
 
         assertThatThrownBy(() -> validator.run(null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("replica set or sharded cluster");
+                .isInstanceOf(org.springframework.context.ApplicationContextException.class)
+                .hasMessageContaining("MongoDB Replica Set is required");
     }
 }

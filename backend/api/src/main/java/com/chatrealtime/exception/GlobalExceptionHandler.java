@@ -78,6 +78,15 @@ public class GlobalExceptionHandler {
                 .body(buildError(403, "FORBIDDEN", exception.getMessage(), request.getRequestURI(), null));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadableException(
+            org.springframework.http.converter.HttpMessageNotReadableException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.badRequest()
+                .body(buildError(400, "BAD_REQUEST", "Malformed JSON request body", request.getRequestURI(), null));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleException(Exception exception, HttpServletRequest request) {
         log.error("Unhandled error {} {}", request.getMethod(), request.getRequestURI(), exception);

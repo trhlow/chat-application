@@ -1,7 +1,7 @@
 package com.chatrealtime.security;
 
-import com.chatrealtime.repository.MessageRepository;
-import com.chatrealtime.repository.RoomRepository;
+import com.chatrealtime.service.MessageService;
+import com.chatrealtime.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.security.access.AccessDeniedException;
@@ -11,7 +11,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
-@RequiredArgsConstructor
 public class WebSocketAuthorizationService {
     private static final Pattern ROOM_MESSAGE_SEND_DESTINATION =
             Pattern.compile("^/app/rooms/(?<roomId>[^/]+)/messages$");
@@ -22,8 +21,15 @@ public class WebSocketAuthorizationService {
     private static final Pattern ROOM_TOPIC_SUBSCRIPTION =
             Pattern.compile("^/topic/rooms/(?<roomId>[^/]+)/(messages|status|typing)$");
 
-    private final RoomRepository roomRepository;
-    private final MessageRepository messageRepository;
+    private final RoomService roomService;
+    private final MessageService messageService;
+
+    public WebSocketAuthorizationService(
+            @org.springframework.context.annotation.Lazy RoomService roomService,
+            @org.springframework.context.annotation.Lazy MessageService messageService) {
+        this.roomService = roomService;
+        this.messageService = messageService;
+    }
 
     public void authorize(AuthUserPrincipal principal, StompCommand command, String destination) {
         if (command == StompCommand.SEND) {
@@ -51,9 +57,10 @@ public class WebSocketAuthorizationService {
         Matcher messageStatusMatcher = MESSAGE_STATUS_SEND_DESTINATION.matcher(destination);
         if (messageStatusMatcher.matches()) {
             String messageId = messageStatusMatcher.group("messageId");
-            String roomId = messageRepository.findById(messageId)
-                    .map(message -> message.getRoomId())
-                    .orElseThrow(() -> new AccessDeniedException("Forbidden"));
+            String roomId = messageService.getRoomIdForMessage(messageId);
+            if (roomId == null) {
+                throw new AccessDeniedException("Forbidden");
+            }
             requireRoomMembership(principal.getId(), roomId);
             return;
         }
@@ -84,9 +91,7 @@ public class WebSocketAuthorizationService {
     }
 
     private void requireRoomMembership(String userId, String roomId) {
-        boolean isMember = roomRepository.findById(roomId)
-                .map(room -> room.getMemberIds() != null && room.getMemberIds().contains(userId))
-                .orElse(false);
+        boolean isMember = roomService.isMember(roomId, userId);
         if (!isMember) {
             throw new AccessDeniedException("Forbidden");
         }

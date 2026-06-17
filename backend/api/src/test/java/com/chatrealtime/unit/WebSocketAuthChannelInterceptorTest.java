@@ -59,6 +59,20 @@ class WebSocketAuthChannelInterceptorTest {
     }
 
     @Test
+    void preSend_ShouldRejectConnectWhenTokenIsInvalidOrExpired() {
+        WebSocketAuthChannelInterceptor interceptor = new WebSocketAuthChannelInterceptor(
+                jwtTokenService,
+                userPrincipalService,
+                webSocketAuthorizationService
+        );
+
+        when(jwtTokenService.parseValidClaims("expired_token")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> interceptor.preSend(connectMessage("expired_token"), mock(MessageChannel.class)))
+                .isInstanceOf(com.chatrealtime.exception.InvalidCredentialsException.class);
+    }
+
+    @Test
     void preSend_ShouldIgnoreConnectWhenTokenVersionIsStale() {
         WebSocketAuthChannelInterceptor interceptor = new WebSocketAuthChannelInterceptor(
                 jwtTokenService,

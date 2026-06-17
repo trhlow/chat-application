@@ -89,7 +89,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 ? request.getHeader("X-Forwarded-For")
                 : null;
         if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
+            String[] parts = forwardedFor.split(",");
+            return parts[parts.length - 1].trim();
         }
         return request.getRemoteAddr();
     }

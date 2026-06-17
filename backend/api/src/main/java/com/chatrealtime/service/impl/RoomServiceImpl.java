@@ -487,11 +487,11 @@ public class RoomServiceImpl implements RoomService {
     private Room requireGroupRoomForMember(String roomId, String userId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new RoomNotFoundException("Room not found"));
-        if (!ROOM_TYPE_GROUP.equals(room.getType())) {
-            throw new BadRequestException("This operation is only supported for group rooms");
-        }
         if (room.getMemberIds() == null || !room.getMemberIds().contains(userId)) {
-            throw new AccessDeniedException("Forbidden");
+            throw new org.springframework.security.access.AccessDeniedException("Forbidden");
+        }
+        if (!ROOM_TYPE_GROUP.equals(room.getType())) {
+            throw new org.springframework.security.access.AccessDeniedException("This operation is only supported for group rooms");
         }
         return room;
     }
@@ -538,10 +538,10 @@ public class RoomServiceImpl implements RoomService {
         if (memberIds.isEmpty()) {
             throw new BadRequestException("memberIds is required");
         }
-        for (String memberId : memberIds) {
-            if (!userRepository.existsById(requireNonBlank(memberId, "memberId is required"))) {
-                throw new BadRequestException("member does not exist: " + memberId);
-            }
+        memberIds.forEach(id -> requireNonBlank(id, "memberId is required"));
+        long existingCount = userRepository.countByIdIn(memberIds);
+        if (existingCount != memberIds.size()) {
+            throw new BadRequestException("One or more members do not exist");
         }
     }
 
@@ -781,6 +781,13 @@ public class RoomServiceImpl implements RoomService {
         LinkedHashSet<String> merged = new LinkedHashSet<>(first);
         merged.addAll(second);
         return List.copyOf(merged);
+    }
+
+    @Override
+    public boolean isMember(String roomId, String userId) {
+        return roomRepository.findById(roomId)
+                .map(room -> room.getMemberIds() != null && room.getMemberIds().contains(userId))
+                .orElse(false);
     }
 }
 

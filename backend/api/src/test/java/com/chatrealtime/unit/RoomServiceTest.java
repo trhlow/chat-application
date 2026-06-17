@@ -92,8 +92,7 @@ class RoomServiceTest {
                 .build();
 
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
-        when(userRepository.existsById("u1")).thenReturn(true);
-        when(userRepository.existsById("u2")).thenReturn(true);
+        when(userRepository.countByIdIn(any())).thenAnswer(inv -> (long) ((java.util.Collection<?>) inv.getArgument(0)).size());
         when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(false);
         when(roomRepository.findByTypeAndMemberIdsContaining("direct", "u2")).thenReturn(List.of(existingRoom));
         when(roomMapper.toResponse(existingRoom, 0L)).thenReturn(toResponse(existingRoom, 0L));
@@ -114,8 +113,7 @@ class RoomServiceTest {
                 .build();
 
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
-        when(userRepository.existsById("u1")).thenReturn(true);
-        when(userRepository.existsById("u2")).thenReturn(true);
+        when(userRepository.countByIdIn(any())).thenAnswer(inv -> (long) ((java.util.Collection<?>) inv.getArgument(0)).size());
         when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(false);
         when(roomRepository.findByTypeAndMemberIdsContaining("direct", "u2"))
                 .thenReturn(List.of())
@@ -139,8 +137,7 @@ class RoomServiceTest {
                 .build();
 
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
-        when(userRepository.existsById("u1")).thenReturn(true);
-        when(userRepository.existsById("u2")).thenReturn(true);
+        when(userRepository.countByIdIn(any())).thenAnswer(inv -> (long) ((java.util.Collection<?>) inv.getArgument(0)).size());
         when(userBlockRepository.existsBetweenUsers("u1", "u2")).thenReturn(false);
         when(roomRepository.findByTypeAndDirectKey("direct", "u1:u2"))
                 .thenReturn(Optional.empty())
@@ -164,9 +161,7 @@ class RoomServiceTest {
         User currentUser = User.builder().id("u1").username("alice").displayName("Alice").build();
 
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
-        when(userRepository.existsById("u1")).thenReturn(true);
-        when(userRepository.existsById("u2")).thenReturn(true);
-        when(userRepository.existsById("u3")).thenReturn(true);
+        when(userRepository.countByIdIn(any())).thenAnswer(inv -> (long) ((java.util.Collection<?>) inv.getArgument(0)).size());
         when(userRepository.findById("u1")).thenReturn(Optional.of(currentUser));
         when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> {
             Room room = invocation.getArgument(0);
@@ -203,7 +198,7 @@ class RoomServiceTest {
 
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
         when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
-        when(userRepository.existsById("u3")).thenReturn(true);
+        when(userRepository.countByIdIn(any())).thenAnswer(inv -> (long) ((java.util.Collection<?>) inv.getArgument(0)).size());
         when(userRepository.findById("u1")).thenReturn(Optional.of(currentUser));
         when(messageService.getUnreadCountMap(List.of("g1"))).thenReturn(Map.of("g1", 4L));
         when(roomRepository.save(any(Room.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -451,7 +446,7 @@ class RoomServiceTest {
 
         when(authContextService.requireCurrentUser()).thenReturn(new AuthUserPrincipal("u1", "alice", "pw", 0));
         when(roomRepository.findById("g1")).thenReturn(Optional.of(room));
-        when(userRepository.existsById("u3")).thenReturn(true);
+        when(userRepository.countByIdIn(any())).thenAnswer(inv -> (long) ((java.util.Collection<?>) inv.getArgument(0)).size());
         when(groupJoinRequestRepository.existsByRoomIdAndTargetUserIdAndStatus("g1", "u3", GroupJoinRequestStatus.PENDING))
                 .thenReturn(false);
         when(groupJoinRequestRepository.save(any(GroupJoinRequest.class))).thenAnswer(invocation -> {

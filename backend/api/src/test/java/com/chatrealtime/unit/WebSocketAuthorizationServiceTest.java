@@ -24,9 +24,9 @@ import static org.mockito.Mockito.when;
 class WebSocketAuthorizationServiceTest {
 
     @Mock
-    private RoomRepository roomRepository;
+    private com.chatrealtime.service.RoomService roomService;
     @Mock
-    private MessageRepository messageRepository;
+    private com.chatrealtime.service.MessageService messageService;
 
     @InjectMocks
     private WebSocketAuthorizationService webSocketAuthorizationService;
@@ -62,8 +62,7 @@ class WebSocketAuthorizationServiceTest {
 
     @Test
     void send_roomTyping_whenMember_isAllowed() {
-        when(roomRepository.findById("r1"))
-                .thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+        when(roomService.isMember("r1", "u1")).thenReturn(true);
 
         assertThatCode(() -> webSocketAuthorizationService.authorize(
                 principal,
@@ -74,8 +73,7 @@ class WebSocketAuthorizationServiceTest {
 
     @Test
     void subscribe_roomTyping_whenMember_isAllowed() {
-        when(roomRepository.findById("r1"))
-                .thenReturn(Optional.of(Room.builder().id("r1").memberIds(List.of("u1", "u2")).build()));
+        when(roomService.isMember("r1", "u1")).thenReturn(true);
 
         assertThatCode(() -> webSocketAuthorizationService.authorize(
                 principal,

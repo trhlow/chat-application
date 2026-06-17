@@ -2,6 +2,7 @@ package com.chatrealtime.security;
 
 import org.springframework.core.env.Environment;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
@@ -28,8 +29,9 @@ public final class JwtSecretValidator {
         if (isRelaxedProfile(environment)) {
             return;
         }
-        if (secret.length() < 32) {
-            throw new IllegalStateException("APP_JWT_SECRET must be at least 32 characters for this Spring profile");
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("APP_JWT_SECRET must encode to at least 32 bytes (256 bits) for HMAC-SHA256 for this Spring profile");
         }
         if (secret.toLowerCase().contains("change-this")) {
             throw new IllegalStateException("APP_JWT_SECRET must not use a known weak placeholder");

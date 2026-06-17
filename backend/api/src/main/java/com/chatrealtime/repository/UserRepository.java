@@ -17,6 +17,7 @@ public interface UserRepository extends MongoRepository<User, String> {
     Optional<User> findByEmail(String email);
     List<User> findByUsernameContainingIgnoreCase(String query);
     Page<User> findByUsernameContainingIgnoreCase(String query, Pageable pageable);
+    long countByIdIn(java.util.Collection<String> ids);
 }
 
 

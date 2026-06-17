@@ -51,4 +51,6 @@ public interface RoomService {
     void dissolveRoom(String roomId);
 
     Room getRoomEntityById(String roomId);
+
+    boolean isMember(String roomId, String userId);
 }

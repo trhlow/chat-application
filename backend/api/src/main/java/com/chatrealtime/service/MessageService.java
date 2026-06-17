@@ -63,4 +63,6 @@ public interface MessageService {
     RoomUnreadCountResponse getUnreadCount(String roomId);
 
     Map<String, Long> getUnreadCountMap(Collection<String> roomIds);
+
+    String getRoomIdForMessage(String messageId);
 }

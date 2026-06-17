@@ -168,11 +168,9 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Override
     public void revokeAllUserTokens(String userId) {
-        Instant now = Instant.now();
-        refreshTokenRepository.findByUserIdAndRevokedAtIsNull(userId).forEach(refreshToken -> {
-            refreshToken.setRevokedAt(now);
-            refreshTokenRepository.save(refreshToken);
-        });
+        Query query = Query.query(Criteria.where("userId").is(userId).and("revokedAt").is(null));
+        Update update = new Update().set("revokedAt", Instant.now());
+        mongoTemplate.updateMulti(query, update, RefreshToken.class);
     }
 
     private String generateSecureToken() {

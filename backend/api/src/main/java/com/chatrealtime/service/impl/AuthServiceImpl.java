@@ -75,9 +75,13 @@ public class AuthServiceImpl implements AuthService {
                 .updatedAt(now)
                 .build();
 
-        User savedUser = userRepository.save(newUser);
-        eventPublisher.publishEvent(new UserCreatedEvent(savedUser.getId(), savedUser.getCreatedAt()));
-        return buildAuthResponse(savedUser);
+        try {
+            User savedUser = userRepository.save(newUser);
+            eventPublisher.publishEvent(new UserCreatedEvent(savedUser.getId(), savedUser.getCreatedAt()));
+            return buildAuthResponse(savedUser);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            throw new com.chatrealtime.exception.ConflictException(REGISTER_CONFLICT_MESSAGE);
+        }
     }
 
     @Override

@@ -104,24 +104,42 @@ public class FriendServiceImpl implements FriendService {
     @Override
     public List<FriendRequestResponse> getIncomingRequests() {
         User currentUser = getCurrentUser();
-        return friendRequestRepository.findByReceiverIdAndStatusOrderByCreatedAtDesc(
-                        currentUser.getId(),
-                        FriendRequestStatus.PENDING
-                )
-                .stream()
-                .map(this::toFriendRequestResponse)
-                .toList();
+        List<FriendRequest> requests = friendRequestRepository.findByReceiverIdAndStatusOrderByCreatedAtDesc(
+                currentUser.getId(),
+                FriendRequestStatus.PENDING
+        );
+        return mapToFriendRequestResponses(requests);
     }
 
     @Override
     public List<FriendRequestResponse> getOutgoingRequests() {
         User currentUser = getCurrentUser();
-        return friendRequestRepository.findByRequesterIdAndStatusOrderByCreatedAtDesc(
-                        currentUser.getId(),
-                        FriendRequestStatus.PENDING
-                )
+        List<FriendRequest> requests = friendRequestRepository.findByRequesterIdAndStatusOrderByCreatedAtDesc(
+                currentUser.getId(),
+                FriendRequestStatus.PENDING
+        );
+        return mapToFriendRequestResponses(requests);
+    }
+
+    private List<FriendRequestResponse> mapToFriendRequestResponses(List<FriendRequest> requests) {
+        if (requests.isEmpty()) {
+            return List.of();
+        }
+        java.util.Set<String> userIds = new java.util.HashSet<>();
+        requests.forEach(req -> {
+            userIds.add(req.getRequesterId());
+            userIds.add(req.getReceiverId());
+        });
+        Map<String, User> usersById = userRepository.findAllById(userIds)
                 .stream()
-                .map(this::toFriendRequestResponse)
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        return requests.stream()
+                .map(req -> friendMapper.toFriendRequestResponse(
+                        req,
+                        usersById.get(req.getRequesterId()),
+                        usersById.get(req.getReceiverId())
+                ))
                 .toList();
     }
 

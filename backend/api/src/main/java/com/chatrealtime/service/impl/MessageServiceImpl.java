@@ -448,7 +448,7 @@ public class MessageServiceImpl implements MessageService {
         if (normalized.length() > MAX_CONTENT_LENGTH) {
             throw new BadRequestException("content must be at most 4000 characters");
         }
-        return normalized;
+        return org.springframework.web.util.HtmlUtils.htmlEscape(normalized);
     }
 
     private String normalizeRequiredContent(String content) {
@@ -823,4 +823,10 @@ public class MessageServiceImpl implements MessageService {
         return response;
     }
 
+    @Override
+    public String getRoomIdForMessage(String messageId) {
+        return messageRepository.findById(messageId)
+                .map(Message::getRoomId)
+                .orElse(null);
+    }
 }

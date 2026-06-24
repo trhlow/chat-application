@@ -2,16 +2,22 @@ services:
   mongodb:
     image: mongo:7
     restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27018:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: root
       MONGO_INITDB_DATABASE: hlow_chat
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}).ok }",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,7 +52,7 @@ services:
     environment:
       SERVER_PORT: 8080
       SPRING_PROFILES_ACTIVE: local
-      SPRING_MONGODB_URI: mongodb://root:root@mongodb:27017/hlow_chat?authSource=admin
+      SPRING_MONGODB_URI: mongodb://mongodb:27017/hlow_chat?replicaSet=rs0
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       APP_REDIS_ENABLED: true
